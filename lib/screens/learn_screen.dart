@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine
-import 'write_screen.dart'; // Imports the drawing screen
-import 'quiz_screen.dart'; // Imports the interactive quiz/practice screen
+import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine[cite: 23]
+import 'write_screen.dart'; // Imports the drawing screen[cite: 23]
+import 'quiz_screen.dart'; // Imports the interactive quiz/practice screen[cite: 23]
+import '../services/progress_service.dart'; // Imports persistent progress service for real-time mastery counts and row locks[cite: 23]
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -12,11 +13,11 @@ class AppColors {
   static const Color textDark = Color(0xFF5D534A);
   static const Color textLight = Color(0xFF8B8076);
 
-  // Hiragana Colors (Green)
+  // Hiragana Colors (Green)[cite: 23]
   static const Color sage = Color(0xFFB7C9B2);
   static const Color lightSage = Color(0xFFE4EFE7);
 
-  // Katakana Colors (Blue)
+  // Katakana Colors (Blue)[cite: 23]
   static const Color skyBlue = Color(0xFFA5C4E5);
   static const Color lightSkyBlue = Color(0xFFEBF0F5);
 }
@@ -29,14 +30,25 @@ class LearnScreen extends StatefulWidget {
 }
 
 class _LearnScreenState extends State<LearnScreen> {
-  // Master toggle state: True = Hiragana (Green), False = Katakana (Blue)
-  bool _isHiragana = true;
-
-  // Sound toggle state: Controls whether tapping cards plays audio
+  // Sound toggle state: Controls whether tapping cards plays audio[cite: 23]
   bool _isSoundEnabled = true;
 
-  // Native text-to-speech controller instance
+  // Native text-to-speech controller instance[cite: 23]
   final FlutterTts _flutterTts = FlutterTts();
+
+  // Basic row progression order used to enforce prerequisite completion[cite: 26]
+  final List<String> _basicRowOrder = [
+    'A row',
+    'Ka row',
+    'Sa row',
+    'Ta row',
+    'Na row',
+    'Ha row',
+    'Ma row',
+    'Ya row',
+    'Ra row',
+    'Wa / N row',
+  ];
 
   @override
   void initState() {
@@ -44,42 +56,67 @@ class _LearnScreenState extends State<LearnScreen> {
     _initTts();
   }
 
-  /// Initializes the speech engine with Japanese language settings
+  /// Initializes the speech engine with Japanese language settings[cite: 23]
   Future<void> _initTts() async {
     await _flutterTts.setLanguage("ja-JP");
-    await _flutterTts.setSpeechRate(0.5); // Comfortable learning speed
+    await _flutterTts.setSpeechRate(
+      0.5,
+    ); // Comfortable learning speed[cite: 23]
     await _flutterTts.setVolume(1.0);
     await _flutterTts.setPitch(1.0);
   }
 
-  /// Speaks the selected kana character using native device speech synthesis
+  /// Speaks the selected kana character using native device speech synthesis[cite: 23]
   Future<void> _speakKana(String kana) async {
     if (!_isSoundEnabled || kana.isEmpty) return;
-    await _flutterTts.stop(); // Stop any overlapping speech queues
+    await _flutterTts.stop(); // Stop any overlapping speech queues[cite: 23]
     await _flutterTts.speak(kana);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.beige,
-      child: Column(
-        children: [
-          _buildTopHeader(),
+  void dispose() {
+    _flutterTts.stop();
+    super.dispose();
+  }
 
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              children: [_buildMainCard(), const SizedBox(height: 40)],
-            ),
+  @override
+  Widget build(BuildContext context) {
+    // ListenableBuilder ensures the screen responds immediately when ProgressService updates
+    // (such as when switching from Home via "Continue Katakana" or when finishing a quiz row)[cite: 27]
+    return ListenableBuilder(
+      listenable: ProgressService.instance,
+      builder: (context, _) {
+        final ps = ProgressService.instance;
+        final bool isHiragana = ps.selectedLearnIsHiragana;
+        final String writingSystem = isHiragana ? 'Hiragana' : 'Katakana';
+
+        return Container(
+          color: AppColors.beige,
+          child: Column(
+            children: [
+              _buildTopHeader(isHiragana),
+
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 24,
+                  ),
+                  children: [
+                    _buildMainCard(isHiragana, writingSystem, ps),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   // --- UNTOUCHED ORIGINAL TOP HEADER ---
-  Widget _buildTopHeader() {
+  Widget _buildTopHeader(bool isHiragana) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
       decoration: const BoxDecoration(
@@ -98,14 +135,14 @@ class _LearnScreenState extends State<LearnScreen> {
               color: AppColors.textDark,
             ),
           ),
-          _buildToggle(),
+          _buildToggle(isHiragana),
         ],
       ),
     );
   }
 
-  /// Custom rounded pill toggle switch for Hiragana vs Katakana
-  Widget _buildToggle() {
+  /// Custom rounded pill toggle switch synchronized with ProgressService[cite: 23]
+  Widget _buildToggle(bool isHiragana) {
     return Container(
       height: 38,
       padding: const EdgeInsets.all(2),
@@ -117,18 +154,19 @@ class _LearnScreenState extends State<LearnScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Hiragana Option (あ)
+          // Hiragana Option (あ)[cite: 23]
           GestureDetector(
-            onTap: () => setState(() => _isHiragana = true),
+            onTap: () =>
+                ProgressService.instance.setLearnScript(isHiragana: true),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: _isHiragana ? AppColors.taupe : Colors.transparent,
+                color: isHiragana ? AppColors.taupe : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _isHiragana ? AppColors.textDark : Colors.transparent,
+                  color: isHiragana ? AppColors.textDark : Colors.transparent,
                   width: 2,
                 ),
               ),
@@ -142,18 +180,19 @@ class _LearnScreenState extends State<LearnScreen> {
               ),
             ),
           ),
-          // Katakana Option (ア)
+          // Katakana Option (ア)[cite: 23]
           GestureDetector(
-            onTap: () => setState(() => _isHiragana = false),
+            onTap: () =>
+                ProgressService.instance.setLearnScript(isHiragana: false),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: !_isHiragana ? AppColors.taupe : Colors.transparent,
+                color: !isHiragana ? AppColors.taupe : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: !_isHiragana ? AppColors.textDark : Colors.transparent,
+                  color: !isHiragana ? AppColors.textDark : Colors.transparent,
                   width: 2,
                 ),
               ),
@@ -172,8 +211,12 @@ class _LearnScreenState extends State<LearnScreen> {
     );
   }
 
-  /// Builds the large central container holding the progress header and ALL Kana rows.
-  Widget _buildMainCard() {
+  /// Builds the large central container holding the progress header and ALL Kana rows[cite: 23].
+  Widget _buildMainCard(
+    bool isHiragana,
+    String writingSystem,
+    ProgressService ps,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cream,
@@ -190,7 +233,7 @@ class _LearnScreenState extends State<LearnScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildCardHeader(),
+          _buildCardHeader(isHiragana, ps),
 
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -209,7 +252,7 @@ class _LearnScreenState extends State<LearnScreen> {
                         color: AppColors.textDark,
                       ),
                     ),
-                    // Sound Master Toggle Button
+                    // Sound Master Toggle Button[cite: 23]
                     GestureDetector(
                       onTap: () {
                         setState(() {
@@ -226,209 +269,16 @@ class _LearnScreenState extends State<LearnScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // --- BASIC KANA ROWS ---
-                _buildKanaRowGroup(
-                  'A row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'あ', 'romaji': 'a'},
-                          {'kana': 'い', 'romaji': 'i'},
-                          {'kana': 'う', 'romaji': 'u'},
-                          {'kana': 'え', 'romaji': 'e'},
-                          {'kana': 'お', 'romaji': 'o'},
-                        ]
-                      : [
-                          {'kana': 'ア', 'romaji': 'a'},
-                          {'kana': 'イ', 'romaji': 'i'},
-                          {'kana': 'ウ', 'romaji': 'u'},
-                          {'kana': 'エ', 'romaji': 'e'},
-                          {'kana': 'オ', 'romaji': 'o'},
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildKanaRowGroup(
-                  'Ka row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'か', 'romaji': 'ka'},
-                          {'kana': 'き', 'romaji': 'ki'},
-                          {'kana': 'く', 'romaji': 'ku'},
-                          {'kana': 'け', 'romaji': 'ke'},
-                          {'kana': 'こ', 'romaji': 'ko'},
-                        ]
-                      : [
-                          {'kana': 'カ', 'romaji': 'ka'},
-                          {'kana': 'キ', 'romaji': 'ki'},
-                          {'kana': 'ク', 'romaji': 'ku'},
-                          {'kana': 'ケ', 'romaji': 'ke'},
-                          {'kana': 'コ', 'romaji': 'ko'},
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildKanaRowGroup(
-                  'Sa row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'さ', 'romaji': 'sa'},
-                          {'kana': 'し', 'romaji': 'shi'},
-                          {'kana': 'す', 'romaji': 'su'},
-                          {'kana': 'せ', 'romaji': 'se'},
-                          {'kana': 'そ', 'romaji': 'so'},
-                        ]
-                      : [
-                          {'kana': 'サ', 'romaji': 'sa'},
-                          {'kana': 'シ', 'romaji': 'shi'},
-                          {'kana': 'ス', 'romaji': 'su'},
-                          {'kana': 'セ', 'romaji': 'se'},
-                          {'kana': 'ソ', 'romaji': 'so'},
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildKanaRowGroup(
-                  'Ta row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'た', 'romaji': 'ta'},
-                          {'kana': 'ち', 'romaji': 'chi'},
-                          {'kana': 'つ', 'romaji': 'tsu'},
-                          {'kana': 'て', 'romaji': 'te'},
-                          {'kana': 'と', 'romaji': 'to'},
-                        ]
-                      : [
-                          {'kana': 'タ', 'romaji': 'ta'},
-                          {'kana': 'チ', 'romaji': 'chi'},
-                          {'kana': 'ツ', 'romaji': 'tsu'},
-                          {'kana': 'テ', 'romaji': 'te'},
-                          {'kana': 'ト', 'romaji': 'to'},
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildKanaRowGroup(
-                  'Na row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'な', 'romaji': 'na'},
-                          {'kana': 'に', 'romaji': 'ni'},
-                          {'kana': 'ぬ', 'romaji': 'nu'},
-                          {'kana': 'ね', 'romaji': 'ne'},
-                          {'kana': 'の', 'romaji': 'no'},
-                        ]
-                      : [
-                          {'kana': 'ナ', 'romaji': 'na'},
-                          {'kana': 'ニ', 'romaji': 'ni'},
-                          {'kana': 'ヌ', 'romaji': 'nu'},
-                          {'kana': 'ネ', 'romaji': 'ne'},
-                          {'kana': 'ノ', 'romaji': 'no'},
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildKanaRowGroup(
-                  'Ha row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'は', 'romaji': 'ha'},
-                          {'kana': 'ひ', 'romaji': 'hi'},
-                          {'kana': 'ふ', 'romaji': 'fu'},
-                          {'kana': 'へ', 'romaji': 'he'},
-                          {'kana': 'ほ', 'romaji': 'ho'},
-                        ]
-                      : [
-                          {'kana': 'ハ', 'romaji': 'ha'},
-                          {'kana': 'ヒ', 'romaji': 'hi'},
-                          {'kana': 'フ', 'romaji': 'fu'},
-                          {'kana': 'ヘ', 'romaji': 'he'},
-                          {'kana': 'ホ', 'romaji': 'ho'},
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildKanaRowGroup(
-                  'Ma row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'ま', 'romaji': 'ma'},
-                          {'kana': 'み', 'romaji': 'mi'},
-                          {'kana': 'む', 'romaji': 'mu'},
-                          {'kana': 'め', 'romaji': 'me'},
-                          {'kana': 'も', 'romaji': 'mo'},
-                        ]
-                      : [
-                          {'kana': 'マ', 'romaji': 'ma'},
-                          {'kana': 'ミ', 'romaji': 'mi'},
-                          {'kana': 'ム', 'romaji': 'mu'},
-                          {'kana': 'メ', 'romaji': 'me'},
-                          {'kana': 'モ', 'romaji': 'mo'},
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildKanaRowGroup(
-                  'Ya row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'や', 'romaji': 'ya'},
-                          {'kana': '', 'romaji': ''},
-                          {'kana': 'ゆ', 'romaji': 'yu'},
-                          {'kana': '', 'romaji': ''},
-                          {'kana': 'よ', 'romaji': 'yo'},
-                        ]
-                      : [
-                          {'kana': 'ヤ', 'romaji': 'ya'},
-                          {'kana': '', 'romaji': ''},
-                          {'kana': 'ユ', 'romaji': 'yu'},
-                          {'kana': '', 'romaji': ''},
-                          {'kana': 'ヨ', 'romaji': 'yo'},
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildKanaRowGroup(
-                  'Ra row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'ら', 'romaji': 'ra'},
-                          {'kana': 'り', 'romaji': 'ri'},
-                          {'kana': 'る', 'romaji': 'ru'},
-                          {'kana': 'れ', 'romaji': 're'},
-                          {'kana': 'ろ', 'romaji': 'ro'},
-                        ]
-                      : [
-                          {'kana': 'ラ', 'romaji': 'ra'},
-                          {'kana': 'リ', 'romaji': 'ri'},
-                          {'kana': 'ル', 'romaji': 'ru'},
-                          {'kana': 'レ', 'romaji': 're'},
-                          {'kana': 'ロ', 'romaji': 'ro'},
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildKanaRowGroup(
-                  'Wa / N row',
-                  _isHiragana
-                      ? [
-                          {'kana': 'わ', 'romaji': 'wa'},
-                          {'kana': '', 'romaji': ''},
-                          {'kana': 'を', 'romaji': 'wo'},
-                          {'kana': '', 'romaji': ''},
-                          {'kana': 'ん', 'romaji': 'n'},
-                        ]
-                      : [
-                          {'kana': 'ワ', 'romaji': 'wa'},
-                          {'kana': '', 'romaji': ''},
-                          {'kana': 'ヲ', 'romaji': 'wo'},
-                          {'kana': '', 'romaji': ''},
-                          {'kana': 'ン', 'romaji': 'n'},
-                        ],
+                // --- BASIC KANA ROWS (SEQUENTIALLY UNLOCKED) ---[cite: 26]
+                ..._buildBasicRowsWithPrerequisites(
+                  isHiragana,
+                  writingSystem,
+                  ps,
                 ),
 
                 const SizedBox(height: 32),
 
-                // --- DAKUON & HANDAKUON ROWS ---
+                // --- DAKUON & HANDAKUON ROWS ---[cite: 23]
                 const Text(
                   'Dakuon',
                   style: TextStyle(
@@ -441,7 +291,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'G row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'が', 'romaji': 'ga'},
                           {'kana': 'ぎ', 'romaji': 'gi'},
@@ -461,7 +313,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Za row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'ざ', 'romaji': 'za'},
                           {'kana': 'じ', 'romaji': 'ji'},
@@ -481,12 +335,14 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Da row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'だ', 'romaji': 'da'},
                           {'kana': 'ぢ', 'romaji': 'ji'},
                           {'kana': 'づ', 'romaji': 'zu'},
-                          {'kana': 'で', 'romaji': 'de'},
+                          {'kana': 'de', 'romaji': 'de'},
                           {'kana': 'ど', 'romaji': 'do'},
                         ]
                       : [
@@ -501,7 +357,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Ba row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'ば', 'romaji': 'ba'},
                           {'kana': 'び', 'romaji': 'bi'},
@@ -521,7 +379,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Pa row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'ぱ', 'romaji': 'pa'},
                           {'kana': 'ぴ', 'romaji': 'pi'},
@@ -540,7 +400,7 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 const SizedBox(height: 32),
 
-                // --- YOON (Contracted Sounds) ROWS ---
+                // --- YOON (Contracted Sounds) ROWS ---[cite: 23]
                 const Text(
                   'Yoon',
                   style: TextStyle(
@@ -553,7 +413,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Kya row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'きゃ', 'romaji': 'kya'},
                           {'kana': '', 'romaji': ''},
@@ -573,7 +435,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Sha row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'しゃ', 'romaji': 'sha'},
                           {'kana': '', 'romaji': ''},
@@ -593,7 +457,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Cha row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'ちゃ', 'romaji': 'cha'},
                           {'kana': '', 'romaji': ''},
@@ -613,7 +479,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Nya row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'にゃ', 'romaji': 'nya'},
                           {'kana': '', 'romaji': ''},
@@ -633,7 +501,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Hya row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'ひゃ', 'romaji': 'hya'},
                           {'kana': '', 'romaji': ''},
@@ -653,7 +523,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Mya row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'みゃ', 'romaji': 'mya'},
                           {'kana': '', 'romaji': ''},
@@ -673,7 +545,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Rya row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'りゃ', 'romaji': 'rya'},
                           {'kana': '', 'romaji': ''},
@@ -693,7 +567,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Gya row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'ぎゃ', 'romaji': 'gya'},
                           {'kana': '', 'romaji': ''},
@@ -713,7 +589,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Ja row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'じゃ', 'romaji': 'ja'},
                           {'kana': '', 'romaji': ''},
@@ -733,7 +611,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Bya row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'びゃ', 'romaji': 'bya'},
                           {'kana': '', 'romaji': ''},
@@ -753,7 +633,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 _buildKanaRowGroup(
                   'Pya row',
-                  _isHiragana
+                  isHiragana,
+                  writingSystem,
+                  isHiragana
                       ? [
                           {'kana': 'ぴゃ', 'romaji': 'pya'},
                           {'kana': '', 'romaji': ''},
@@ -777,13 +659,211 @@ class _LearnScreenState extends State<LearnScreen> {
     );
   }
 
-  // --- UNTOUCHED ORIGINAL CARD HEADER ---
-  Widget _buildCardHeader() {
+  /// Builds the basic 10 rows while enforcing sequential locks based on prerequisite completion[cite: 26]
+  List<Widget> _buildBasicRowsWithPrerequisites(
+    bool isHiragana,
+    String writingSystem,
+    ProgressService ps,
+  ) {
+    final Map<String, List<Map<String, String>>> basicRowsData = {
+      'A row': isHiragana
+          ? [
+              {'kana': 'あ', 'romaji': 'a'},
+              {'kana': 'い', 'romaji': 'i'},
+              {'kana': 'う', 'romaji': 'u'},
+              {'kana': 'え', 'romaji': 'e'},
+              {'kana': 'お', 'romaji': 'o'},
+            ]
+          : [
+              {'kana': 'ア', 'romaji': 'a'},
+              {'kana': 'イ', 'romaji': 'i'},
+              {'kana': 'ウ', 'romaji': 'u'},
+              {'kana': 'エ', 'romaji': 'e'},
+              {'kana': 'オ', 'romaji': 'o'},
+            ],
+      'Ka row': isHiragana
+          ? [
+              {'kana': 'か', 'romaji': 'ka'},
+              {'kana': 'き', 'romaji': 'ki'},
+              {'kana': 'く', 'romaji': 'ku'},
+              {'kana': 'け', 'romaji': 'ke'},
+              {'kana': 'こ', 'romaji': 'ko'},
+            ]
+          : [
+              {'kana': 'カ', 'romaji': 'ka'},
+              {'kana': 'キ', 'romaji': 'ki'},
+              {'kana': 'ク', 'romaji': 'ku'},
+              {'kana': 'ケ', 'romaji': 'ke'},
+              {'kana': 'コ', 'romaji': 'ko'},
+            ],
+      'Sa row': isHiragana
+          ? [
+              {'kana': 'さ', 'romaji': 'sa'},
+              {'kana': 'し', 'romaji': 'shi'},
+              {'kana': 'す', 'romaji': 'su'},
+              {'kana': 'せ', 'romaji': 'se'},
+              {'kana': 'そ', 'romaji': 'so'},
+            ]
+          : [
+              {'kana': 'サ', 'romaji': 'sa'},
+              {'kana': 'シ', 'romaji': 'shi'},
+              {'kana': 'ス', 'romaji': 'su'},
+              {'kana': 'セ', 'romaji': 'se'},
+              {'kana': 'ソ', 'romaji': 'so'},
+            ],
+      'Ta row': isHiragana
+          ? [
+              {'kana': 'た', 'romaji': 'ta'},
+              {'kana': 'ち', 'romaji': 'chi'},
+              {'kana': 'つ', 'romaji': 'tsu'},
+              {'kana': 'て', 'romaji': 'te'},
+              {'kana': 'と', 'romaji': 'to'},
+            ]
+          : [
+              {'kana': 'タ', 'romaji': 'ta'},
+              {'kana': 'チ', 'romaji': 'chi'},
+              {'kana': 'ツ', 'romaji': 'tsu'},
+              {'kana': 'テ', 'romaji': 'te'},
+              {'kana': 'ト', 'romaji': 'to'},
+            ],
+      'Na row': isHiragana
+          ? [
+              {'kana': 'な', 'romaji': 'na'},
+              {'kana': 'に', 'romaji': 'ni'},
+              {'kana': 'ぬ', 'romaji': 'nu'},
+              {'kana': 'ね', 'romaji': 'ne'},
+              {'kana': 'の', 'romaji': 'no'},
+            ]
+          : [
+              {'kana': 'ナ', 'romaji': 'na'},
+              {'kana': 'ニ', 'romaji': 'ni'},
+              {'kana': 'ヌ', 'romaji': 'nu'},
+              {'kana': 'ネ', 'romaji': 'ne'},
+              {'kana': 'ノ', 'romaji': 'no'},
+            ],
+      'Ha row': isHiragana
+          ? [
+              {'kana': 'は', 'romaji': 'ha'},
+              {'kana': 'ひ', 'romaji': 'hi'},
+              {'kana': 'ふ', 'romaji': 'fu'},
+              {'kana': 'へ', 'romaji': 'he'},
+              {'kana': 'ほ', 'romaji': 'ho'},
+            ]
+          : [
+              {'kana': 'ハ', 'romaji': 'ha'},
+              {'kana': 'ヒ', 'romaji': 'hi'},
+              {'kana': 'フ', 'romaji': 'fu'},
+              {'kana': 'ヘ', 'romaji': 'he'},
+              {'kana': 'ホ', 'romaji': 'ho'},
+            ],
+      'Ma row': isHiragana
+          ? [
+              {'kana': 'ま', 'romaji': 'ma'},
+              {'kana': 'み', 'romaji': 'mi'},
+              {'kana': 'む', 'romaji': 'mu'},
+              {'kana': 'め', 'romaji': 'me'},
+              {'kana': 'も', 'romaji': 'mo'},
+            ]
+          : [
+              {'kana': 'マ', 'romaji': 'ma'},
+              {'kana': 'ミ', 'romaji': 'mi'},
+              {'kana': 'ム', 'romaji': 'mu'},
+              {'kana': 'メ', 'romaji': 'me'},
+              {'kana': 'モ', 'romaji': 'mo'},
+            ],
+      'Ya row': isHiragana
+          ? [
+              {'kana': 'や', 'romaji': 'ya'},
+              {'kana': '', 'romaji': ''},
+              {'kana': 'ゆ', 'romaji': 'yu'},
+              {'kana': '', 'romaji': ''},
+              {'kana': 'よ', 'romaji': 'yo'},
+            ]
+          : [
+              {'kana': 'ヤ', 'romaji': 'ya'},
+              {'kana': '', 'romaji': ''},
+              {'kana': 'ユ', 'romaji': 'yu'},
+              {'kana': '', 'romaji': ''},
+              {'kana': 'ヨ', 'romaji': 'yo'},
+            ],
+      'Ra row': isHiragana
+          ? [
+              {'kana': 'ら', 'romaji': 'ra'},
+              {'kana': 'り', 'romaji': 'ri'},
+              {'kana': 'る', 'romaji': 'ru'},
+              {'kana': 'れ', 'romaji': 're'},
+              {'kana': 'ろ', 'romaji': 'ro'},
+            ]
+          : [
+              {'kana': 'ラ', 'romaji': 'ra'},
+              {'kana': 'リ', 'romaji': 'ri'},
+              {'kana': 'ル', 'romaji': 'ru'},
+              {'kana': 'レ', 'romaji': 're'},
+              {'kana': 'ロ', 'romaji': 'ro'},
+            ],
+      'Wa / N row': isHiragana
+          ? [
+              {'kana': 'わ', 'romaji': 'wa'},
+              {'kana': '', 'romaji': ''},
+              {'kana': 'を', 'romaji': 'wo'},
+              {'kana': '', 'romaji': ''},
+              {'kana': 'ん', 'romaji': 'n'},
+            ]
+          : [
+              {'kana': 'ワ', 'romaji': 'wa'},
+              {'kana': '', 'romaji': ''},
+              {'kana': 'ヲ', 'romaji': 'wo'},
+              {'kana': '', 'romaji': ''},
+              {'kana': 'ン', 'romaji': 'n'},
+            ],
+    };
+
+    List<Widget> widgets = [];
+
+    for (int i = 0; i < _basicRowOrder.length; i++) {
+      final rowKey = _basicRowOrder[i];
+      bool isLocked = false;
+      String prerequisiteName = '';
+
+      // First row ('A row') is always unlocked; subsequent rows require the previous row finished[cite: 26]
+      if (i > 0) {
+        final prevRowKey = _basicRowOrder[i - 1];
+        prerequisiteName = prevRowKey;
+        final bool prevCompleted = ps.isRowCompleted(
+          writingSystem: writingSystem,
+          rowTitle: prevRowKey,
+        );
+        isLocked = !prevCompleted;
+      }
+
+      widgets.add(
+        _buildKanaRowGroup(
+          rowKey,
+          isHiragana,
+          writingSystem,
+          basicRowsData[rowKey]!,
+          isLocked: isLocked,
+          prerequisiteName: prerequisiteName,
+        ),
+      );
+      widgets.add(const SizedBox(height: 16));
+    }
+
+    return widgets;
+  }
+
+  // --- DYNAMIC CARD HEADER LINKED TO PROGRESS SERVICE ---[cite: 23]
+  Widget _buildCardHeader(bool isHiragana, ProgressService ps) {
+    final int currentMastered = isHiragana
+        ? ps.masteredHiraganaCount
+        : ps.masteredKatakanaCount;
+    final double progressFraction = (currentMastered / 104).clamp(0.0, 1.0);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _isHiragana ? AppColors.lightSage : AppColors.lightSkyBlue,
+        color: isHiragana ? AppColors.lightSage : AppColors.lightSkyBlue,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
         border: const Border(
           bottom: BorderSide(color: AppColors.textDark, width: 2),
@@ -796,7 +876,7 @@ class _LearnScreenState extends State<LearnScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _isHiragana ? 'ひらがな' : 'カタカナ',
+                isHiragana ? 'ひらがな' : 'カタカナ',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -804,7 +884,7 @@ class _LearnScreenState extends State<LearnScreen> {
                 ),
               ),
               Text(
-                _isHiragana ? 'Hiragana Row' : 'Katakana Row',
+                isHiragana ? 'Hiragana Row' : 'Katakana Row',
                 style: const TextStyle(fontSize: 12, color: AppColors.textDark),
               ),
             ],
@@ -812,9 +892,9 @@ class _LearnScreenState extends State<LearnScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text(
-                '0/104', // 46 basic + 25 dakuon/handakuon + 33 yoon
-                style: TextStyle(
+              Text(
+                '$currentMastered/104',
+                style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
@@ -826,9 +906,19 @@ class _LearnScreenState extends State<LearnScreen> {
                 width: 100,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: (_isHiragana ? AppColors.sage : AppColors.skyBlue)
+                  color: (isHiragana ? AppColors.sage : AppColors.skyBlue)
                       .withOpacity(0.5),
                   borderRadius: BorderRadius.circular(4),
+                ),
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: progressFraction,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.textDark,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -838,96 +928,149 @@ class _LearnScreenState extends State<LearnScreen> {
     );
   }
 
-  Widget _buildKanaRowGroup(String rowName, List<Map<String, String>> chars) {
-    final charBgColor = _isHiragana
+  Widget _buildKanaRowGroup(
+    String rowName,
+    bool isHiragana,
+    String writingSystem,
+    List<Map<String, String>> chars, {
+    bool isLocked = false,
+    String prerequisiteName = '',
+  }) {
+    final charBgColor = isHiragana
         ? AppColors.lightSage
         : AppColors.lightSkyBlue;
-    final buttonBgColor = _isHiragana ? AppColors.sage : AppColors.skyBlue;
+    final buttonBgColor = isHiragana ? AppColors.sage : AppColors.skyBlue;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.cream,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textDark, width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            rowName,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textDark,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: chars
-                .map(
-                  (c) => Interactive3DCharButton(
-                    kana: c['kana']!,
-                    romaji: c['romaji']!,
-                    bgColor: charBgColor,
-                    isSoundEnabled: _isSoundEnabled,
-                    onTapAudio: () => _speakKana(c['kana']!),
+    return Opacity(
+      opacity: isLocked ? 0.6 : 1.0,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.cream,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.textDark, width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  rowName,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textDark,
+                    fontWeight: FontWeight.bold,
                   ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 16),
+                ),
+                if (isLocked)
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.lock_outline,
+                        size: 16,
+                        color: AppColors.textDark,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Locked',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Interactive3DActionButton(
-                label: 'Write',
-                bgColor: AppColors.taupe,
-                onTap: () {
-                  final validChars = chars
-                      .where((c) => c['kana']!.isNotEmpty)
-                      .toList();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WriteScreen(
-                        rowTitle: rowName,
-                        characters: validChars,
-                      ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: chars
+                  .map(
+                    (c) => Interactive3DCharButton(
+                      kana: c['kana']!,
+                      romaji: c['romaji']!,
+                      bgColor: charBgColor,
+                      isSoundEnabled: _isSoundEnabled && !isLocked,
+                      onTapAudio: () => _speakKana(c['kana']!),
                     ),
-                  );
-                },
-              ),
-              // --- LEARN BUTTON HOOKUP (Renamed from 'Quiz' to 'Learn') ---
-              Interactive3DActionButton(
-                label: 'Learn',
-                bgColor: buttonBgColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => QuizScreen(
-                        rowTitle: rowName,
-                        writingSystem: _isHiragana ? "Hiragana" : "Katakana",
-                        characters: chars,
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Interactive3DActionButton(
+                  label: 'Write',
+                  bgColor: AppColors.taupe,
+                  onTap: () {
+                    if (isLocked) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Finish $prerequisiteName first to unlock!',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    final validChars = chars
+                        .where((c) => c['kana']!.isNotEmpty)
+                        .toList();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => WriteScreen(
+                          rowTitle: rowName,
+                          characters: validChars,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
+                    );
+                  },
+                ),
+                Interactive3DActionButton(
+                  label: 'Learn',
+                  bgColor: buttonBgColor,
+                  onTap: () {
+                    if (isLocked) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Finish $prerequisiteName first to unlock!',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => QuizScreen(
+                          rowTitle: rowName,
+                          writingSystem: writingSystem,
+                          characters: chars,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 // -----------------------------------------------------------------------------
-// INTERACTIVE BUTTON COMPONENTS
+// INTERACTIVE BUTTON COMPONENTS[cite: 23]
 // -----------------------------------------------------------------------------
 
 /// An interactive, 3D animated button for the individual Kana characters.
@@ -966,7 +1109,8 @@ class _Interactive3DCharButtonState extends State<Interactive3DCharButton> {
       onTapUp: (_) {
         setState(() => _isPressed = false);
         if (widget.isSoundEnabled) {
-          widget.onTapAudio(); // Triggers native text-to-speech pronunciation
+          widget
+              .onTapAudio(); // Triggers native text-to-speech pronunciation[cite: 23]
         }
       },
       onTapCancel: () => setState(() => _isPressed = false),

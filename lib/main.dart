@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'screens/learn_screen.dart';
 import 'screens/practice_screen.dart';
 import 'screens/progress_screen.dart';
+import 'services/progress_service.dart';
 
-void main() {
+void main() async {
+  // Ensure Flutter engine bindings are initialized before calling SharedPreferences[cite: 30]
+  WidgetsFlutterBinding.ensureInitialized();
+  await ProgressService.instance.init();
+
   runApp(const KanaLearningApp());
 }
 
@@ -19,9 +24,8 @@ class AppColors {
   static const Color sage = Color(0xFFB7C9B2);
   static const Color greenButton = Color(0xFF6EAA78);
 
-  // Flame and Streak Colors
   static const Color flameOrange = Color(0xFFE06229);
-  static const Color flameCardBgActive = Color(0xFFFFD4BE); // State 2
+  static const Color flameCardBgActive = Color(0xFFFFD4BE);
 }
 
 class KanaLearningApp extends StatelessWidget {
@@ -56,14 +60,22 @@ class MainNavigator extends StatefulWidget {
 class MainNavigatorState extends State<MainNavigator> {
   int _currentIndex = 0;
 
-  void switchTab(int index) {
+  /// Switches the active tab. When targeting Learn (tab 1), it sets
+  /// the active writing system (Hiragana vs Katakana) in ProgressService.
+  void switchTab(int index, {bool isHiragana = true}) {
+    if (index == 1) {
+      ProgressService.instance.setLearnScript(isHiragana: isHiragana);
+    }
     setState(() => _currentIndex = index);
   }
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
-      HomeScreen(onNavigateToLearn: () => switchTab(1)),
+      HomeScreen(
+        onNavigateToLearn: ({required bool isHiragana}) =>
+            switchTab(1, isHiragana: isHiragana),
+      ),
       const LearnScreen(),
       const PracticeScreen(),
       const ProgressScreen(),
@@ -134,7 +146,8 @@ class MainNavigatorState extends State<MainNavigator> {
 }
 
 class HomeScreen extends StatefulWidget {
-  final VoidCallback? onNavigateToLearn;
+  // Accepts a script parameter to navigate directly to Hiragana or Katakana in LearnScreen
+  final void Function({required bool isHiragana})? onNavigateToLearn;
 
   const HomeScreen({super.key, this.onNavigateToLearn});
 
@@ -143,7 +156,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Streak interaction state: false = State 1 (Frame 157), true = State 2 (Frame 161)
   bool _isStreakActive = false;
 
   @override
@@ -155,24 +167,29 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _buildTopHeader(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 20,
-                ),
-                children: [
-                  _buildOverallProgressCard(),
-                  const SizedBox(height: 24),
-                  _buildContinueLearningCard(),
-                  const SizedBox(height: 24),
-
-                  // Interactive Two-State Current Streak (5 Days)
-                  _buildInteractiveStreakCard(),
-                  const SizedBox(height: 24),
-
-                  _buildQuotesCard(),
-                  const SizedBox(height: 30),
-                ],
+              // ListenableBuilder dynamically rebuilds Home on progress and streak updates[cite: 30]
+              child: ListenableBuilder(
+                listenable: ProgressService.instance,
+                builder: (context, _) {
+                  final ps = ProgressService.instance;
+                  return ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 20,
+                    ),
+                    children: [
+                      _buildOverallProgressCard(ps),
+                      const SizedBox(height: 24),
+                      // Passes ProgressService so row progress (e.g. 5/20) updates from storage
+                      _buildContinueLearningCard(ps),
+                      const SizedBox(height: 24),
+                      _buildInteractiveStreakCard(ps),
+                      const SizedBox(height: 24),
+                      _buildQuotesCard(),
+                      const SizedBox(height: 30),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -219,7 +236,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildOverallProgressCard() {
+  Widget _buildOverallProgressCard(ProgressService ps) {
+    // 104 standard Kana per system (46 basic + 25 dakuon + 33 yoon)[cite: 30]
+    const int totalKana = 208; // 104 Hiragana + 104 Katakana[cite: 30]
+    final double overallPercent = (ps.totalMastered / totalKana).clamp(
+      0.0,
+      1.0,
+    );
+    final double hiraganaPercent = (ps.masteredHiraganaCount / 104).clamp(
+      0.0,
+      1.0,
+    );
+    final double katakanaPercent = (ps.masteredKatakanaCount / 104).clamp(
+      0.0,
+      1.0,
+    );
+
     return _buildCardBase(
       headerText: 'Overall progress',
       headerIcon: Icons.pie_chart_outline,
@@ -250,30 +282,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     border: Border.all(color: AppColors.textDark, width: 2),
                   ),
                 ),
-                const SizedBox(
+                SizedBox(
                   width: 150,
                   height: 150,
                   child: CircularProgressIndicator(
-                    value: 0.60,
+                    value: overallPercent,
                     strokeWidth: 22,
                     backgroundColor: Colors.transparent,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.sand),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.sand,
+                    ),
                   ),
                 ),
-                const Column(
+                Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '60%',
-                      style: TextStyle(
+                      '${(overallPercent * 100).toInt()}%',
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textDark,
                       ),
                     ),
                     Text(
-                      '230 characters',
-                      style: TextStyle(
+                      '${ps.totalMastered} characters',
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textDark,
@@ -285,9 +319,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          _buildLinearProgressRow('Hiragana', '40/146', '30%', 0.30),
+          _buildLinearProgressRow(
+            'Hiragana',
+            '${ps.masteredHiraganaCount}/104',
+            '${(hiraganaPercent * 100).toInt()}%',
+            hiraganaPercent,
+          ),
           const SizedBox(height: 14),
-          _buildLinearProgressRow('Katakana', '40/146', '30%', 0.30),
+          _buildLinearProgressRow(
+            'Katakana',
+            '${ps.masteredKatakanaCount}/104',
+            '${(katakanaPercent * 100).toInt()}%',
+            katakanaPercent,
+          ),
         ],
       ),
     );
@@ -360,26 +404,48 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildContinueLearningCard() {
+  /// Displays the continue cards reading real stored progress checkpoints (e.g. 5/20).
+  /// Clicking Continue navigates to Learn with the corresponding script active.
+  Widget _buildContinueLearningCard(ProgressService ps) {
+    // Read persisted progress checkpoints for Hiragana A-row and Katakana A-row
+    final hProg = ps.getRowProgress(
+      writingSystem: 'Hiragana',
+      rowTitle: 'A row',
+    );
+    final kProg = ps.getRowProgress(
+      writingSystem: 'Katakana',
+      rowTitle: 'A row',
+    );
+
+    final double hFraction = hProg.total > 0
+        ? (hProg.current / hProg.total).clamp(0.0, 1.0)
+        : 0.0;
+    final double kFraction = kProg.total > 0
+        ? (kProg.current / kProg.total).clamp(0.0, 1.0)
+        : 0.0;
+
     return _buildCardBase(
       headerText: 'Continue Learning',
       headerIcon: Icons.school_outlined,
       child: Column(
         children: [
+          // Hiragana A Row Subcard
           _buildContinueRowSubCard(
             title: 'Hiragana - a row',
             characters: 'あ   い   う   え   お',
-            progressText: '5/20',
-            fraction: 0.25,
-            onContinue: widget.onNavigateToLearn,
+            progressText: '${hProg.current}/${hProg.total}',
+            fraction: hFraction,
+            onContinue: () => widget.onNavigateToLearn?.call(isHiragana: true),
           ),
           const SizedBox(height: 16),
+
+          // Katakana A Row Subcard
           _buildContinueRowSubCard(
             title: 'Katakana  - a row',
             characters: '',
-            progressText: '5/20',
-            fraction: 0.25,
-            onContinue: widget.onNavigateToLearn,
+            progressText: '${kProg.current}/${kProg.total}',
+            fraction: kFraction,
+            onContinue: () => widget.onNavigateToLearn?.call(isHiragana: false),
           ),
         ],
       ),
@@ -510,11 +576,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // INTERACTIVE TWO-STATE STREAK CARD (Frame 157 & Frame 161)
-  // Clicking or holding toggles between State 1 (Cream + 3D) and State 2 (Peach + Orange border)
-  // ---------------------------------------------------------------------------
-  Widget _buildInteractiveStreakCard() {
+  Widget _buildInteractiveStreakCard(ProgressService ps) {
+    final days = ['Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun'];
+
     return _buildCardBase(
       headerText: 'Current Streak',
       headerIcon: Icons.calendar_month_outlined,
@@ -525,12 +589,10 @@ class _HomeScreenState extends State<HomeScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
-            // State 1: Cream, State 2: Soft Peach
             color: _isStreakActive
                 ? AppColors.flameCardBgActive
                 : AppColors.cream,
             borderRadius: BorderRadius.circular(16),
-            // State 1: Dark Border, State 2: Vibrant Orange Border
             border: Border.all(
               color: _isStreakActive
                   ? AppColors.flameOrange
@@ -547,35 +609,75 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          child: const Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.local_fire_department,
-                color: AppColors.flameOrange,
-                size: 54,
-              ),
-              SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    '5 days',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textDark,
-                    ),
+                  const Icon(
+                    Icons.local_fire_department,
+                    color: AppColors.flameOrange,
+                    size: 54,
                   ),
-                  SizedBox(height: 2),
-                  Text(
-                    'keep it up!',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${ps.streakDays} days',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'keep it up!',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              // Daily dots driven by shared_preferences calendar data[cite: 30]
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(7, (index) {
+                  final isActive = ps.activeDaysThisWeek[index];
+                  return Column(
+                    children: [
+                      Text(
+                        days[index],
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? AppColors.greenButton
+                              : AppColors.beige,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.textDark,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
               ),
             ],
           ),

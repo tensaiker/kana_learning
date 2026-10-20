@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine
 import 'dart:math';
+import '../services/progress_service.dart'; // Imports shared_preferences persistence service
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -108,6 +109,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   /// Speaks the target kana aloud if the current question requires audio
   Future<void> _speakCurrentQuestion() async {
+    if (_questions.isEmpty || _isQuizComplete) return;
     final currentQ = _questions[_currentQuestionIndex];
     if (currentQ.type == QuizType.listenPickRomaji ||
         currentQ.type == QuizType.listenPickKana) {
@@ -172,7 +174,25 @@ class _QuizScreenState extends State<QuizScreen> {
     _questions.shuffle(_random);
   }
 
-  /// Processes the user's answer, updates scores, shows validation, and advances.
+  /// Saves the current question checkpoint to local storage when exiting.
+  /// For example, exiting on question 5 saves 5/20 so the Home tab and Progress
+  /// service immediately reflect 5/20 progress.
+  void _exitAndSaveProgress() {
+    int progressCount = _isQuizComplete
+        ? _questions.length
+        : (_currentQuestionIndex + 1);
+
+    ProgressService.instance.saveRowProgress(
+      writingSystem: widget.writingSystem,
+      rowTitle: widget.rowTitle,
+      currentQuestion: progressCount,
+      totalQuestions: _questions.length,
+    );
+
+    Navigator.pop(context);
+  }
+
+  /// Processes the user's answer, logs mastery in local storage, shows validation, and advances.
   void _handleAnswer(String selectedOption) async {
     if (_hasAnswered) return; // Prevent double-clicking
 
@@ -188,9 +208,12 @@ class _QuizScreenState extends State<QuizScreen> {
       _hasAnswered = true;
       _selectedOption = selectedOption;
 
-      // Update score if correct
+      // Update score and persist character mastery when answer is correct
       if (selectedOption == correctAnswer) {
         _scores[currentQ.type] = _scores[currentQ.type]! + 1;
+
+        // Persists the mastered kana to SharedPreferences in real time.
+        ProgressService.instance.markKanaMastered(currentQ.targetKana);
       }
     });
 
@@ -207,6 +230,14 @@ class _QuizScreenState extends State<QuizScreen> {
         _speakCurrentQuestion(); // Speak if next question is listening type
       } else {
         _isQuizComplete = true;
+
+        // Mark full row completion (e.g., 20/20) and unlock the prerequisite for the next row
+        ProgressService.instance.saveRowProgress(
+          writingSystem: widget.writingSystem,
+          rowTitle: widget.rowTitle,
+          currentQuestion: _questions.length,
+          totalQuestions: _questions.length,
+        );
       }
     });
   }
@@ -232,7 +263,7 @@ class _QuizScreenState extends State<QuizScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Top Header
+            // 1. Top Header (Frame 135: Close 'X', Writing System, and '${rowTitle} learn')
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               decoration: const BoxDecoration(
@@ -253,7 +284,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       color: AppColors.textDark,
                       size: 28,
                     ),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _exitAndSaveProgress,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -272,7 +303,7 @@ class _QuizScreenState extends State<QuizScreen> {
                         ),
                         Center(
                           child: Text(
-                            '${widget.rowTitle} quiz',
+                            '${widget.rowTitle} learn',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -484,7 +515,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       color: AppColors.textDark,
                       size: 28,
                     ),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _exitAndSaveProgress,
                   ),
                   const SizedBox(width: 8),
                   Column(
@@ -499,7 +530,7 @@ class _QuizScreenState extends State<QuizScreen> {
                         ),
                       ),
                       Text(
-                        '${widget.rowTitle} quiz',
+                        '${widget.rowTitle} learn',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -570,9 +601,9 @@ class _QuizScreenState extends State<QuizScreen> {
 
                       const Spacer(),
 
-                      // Continue Button to exit quiz
+                      // Continue Button to exit quiz and record full progress
                       GestureDetector(
-                        onTap: () => Navigator.pop(context),
+                        onTap: _exitAndSaveProgress,
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           width: double.infinity,

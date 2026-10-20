@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../services/progress_service.dart'; // Imports the local persistence service[cite: 34]
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -10,12 +11,12 @@ class AppColors {
   static const Color textDark = Color(0xFF5D534A);
   static const Color textLight = Color(0xFF8B8076);
 
-  // Category Progress Bar Colors
+  // Category Progress Bar Colors[cite: 34]
   static const Color basicGreen = Color(0xFF526E5A);
   static const Color dakuonBlue = Color(0xFF7BA2C7);
   static const Color yoonBrown = Color(0xFFA67C52);
 
-  // Streak & Badge Colors
+  // Streak & Badge Colors[cite: 34]
   static const Color flameOrange = Color(0xFFE06D39);
   static const Color flameBadgeBg = Color(0xFFFFD2BA);
   static const Color streakActiveGreen = Color(0xFF8FA98F);
@@ -30,61 +31,93 @@ class ProgressScreen extends StatefulWidget {
 }
 
 class _ProgressScreenState extends State<ProgressScreen> {
-  // Master script toggle: true = Hiragana (あ), false = Katakana (ア)
+  // Master script toggle: true = Hiragana (あ), false = Katakana (ア)[cite: 34]
   bool _isHiragana = true;
 
-  // Streak card interaction state: false = State 1 (Frame 159), true = State 2 (Frame 160)
+  // Streak card interaction state: false = State 1 (Cream + 3D), true = State 2 (Peach + Orange border)[cite: 34]
   bool _isStreakActive = false;
 
   @override
   Widget build(BuildContext context) {
     final systemName = _isHiragana ? 'Hiragana' : 'Katakana';
 
-    const int basicCurrent = 20, basicTotal = 46;
-    const int dakuonCurrent = 20, dakuonTotal = 25;
-    const int yoonCurrent = 20, yoonTotal = 33;
+    // ListenableBuilder ensures real-time UI updates whenever progress is saved[cite: 34]
+    return ListenableBuilder(
+      listenable: ProgressService.instance,
+      builder: (context, _) {
+        final ps = ProgressService.instance;
 
-    const int totalLearned = basicCurrent + dakuonCurrent + yoonCurrent;
-    const int totalCharacters = basicTotal + dakuonTotal + yoonTotal;
-    const double overallPercent = (totalLearned / totalCharacters);
+        // Total standard characters per script: 46 basic, 25 dakuon, 33 yoon (104 total)[cite: 34]
+        const int basicTotal = 46;
+        const int dakuonTotal = 25;
+        const int yoonTotal = 33;
+        const int totalCharacters =
+            basicTotal + dakuonTotal + yoonTotal; // 104[cite: 34]
 
-    return Scaffold(
-      backgroundColor: AppColors.beige,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopHeader(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 20,
-                ),
-                children: [
-                  _buildOverviewCard(
-                    systemName: systemName,
-                    overallPercent: overallPercent,
-                    basicCurrent: basicCurrent,
-                    basicTotal: basicTotal,
-                    dakuonCurrent: dakuonCurrent,
-                    dakuonTotal: dakuonTotal,
-                    yoonCurrent: yoonCurrent,
-                    yoonTotal: yoonTotal,
+        // Fetch live count of mastered characters for active writing system[cite: 34]
+        final int totalLearned = _isHiragana
+            ? ps.masteredHiraganaCount
+            : ps.masteredKatakanaCount;
+
+        // Distribute learned kana across categories (Basic -> Dakuon -> Yoon)[cite: 34]
+        final int basicCurrent = math.min(totalLearned, basicTotal);
+        final int dakuonCurrent = math.min(
+          math.max(0, totalLearned - basicTotal),
+          dakuonTotal,
+        );
+        final int yoonCurrent = math.max(
+          0,
+          totalLearned - basicTotal - dakuonTotal,
+        );
+
+        final double overallPercent = (totalLearned / totalCharacters).clamp(
+          0.0,
+          1.0,
+        );
+
+        return Scaffold(
+          backgroundColor: AppColors.beige,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildTopHeader(),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 20,
+                    ),
+                    children: [
+                      // 1. Overview Progress with dynamic donut chart and category bars[cite: 34]
+                      _buildOverviewCard(
+                        systemName: systemName,
+                        overallPercent: overallPercent,
+                        basicCurrent: basicCurrent,
+                        basicTotal: basicTotal,
+                        dakuonCurrent: dakuonCurrent,
+                        dakuonTotal: dakuonTotal,
+                        yoonCurrent: yoonCurrent,
+                        yoonTotal: yoonTotal,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 2. Interactive Two-State Current Streak Card connected to calendar data[cite: 34]
+                      _buildStreakCard(ps),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-
-                  // Interactive Two-State Current Streak Card
-                  _buildStreakCard(),
-                  const SizedBox(height: 20),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
+  // ===========================================================================
+  // TOP HEADER & TOGGLE SWITCH
+  // ===========================================================================
   Widget _buildTopHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
@@ -175,6 +208,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
+  // ===========================================================================
+  // OVERVIEW PROGRESS CARD (DONUT CHART & BREAKDOWN BARS)
+  // ===========================================================================
   Widget _buildOverviewCard({
     required String systemName,
     required double overallPercent,
@@ -185,6 +221,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
     required int yoonCurrent,
     required int yoonTotal,
   }) {
+    final double basicProgress = basicTotal > 0
+        ? (basicCurrent / basicTotal)
+        : 0.0;
+    final double dakuonProgress = dakuonTotal > 0
+        ? (dakuonCurrent / dakuonTotal)
+        : 0.0;
+    final double yoonProgress = yoonTotal > 0 ? (yoonCurrent / yoonTotal) : 0.0;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cream,
@@ -240,14 +284,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     },
                   ),
                 ),
+                // Custom Donut Progress Chart[cite: 34]
                 SizedBox(
                   width: 170,
                   height: 170,
                   child: CustomPaint(
                     painter: _ProgressDonutPainter(
-                      basicProgress: basicCurrent / basicTotal,
-                      dakuonProgress: dakuonCurrent / dakuonTotal,
-                      yoonProgress: yoonCurrent / yoonTotal,
+                      basicProgress: basicProgress,
+                      dakuonProgress: dakuonProgress,
+                      yoonProgress: yoonProgress,
                     ),
                     child: Center(
                       child: Column(
@@ -275,6 +320,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   ),
                 ),
                 const SizedBox(height: 28),
+                // Detailed Breakdown Box[cite: 34]
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
@@ -304,24 +350,24 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       _buildLinearStatRow(
                         label: 'Basic $systemName',
                         countText: '$basicCurrent/$basicTotal cards',
-                        percentageText: '30%',
-                        fraction: basicCurrent / basicTotal,
+                        percentageText: '${(basicProgress * 100).toInt()}%',
+                        fraction: basicProgress,
                         activeColor: AppColors.basicGreen,
                       ),
                       const SizedBox(height: 14),
                       _buildLinearStatRow(
                         label: 'Dakuon',
                         countText: '$dakuonCurrent/$dakuonTotal cards',
-                        percentageText: '90%',
-                        fraction: dakuonCurrent / dakuonTotal,
+                        percentageText: '${(dakuonProgress * 100).toInt()}%',
+                        fraction: dakuonProgress,
                         activeColor: AppColors.dakuonBlue,
                       ),
                       const SizedBox(height: 14),
                       _buildLinearStatRow(
                         label: 'Yoon',
                         countText: '$yoonCurrent/$yoonTotal cards',
-                        percentageText: '60%',
-                        fraction: yoonCurrent / yoonTotal,
+                        percentageText: '${(yoonProgress * 100).toInt()}%',
+                        fraction: yoonProgress,
                         activeColor: AppColors.yoonBrown,
                       ),
                     ],
@@ -403,11 +449,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // INTERACTIVE TWO-STATE CURRENT STREAK CARD (Frame 159 & Frame 160)
-  // Clicking or holding toggles between State 1 (Cream + 3D) and State 2 (Peach + Orange border)
-  // ---------------------------------------------------------------------------
-  Widget _buildStreakCard() {
+  // ===========================================================================
+  // INTERACTIVE TWO-STATE CURRENT STREAK CARD[cite: 34]
+  // ===========================================================================
+  Widget _buildStreakCard(ProgressService ps) {
     final days = ['Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun'];
 
     return Container(
@@ -426,7 +471,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // Header Bar with "🔥 7 Days!" badge
+          // Header Bar with dynamic streak badge[cite: 34]
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
@@ -465,17 +510,17 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       width: 1.5,
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.local_fire_department,
                         color: AppColors.flameOrange,
                         size: 16,
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
-                        '7 Days!',
-                        style: TextStyle(
+                        '${ps.streakDays} Days!',
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                           color: AppColors.flameOrange,
@@ -488,7 +533,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
           ),
 
-          // Clickable / Holdable Weekday Dots Panel
+          // Clickable / Holdable Weekday Dots Panel with two visual states[cite: 34]
           Padding(
             padding: const EdgeInsets.all(20),
             child: GestureDetector(
@@ -502,12 +547,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   horizontal: 10,
                 ),
                 decoration: BoxDecoration(
-                  // State 1: Cream (#FDF8F3), State 2: Soft Peach (#FFD4BE)
+                  // State 1: Cream (#FDF8F3), State 2: Soft Peach (#FFD4BE)[cite: 34]
                   color: _isStreakActive
                       ? AppColors.streakActiveOrange
                       : AppColors.cream,
                   borderRadius: BorderRadius.circular(16),
-                  // State 1: Dark Brown Border, State 2: Vibrant Orange Border
+                  // State 1: Dark Brown Border, State 2: Vibrant Orange Border[cite: 34]
                   border: Border.all(
                     color: _isStreakActive
                         ? AppColors.flameOrange
@@ -526,11 +571,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: days.map((day) {
+                  children: List.generate(7, (index) {
+                    final bool isActive = ps.activeDaysThisWeek[index];
                     return Column(
                       children: [
                         Text(
-                          day,
+                          days[index],
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -542,7 +588,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
                           width: 24,
                           height: 24,
                           decoration: BoxDecoration(
-                            color: AppColors.streakActiveGreen,
+                            color: isActive
+                                ? AppColors.streakActiveGreen
+                                : AppColors.beige,
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: AppColors.textDark,
@@ -552,7 +600,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                         ),
                       ],
                     );
-                  }).toList(),
+                  }),
                 ),
               ),
             ),
@@ -563,6 +611,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 }
 
+// =============================================================================
+// CUSTOM DONUT PAINTER[cite: 34]
+// =============================================================================
 class _ProgressDonutPainter extends CustomPainter {
   final double basicProgress;
   final double dakuonProgress;
@@ -580,6 +631,7 @@ class _ProgressDonutPainter extends CustomPainter {
     final radius = size.width / 2 - 12;
     const strokeWidth = 22.0;
 
+    // Outer background track ring[cite: 34]
     final bgPaint = Paint()
       ..color = const Color(0xFFD8D2C8)
       ..style = PaintingStyle.stroke
@@ -587,6 +639,7 @@ class _ProgressDonutPainter extends CustomPainter {
 
     canvas.drawCircle(center, radius, bgPaint);
 
+    // Active arc progress segment[cite: 34]
     final activePaint = Paint()
       ..color = AppColors.yoonBrown
       ..style = PaintingStyle.stroke
@@ -594,18 +647,25 @@ class _ProgressDonutPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final sweepAngle =
-        (basicProgress * 0.4 + dakuonProgress * 0.3 + yoonProgress * 0.3) *
+        ((basicProgress * 46 + dakuonProgress * 25 + yoonProgress * 33) / 104) *
         2 *
         math.pi;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      sweepAngle,
-      false,
-      activePaint,
-    );
+
+    if (sweepAngle > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        sweepAngle,
+        false,
+        activePaint,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _ProgressDonutPainter oldDelegate) {
+    return oldDelegate.basicProgress != basicProgress ||
+        oldDelegate.dakuonProgress != dakuonProgress ||
+        oldDelegate.yoonProgress != yoonProgress;
+  }
 }
