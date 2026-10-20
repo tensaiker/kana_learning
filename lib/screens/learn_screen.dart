@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine
 import 'write_screen.dart'; // Imports the drawing screen
-import 'quiz_screen.dart'; // Imports the interactive quiz screen
+import 'quiz_screen.dart'; // Imports the interactive quiz/practice screen
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -78,6 +78,7 @@ class _LearnScreenState extends State<LearnScreen> {
     );
   }
 
+  // --- UNTOUCHED ORIGINAL TOP HEADER ---
   Widget _buildTopHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
@@ -776,7 +777,7 @@ class _LearnScreenState extends State<LearnScreen> {
     );
   }
 
-  /// Builds the light green/blue header. Colors and titles dynamically change based on the toggle.
+  // --- UNTOUCHED ORIGINAL CARD HEADER ---
   Widget _buildCardHeader() {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -841,7 +842,7 @@ class _LearnScreenState extends State<LearnScreen> {
     final charBgColor = _isHiragana
         ? AppColors.lightSage
         : AppColors.lightSkyBlue;
-    final quizBgColor = _isHiragana ? AppColors.sage : AppColors.skyBlue;
+    final buttonBgColor = _isHiragana ? AppColors.sage : AppColors.skyBlue;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -900,10 +901,10 @@ class _LearnScreenState extends State<LearnScreen> {
                   );
                 },
               ),
-              // --- QUIZ BUTTON HOOKUP ---
+              // --- LEARN BUTTON HOOKUP (Renamed from 'Quiz' to 'Learn') ---
               Interactive3DActionButton(
-                label: 'Quiz',
-                bgColor: quizBgColor,
+                label: 'Learn',
+                bgColor: buttonBgColor,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -1009,7 +1010,7 @@ class _Interactive3DCharButtonState extends State<Interactive3DCharButton> {
   }
 }
 
-/// An interactive, 3D animated button for the "Write" and "Quiz" actions.
+/// An interactive, 3D animated button for the "Write" and "Learn" actions.
 class Interactive3DActionButton extends StatefulWidget {
   final String label;
   final Color bgColor;

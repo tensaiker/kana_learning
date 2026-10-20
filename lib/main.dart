@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'screens/learn_screen.dart'; // Imports your interactive Learn tab[cite: 22, 26]
-import 'screens/practice_screen.dart'; // Imports the new Practice tab[cite: 26]
+import 'screens/learn_screen.dart';
+import 'screens/practice_screen.dart';
+import 'screens/progress_screen.dart';
 
 void main() {
   runApp(const KanaLearningApp());
@@ -11,15 +12,18 @@ class AppColors {
   static const Color cream = Color(0xFFFDF8F3);
   static const Color beige = Color(0xFFEADFD1);
   static const Color sand = Color(0xFFDCC6A8);
-  static const Color sage = Color(0xFFB7C9B2);
-  static const Color blush = Color(0xFFE7C9D1);
   static const Color taupe = Color(0xFFC6B8A5);
-
   static const Color textDark = Color(0xFF5D534A);
   static const Color textLight = Color(0xFF8B8076);
+
+  static const Color sage = Color(0xFFB7C9B2);
+  static const Color greenButton = Color(0xFF6EAA78);
+
+  // Flame and Streak Colors
+  static const Color flameOrange = Color(0xFFE06229);
+  static const Color flameCardBgActive = Color(0xFFFFD4BE); // State 2
 }
 
-// --- MAIN APP WIDGET ---
 class KanaLearningApp extends StatelessWidget {
   const KanaLearningApp({super.key});
 
@@ -29,7 +33,6 @@ class KanaLearningApp extends StatelessWidget {
       title: 'Kana Learning',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // Set to AppColors.beige so the white/cream cards pop against the background[cite: 26]
         scaffoldBackgroundColor: AppColors.beige,
         primaryColor: AppColors.taupe,
         fontFamily: 'Nunito',
@@ -43,49 +46,41 @@ class KanaLearningApp extends StatelessWidget {
   }
 }
 
-// --- MAIN NAVIGATION SHELL ---
 class MainNavigator extends StatefulWidget {
   const MainNavigator({super.key});
 
   @override
-  State<MainNavigator> createState() => _MainNavigatorState();
+  State<MainNavigator> createState() => MainNavigatorState();
 }
 
-class _MainNavigatorState extends State<MainNavigator> {
+class MainNavigatorState extends State<MainNavigator> {
   int _currentIndex = 0;
 
-  // The 5 primary tabs of the application[cite: 24, 25, 26]
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    LearnScreen(),
-    PracticeScreen(), // Connected to your Kana Practice & Flashcard screen[cite: 24, 25]
-    Center(
-      child: Text(
-        'Progress Tab',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textDark,
-        ),
-      ),
-    ),
-    Center(
-      child: Text(
-        'Profile Tab',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textDark,
-        ),
-      ),
-    ),
-  ];
+  void switchTab(int index) {
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> screens = [
+      HomeScreen(onNavigateToLearn: () => switchTab(1)),
+      const LearnScreen(),
+      const PracticeScreen(),
+      const ProgressScreen(),
+      const Center(
+        child: Text(
+          'Profile Tab',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textDark,
+          ),
+        ),
+      ),
+    ];
+
     return Scaffold(
-      // IndexedStack preserves the scroll position and state of each tab when switching[cite: 26]
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: AppColors.cream,
@@ -106,31 +101,26 @@ class _MainNavigatorState extends State<MainNavigator> {
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
           elevation: 0,
           items: const [
-            // Tab 0: Home[cite: 24, 26]
             BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),
               activeIcon: Icon(Icons.home),
               label: 'Home',
             ),
-            // Tab 1: Learn[cite: 24, 26]
             BottomNavigationBarItem(
               icon: Icon(Icons.menu_book_outlined),
               activeIcon: Icon(Icons.menu_book),
               label: 'Learn',
             ),
-            // Tab 2: Practice (Flashcards, Word Builder, Quiz)[cite: 24, 25, 26]
             BottomNavigationBarItem(
               icon: Icon(Icons.edit_note_outlined),
               activeIcon: Icon(Icons.edit_note),
               label: 'Practice',
             ),
-            // Tab 3: Progress[cite: 24, 26]
             BottomNavigationBarItem(
               icon: Icon(Icons.bar_chart_outlined),
               activeIcon: Icon(Icons.bar_chart),
               label: 'Progress',
             ),
-            // Tab 4: Profile[cite: 24, 26]
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
               activeIcon: Icon(Icons.person),
@@ -143,43 +133,57 @@ class _MainNavigatorState extends State<MainNavigator> {
   }
 }
 
-// --- HOME TAB SCREEN (DASHBOARD) ---
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  final VoidCallback? onNavigateToLearn;
+
+  const HomeScreen({super.key, this.onNavigateToLearn});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // Streak interaction state: false = State 1 (Frame 157), true = State 2 (Frame 161)
+  bool _isStreakActive = false;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.beige, // Background matching the palette[cite: 26]
-      child: ListView(
-        padding: EdgeInsets
-            .zero, // Allows the top header to touch status bar[cite: 26]
-        children: [
-          _buildTopHeader(),
-          const SizedBox(height: 24),
+    return Scaffold(
+      backgroundColor: AppColors.beige,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildTopHeader(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 20,
+                ),
+                children: [
+                  _buildOverallProgressCard(),
+                  const SizedBox(height: 24),
+                  _buildContinueLearningCard(),
+                  const SizedBox(height: 24),
 
-          // Overall Progress Section[cite: 26]
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildProgressCard(),
-          ),
-          const SizedBox(height: 24),
+                  // Interactive Two-State Current Streak (5 Days)
+                  _buildInteractiveStreakCard(),
+                  const SizedBox(height: 24),
 
-          // Engagement Streak Section[cite: 26]
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildStreakCard(),
-          ),
-          const SizedBox(height: 40),
-        ],
+                  _buildQuotesCard(),
+                  const SizedBox(height: 30),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  /// Builds the rounded top header with the user's greeting and avatar[cite: 26].
   Widget _buildTopHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       decoration: const BoxDecoration(
         color: AppColors.sand,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
@@ -196,10 +200,9 @@ class HomeScreen extends StatelessWidget {
               color: AppColors.textDark,
             ),
           ),
-          // User Avatar with dark border[cite: 26]
           Container(
-            width: 50,
-            height: 50,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
               color: AppColors.sage,
               shape: BoxShape.circle,
@@ -208,7 +211,7 @@ class HomeScreen extends StatelessWidget {
             child: const Icon(
               Icons.person,
               color: AppColors.textDark,
-              size: 30,
+              size: 32,
             ),
           ),
         ],
@@ -216,189 +219,410 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// Builds the Overall Progress card containing circular chart and linear progress bars[cite: 26].
-  Widget _buildProgressCard() {
+  Widget _buildOverallProgressCard() {
     return _buildCardBase(
       headerText: 'Overall progress',
       headerIcon: Icons.pie_chart_outline,
       child: Column(
         children: [
-          const SizedBox(height: 16),
-
-          // 1. Circular Progress Indicator[cite: 26]
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              // Dark outer track border[cite: 26]
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: AppColors.textDark,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.textDark, width: 2),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: 150,
+            height: 150,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: AppColors.textDark,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.textDark, width: 2),
+                  ),
                 ),
-              ),
-              // Inner cutout to form a clean donut chart[cite: 26]
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  color: AppColors.cream,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.textDark, width: 2),
+                Container(
+                  width: 106,
+                  height: 106,
+                  decoration: BoxDecoration(
+                    color: AppColors.cream,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.textDark, width: 2),
+                  ),
                 ),
-              ),
-              // Progress slice[cite: 26]
-              const SizedBox(
-                width: 120,
-                height: 120,
-                child: CircularProgressIndicator(
-                  value: 0.20,
-                  strokeWidth: 16,
-                  backgroundColor: Colors.transparent,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.sand),
+                const SizedBox(
+                  width: 150,
+                  height: 150,
+                  child: CircularProgressIndicator(
+                    value: 0.60,
+                    strokeWidth: 22,
+                    backgroundColor: Colors.transparent,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.sand),
+                  ),
                 ),
-              ),
-              const Text(
-                '0%',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
+                const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '60%',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    Text(
+                      '230 characters',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-
-          const SizedBox(height: 32),
-
-          // 2. Linear Progress Bars for Hiragana & Katakana[cite: 26]
-          _buildLinearProgress('Hiragana', '0/145'),
-          const SizedBox(height: 16),
-          _buildLinearProgress('Katakana', '0/145'),
+          const SizedBox(height: 28),
+          _buildLinearProgressRow('Hiragana', '40/146', '30%', 0.30),
+          const SizedBox(height: 14),
+          _buildLinearProgressRow('Katakana', '40/146', '30%', 0.30),
         ],
       ),
     );
   }
 
-  /// Helper to build linear progress rows[cite: 26].
-  Widget _buildLinearProgress(String label, String progress) {
+  Widget _buildLinearProgressRow(
+    String label,
+    String fractionText,
+    String percentageText,
+    double fraction,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-                color: AppColors.textDark,
-              ),
+            Row(
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  fractionText,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
             ),
             Text(
-              progress,
+              percentageText,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Container(
-          height: 16,
+          height: 12,
           width: double.infinity,
           decoration: BoxDecoration(
             color: AppColors.beige,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.textDark, width: 1.5),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.textDark, width: 1.2),
+          ),
+          alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(
+            widthFactor: fraction.clamp(0.0, 1.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.textDark,
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  /// Builds the Engagement Streak card with 7-day indicators[cite: 26].
-  Widget _buildStreakCard() {
-    final days = ['Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun'];
-
+  Widget _buildContinueLearningCard() {
     return _buildCardBase(
-      headerText: 'Engagement Streak',
-      headerIcon: Icons.calendar_today,
-      headerTrailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFC099), // Soft pastel orange badge[cite: 26]
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.textDark, width: 1.5),
-        ),
-        child: const Row(
-          children: [
-            Icon(
-              Icons.local_fire_department,
-              color: Colors.deepOrange,
-              size: 16,
+      headerText: 'Continue Learning',
+      headerIcon: Icons.school_outlined,
+      child: Column(
+        children: [
+          _buildContinueRowSubCard(
+            title: 'Hiragana - a row',
+            characters: 'あ   い   う   え   お',
+            progressText: '5/20',
+            fraction: 0.25,
+            onContinue: widget.onNavigateToLearn,
+          ),
+          const SizedBox(height: 16),
+          _buildContinueRowSubCard(
+            title: 'Katakana  - a row',
+            characters: '',
+            progressText: '5/20',
+            fraction: 0.25,
+            onContinue: widget.onNavigateToLearn,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContinueRowSubCard({
+    required String title,
+    required String characters,
+    required String progressText,
+    required double fraction,
+    VoidCallback? onContinue,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cream,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.textDark, width: 1.8),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.textDark,
+            offset: Offset(0, 3),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
             ),
-            SizedBox(width: 4),
-            Text(
-              '7 Days!',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-                color: AppColors.textDark,
+          ),
+          if (characters.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                characters,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 4,
+                  color: AppColors.textDark,
+                ),
               ),
             ),
           ],
-        ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                progressText,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Container(
+            height: 10,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.beige,
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: AppColors.textDark, width: 1.2),
+            ),
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: fraction,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.textDark,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Center(
+            child: GestureDetector(
+              onTap: onContinue,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 36,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.greenButton,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.textDark, width: 1.8),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppColors.textDark,
+                      offset: Offset(0, 3),
+                      blurRadius: 0,
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_arrow, color: AppColors.textDark, size: 18),
+                    SizedBox(width: 4),
+                    Text(
+                      'Continue',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: days.map((day) {
-            return Column(
-              children: [
-                Text(
-                  day,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // INTERACTIVE TWO-STATE STREAK CARD (Frame 157 & Frame 161)
+  // Clicking or holding toggles between State 1 (Cream + 3D) and State 2 (Peach + Orange border)
+  // ---------------------------------------------------------------------------
+  Widget _buildInteractiveStreakCard() {
+    return _buildCardBase(
+      headerText: 'Current Streak',
+      headerIcon: Icons.calendar_month_outlined,
+      child: GestureDetector(
+        onTap: () => setState(() => _isStreakActive = !_isStreakActive),
+        onLongPress: () => setState(() => _isStreakActive = !_isStreakActive),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            // State 1: Cream, State 2: Soft Peach
+            color: _isStreakActive
+                ? AppColors.flameCardBgActive
+                : AppColors.cream,
+            borderRadius: BorderRadius.circular(16),
+            // State 1: Dark Border, State 2: Vibrant Orange Border
+            border: Border.all(
+              color: _isStreakActive
+                  ? AppColors.flameOrange
+                  : AppColors.textDark,
+              width: _isStreakActive ? 2.2 : 1.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _isStreakActive
+                    ? AppColors.flameOrange.withOpacity(0.3)
+                    : AppColors.textDark,
+                offset: Offset(0, _isStreakActive ? 1.5 : 4.0),
+                blurRadius: 0,
+              ),
+            ],
+          ),
+          child: const Row(
+            children: [
+              Icon(
+                Icons.local_fire_department,
+                color: AppColors.flameOrange,
+                size: 54,
+              ),
+              SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '5 days',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: AppColors.sage,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.textDark, width: 1.5),
+                  SizedBox(height: 2),
+                  Text(
+                    'keep it up!',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
                   ),
-                ),
-              ],
-            );
-          }).toList(),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// Reusable wrapper that creates the two-tone pastel card layout with hard shadow[cite: 26].
+  Widget _buildQuotesCard() {
+    return _buildCardBase(
+      headerText: 'Quotes',
+      headerIcon: Icons.format_quote_rounded,
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Proverbs 16: 9',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            '“The heart of man plans his way, but the LORD establishes his steps.”',
+            style: TextStyle(
+              fontSize: 13,
+              fontStyle: FontStyle.italic,
+              color: AppColors.textDark,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCardBase({
     required String headerText,
     required IconData headerIcon,
-    Widget? headerTrailing,
     required Widget child,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cream,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.textDark, width: 2),
         boxShadow: const [
           BoxShadow(
@@ -408,14 +632,13 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // Card Header Bar[cite: 26]
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
               color: AppColors.sand,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
               border: Border(
                 bottom: BorderSide(color: AppColors.textDark, width: 2),
               ),
@@ -424,21 +647,17 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Icon(headerIcon, color: AppColors.textDark, size: 18),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    headerText,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      color: AppColors.textDark,
-                    ),
+                Text(
+                  headerText,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppColors.textDark,
                   ),
                 ),
-                if (headerTrailing != null) headerTrailing,
               ],
             ),
           ),
-          // Card Body Content[cite: 26]
           Padding(padding: const EdgeInsets.all(20.0), child: child),
         ],
       ),
