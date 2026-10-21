@@ -4,11 +4,14 @@ import 'screens/practice_screen.dart';
 import 'screens/progress_screen.dart';
 import 'screens/profile_screen.dart'; // Imports the Profile & Settings tab
 import 'services/progress_service.dart';
+import 'services/vocabulary_service.dart'; // Imports offline JSON vocabulary database service
 
 void main() async {
   // Ensure Flutter engine bindings are initialized before calling SharedPreferences
   WidgetsFlutterBinding.ensureInitialized();
   await ProgressService.instance.init();
+  await VocabularyService.instance
+      .init(); // Preloads offline vocabulary JSON on app startup
 
   runApp(const KanaLearningApp());
 }
@@ -27,6 +30,22 @@ class AppColors {
 
   static const Color flameOrange = Color(0xFFE06229);
   static const Color flameCardBgActive = Color(0xFFFFD4BE);
+}
+
+/// Helper model defining sequential rows, titles, and characters for the Continue panel
+class _RowInfo {
+  final String
+  key; // Matches rowTitle in ProgressService (e.g. 'A row', 'Ka row')
+  final String displayName;
+  final String hiraganaChars;
+  final String katakanaChars;
+
+  const _RowInfo({
+    required this.key,
+    required this.displayName,
+    required this.hiraganaChars,
+    required this.katakanaChars,
+  });
 }
 
 class KanaLearningApp extends StatelessWidget {
@@ -80,7 +99,6 @@ class MainNavigatorState extends State<MainNavigator> {
       const LearnScreen(),
       const PracticeScreen(),
       const ProgressScreen(),
-      // Replaces the placeholder Text widget with the actual ProfileScreen
       const ProfileScreen(),
     ];
 
@@ -151,6 +169,92 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isStreakActive = false;
 
+  // The 10 sequential Basic Kana rows with their respective characters
+  static const List<_RowInfo> _basicRowProgression = [
+    _RowInfo(
+      key: 'A row',
+      displayName: 'a row',
+      hiraganaChars: 'あ   い   う   え   お',
+      katakanaChars: 'ア   イ   ウ   エ   オ',
+    ),
+    _RowInfo(
+      key: 'Ka row',
+      displayName: 'ka row',
+      hiraganaChars: 'か   き   く   け   こ',
+      katakanaChars: 'カ   キ   ク   ケ   コ',
+    ),
+    _RowInfo(
+      key: 'Sa row',
+      displayName: 'sa row',
+      hiraganaChars: 'さ   し   す   せ   そ',
+      katakanaChars: 'サ   シ   ス   セ   ソ',
+    ),
+    _RowInfo(
+      key: 'Ta row',
+      displayName: 'ta row',
+      hiraganaChars: 'た   ち   つ   て   と',
+      katakanaChars: 'タ   チ   ツ   テ   ト',
+    ),
+    _RowInfo(
+      key: 'Na row',
+      displayName: 'na row',
+      hiraganaChars: 'な   に   ぬ   ね   の',
+      katakanaChars: 'ナ   ニ   ヌ   ネ   ノ',
+    ),
+    _RowInfo(
+      key: 'Ha row',
+      displayName: 'ha row',
+      hiraganaChars: 'は   ひ   ふ   へ   ほ',
+      katakanaChars: 'ハ   ヒ   フ   ヘ   ホ',
+    ),
+    _RowInfo(
+      key: 'Ma row',
+      displayName: 'ma row',
+      hiraganaChars: 'ま   み   む   め   も',
+      katakanaChars: 'マ   ミ   ム   メ   モ',
+    ),
+    _RowInfo(
+      key: 'Ya row',
+      displayName: 'ya row',
+      hiraganaChars: 'や   ゆ   よ',
+      katakanaChars: 'ヤ   ユ   ヨ',
+    ),
+    _RowInfo(
+      key: 'Ra row',
+      displayName: 'ra row',
+      hiraganaChars: 'ら   り   る   れ   ろ',
+      katakanaChars: 'ラ   リ   ル   レ   ロ',
+    ),
+    _RowInfo(
+      key: 'Wa / N row',
+      displayName: 'wa / n row',
+      hiraganaChars: 'わ   を   ん',
+      katakanaChars: 'ワ   ヲ   ン',
+    ),
+  ];
+
+  /// Finds the first incomplete row for the given writing system.
+  /// If the current row is completed (20/20), it automatically advances to the next row (e.g. A row -> Ka row).
+  _RowInfo _getActiveRow(ProgressService ps, String writingSystem) {
+    for (final row in _basicRowProgression) {
+      final isCompleted = ps.isRowCompleted(
+        writingSystem: writingSystem,
+        rowTitle: row.key,
+      );
+      final prog = ps.getRowProgress(
+        writingSystem: writingSystem,
+        rowTitle: row.key,
+      );
+
+      // If not yet completed and questions remain, this is the active row to continue
+      if (!isCompleted && prog.current < prog.total) {
+        return row;
+      }
+    }
+    // If all rows are 100% completed, display the final row
+    return _basicRowProgression.last;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _buildOverallProgressCard(ps),
                       const SizedBox(height: 24),
-                      // Passes ProgressService so row progress (e.g. 5/20) updates from storage
+                      // Passes ProgressService to dynamically update active row & checkpoints
                       _buildContinueLearningCard(ps),
                       const SizedBox(height: 24),
                       _buildInteractiveStreakCard(ps),
@@ -397,17 +501,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Displays the continue cards reading real stored progress checkpoints (e.g. 5/20).
-  /// Clicking Continue navigates to Learn with the corresponding script active.
+  /// Displays the continue cards reading real stored progress checkpoints.
+  /// Automatically advances to the next row (e.g. Ka row) once the previous row is completed.
   Widget _buildContinueLearningCard(ProgressService ps) {
-    // Read persisted progress checkpoints for Hiragana A-row and Katakana A-row
+    // 1. Dynamically determine active rows for Hiragana and Katakana
+    final hRow = _getActiveRow(ps, 'Hiragana');
+    final kRow = _getActiveRow(ps, 'Katakana');
+
+    // 2. Read saved checkpoints for each active row
     final hProg = ps.getRowProgress(
       writingSystem: 'Hiragana',
-      rowTitle: 'A row',
+      rowTitle: hRow.key,
     );
     final kProg = ps.getRowProgress(
       writingSystem: 'Katakana',
-      rowTitle: 'A row',
+      rowTitle: kRow.key,
     );
 
     final double hFraction = hProg.total > 0
@@ -422,20 +530,20 @@ class _HomeScreenState extends State<HomeScreen> {
       headerIcon: Icons.school_outlined,
       child: Column(
         children: [
-          // Hiragana A Row Subcard
+          // Hiragana Active Row Subcard
           _buildContinueRowSubCard(
-            title: 'Hiragana - a row',
-            characters: 'あ   い   う   え   お',
+            title: 'Hiragana - ${hRow.displayName}',
+            characters: hRow.hiraganaChars,
             progressText: '${hProg.current}/${hProg.total}',
             fraction: hFraction,
             onContinue: () => widget.onNavigateToLearn?.call(isHiragana: true),
           ),
           const SizedBox(height: 16),
 
-          // Katakana A Row Subcard
+          // Katakana Active Row Subcard (Displays characters and advances automatically)
           _buildContinueRowSubCard(
-            title: 'Katakana  - a row',
-            characters: '',
+            title: 'Katakana - ${kRow.displayName}',
+            characters: kRow.katakanaChars,
             progressText: '${kProg.current}/${kProg.total}',
             fraction: kFraction,
             onContinue: () => widget.onNavigateToLearn?.call(isHiragana: false),

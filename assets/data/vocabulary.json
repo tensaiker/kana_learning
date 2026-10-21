@@ -1,0 +1,92 @@
+[
+  {
+    "kana": "ねこ",
+    "romaji": "neko",
+    "english": "Cat",
+    "isHiragana": true,
+    "syllables": ["ne", "ko"],
+    "kanaSyllables": ["ね", "こ"],
+    "category": "Animals"
+  },
+  {
+    "kana": "いぬ",
+    "romaji": "inu",
+    "english": "Dog",
+    "isHiragana": true,
+    "syllables": ["i", "nu"],
+    "kanaSyllables": ["い", "ぬ"],
+    "category": "Animals"
+  },
+  {
+    "kana": "さくら",
+    "romaji": "sakura",
+    "english": "Cherry blossom",
+    "isHiragana": true,
+    "syllables": ["sa", "ku", "ra"],
+    "kanaSyllables": ["さ", "く", "ら"],
+    "category": "Nature"
+  },
+  {
+    "kana": "ありがとう",
+    "romaji": "arigatou",
+    "english": "Thank you",
+    "isHiragana": true,
+    "syllables": ["a", "ri", "ga", "to", "u"],
+    "kanaSyllables": ["あ", "り", "が", "と", "う"],
+    "category": "Greetings"
+  },
+  {
+    "kana": "さようなら",
+    "romaji": "sayounara",
+    "english": "Goodbye",
+    "isHiragana": true,
+    "syllables": ["sa", "yo", "u", "na", "ra"],
+    "kanaSyllables": ["さ", "よ", "う", "な", "ら"],
+    "category": "Greetings"
+  },
+  {
+    "kana": "コーヒー",
+    "romaji": "ko-hi-",
+    "english": "Coffee",
+    "isHiragana": false,
+    "syllables": ["ko", "ー", "hi", "ー"],
+    "kanaSyllables": ["コ", "ー", "ヒ", "ー"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "パン",
+    "romaji": "pan",
+    "english": "Bread",
+    "isHiragana": false,
+    "syllables": ["pa", "n"],
+    "kanaSyllables": ["パ", "ン"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "カメラ",
+    "romaji": "kamera",
+    "english": "Camera",
+    "isHiragana": false,
+    "syllables": ["ka", "me", "ra"],
+    "kanaSyllables": ["カ", "メ", "ラ"],
+    "category": "Objects"
+  },
+  {
+    "kana": "ホテル",
+    "romaji": "hoteru",
+    "english": "Hotel",
+    "isHiragana": false,
+    "syllables": ["ho", "te", "ru"],
+    "kanaSyllables": ["ホ", "テ", "ル"],
+    "category": "Places"
+  },
+  {
+    "kana": "アイスクリーム",
+    "romaji": "aisukuri-mu",
+    "english": "Ice cream",
+    "isHiragana": false,
+    "syllables": ["a", "i", "su", "ku", "ri", "ー", "mu"],
+    "kanaSyllables": ["ア", "イ", "ス", "ク", "リ", "ー", "ム"],
+    "category": "Food & Drink"
+  }
+]

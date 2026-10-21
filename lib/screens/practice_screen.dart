@@ -3,11 +3,10 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'dart:math';
 import 'quiz_screen.dart';
 import 'flashcard_screen.dart';
-
-// --- VOCABULARY IMPORT ---
-// Note: If vocabulary_data.dart is inside lib/data/, use '../data/vocabulary_data.dart'
-// If placed in the same folder as practice_screen.dart, use 'vocabulary_data.dart'
 import '../features/writing/data/vocabulary_data.dart';
+import '../services/progress_service.dart'; // Imports persistence service for vocabulary & practice metrics
+import '../services/vocabulary_service.dart'; // Imports offline JSON vocabulary database service
+import '../utils/tactile_feedback.dart'; // Imports physical tactile sound & haptic feedback
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -52,7 +51,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   // Master toggle: true = Hiragana, false = Katakana
   bool _isHiragana = true;
 
-  // Sub-screen navigation: null = Hub, 'flashcard' = Flashcard Setup, 'word_builder' = Word Builder Setup
+  // Sub-screen navigation: null = Hub, 'flashcard', 'word_builder', 'vocab_library'
   String? _activeSubScreen;
 
   // Flashcard setup state
@@ -68,8 +67,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
   WordLength _wbLength = WordLength.short;
   int _wbWordsPerRound = 30;
 
+  // Vocabulary Library search query
+  String _vocabSearchQuery = '';
+
   // Selected row IDs
   late Set<String> _selectedRowIds;
+
+  // TTS Engine for previewing vocabulary words
+  final FlutterTts _flutterTts = FlutterTts();
 
   // Row Definitions (Hiragana and Katakana)
   final List<Map<String, dynamic>> _basicRows = [
@@ -245,6 +250,24 @@ class _PracticeScreenState extends State<PracticeScreen> {
       ..._dakuonRows.map((r) => r['id'] as String),
       ..._yoonRows.map((r) => r['id'] as String),
     };
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage("ja-JP");
+    await _flutterTts.setSpeechRate(0.5);
+  }
+
+  Future<void> _speakWord(String text) async {
+    TactileFeedback.press();
+    await _flutterTts.stop();
+    await _flutterTts.speak(text.replaceAll(' ', ''));
+  }
+
+  @override
+  void dispose() {
+    _flutterTts.stop();
+    super.dispose();
   }
 
   int get _totalSelectedCharactersCount {
@@ -269,6 +292,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   void _toggleAllIn(List<Map<String, dynamic>> rows) {
+    TactileFeedback.toggle();
     final ids = rows.map((r) => r['id'] as String).toSet();
     final bool allSelected = ids.every((id) => _selectedRowIds.contains(id));
     setState(() {
@@ -308,6 +332,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
       return _buildFlashcardSetupCard();
     } else if (_activeSubScreen == 'word_builder') {
       return _buildWordBuilderSetupCard();
+    } else if (_activeSubScreen == 'vocab_library') {
+      return _buildVocabularyLibraryView();
     }
     return _buildPracticeHubCard();
   }
@@ -353,7 +379,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: () => setState(() => _isHiragana = true),
+            onTap: () {
+              TactileFeedback.toggle();
+              setState(() => _isHiragana = true);
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -377,7 +406,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
             ),
           ),
           GestureDetector(
-            onTap: () => setState(() => _isHiragana = false),
+            onTap: () {
+              TactileFeedback.toggle();
+              setState(() => _isHiragana = false);
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -461,6 +493,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
               ),
             ),
             onTap: () => setState(() => _activeSubScreen = 'word_builder'),
+          ),
+          const SizedBox(height: 18),
+          _buildActivityCard(
+            title: 'Vocabulary Library',
+            description: 'Browse, listen, and review your word bank',
+            bgColor: cardBgColor,
+            icon: Icons.menu_book_rounded,
+            onTap: () => setState(() => _activeSubScreen = 'vocab_library'),
           ),
           const SizedBox(height: 18),
           _buildActivityCard(
@@ -597,7 +637,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
               children: [
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _activeSubScreen = null),
+                  onTap: () {
+                    TactileFeedback.toggle();
+                    setState(() => _activeSubScreen = null);
+                  },
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -620,9 +663,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 const Spacer(),
                 GestureDetector(
-                  onTap: () => setState(
-                    () => _showDifficultyFilter = !_showDifficultyFilter,
-                  ),
+                  onTap: () {
+                    TactileFeedback.toggle();
+                    setState(
+                      () => _showDifficultyFilter = !_showDifficultyFilter,
+                    );
+                  },
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
@@ -730,7 +776,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
         const SizedBox(height: 20),
         Center(
           child: TextButton(
-            onPressed: () => setState(() => _showDifficultyFilter = false),
+            onPressed: () {
+              TactileFeedback.toggle();
+              setState(() => _showDifficultyFilter = false);
+            },
             child: const Text(
               'Back to options',
               style: TextStyle(
@@ -748,6 +797,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     final bool isSelected = _selectedDifficulty == label;
     return GestureDetector(
       onTap: () {
+        TactileFeedback.press();
         setState(() {
           _selectedDifficulty = label;
           _showDifficultyFilter = false;
@@ -819,7 +869,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
               children: [
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _activeSubScreen = null),
+                  onTap: () {
+                    TactileFeedback.toggle();
+                    setState(() => _activeSubScreen = null);
+                  },
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -888,10 +941,13 @@ class _PracticeScreenState extends State<PracticeScreen> {
                               WordBuilderQuestionType.kanaToRomaji,
                           title: '${_isHiragana ? "あ" : "ア"}  ➔  a',
                           subtitle: 'Kana to romaji',
-                          onTap: () => setState(
-                            () => _wbQuestionType =
-                                WordBuilderQuestionType.kanaToRomaji,
-                          ),
+                          onTap: () {
+                            TactileFeedback.toggle();
+                            setState(
+                              () => _wbQuestionType =
+                                  WordBuilderQuestionType.kanaToRomaji,
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -902,10 +958,13 @@ class _PracticeScreenState extends State<PracticeScreen> {
                               WordBuilderQuestionType.romajiToKana,
                           title: 'a  ➔  ${_isHiragana ? "あ" : "ア"}',
                           subtitle: 'Romaji to kana',
-                          onTap: () => setState(
-                            () => _wbQuestionType =
-                                WordBuilderQuestionType.romajiToKana,
-                          ),
+                          onTap: () {
+                            TactileFeedback.toggle();
+                            setState(
+                              () => _wbQuestionType =
+                                  WordBuilderQuestionType.romajiToKana,
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -937,8 +996,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
                           isSelected: _wbLength == WordLength.short,
                           title: 'Short',
                           subtitle: '2-3 kana per word',
-                          onTap: () =>
-                              setState(() => _wbLength = WordLength.short),
+                          onTap: () {
+                            TactileFeedback.toggle();
+                            setState(() => _wbLength = WordLength.short);
+                          },
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -947,8 +1008,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
                           isSelected: _wbLength == WordLength.medium,
                           title: 'Medium',
                           subtitle: '4-5 kana per word',
-                          onTap: () =>
-                              setState(() => _wbLength = WordLength.medium),
+                          onTap: () {
+                            TactileFeedback.toggle();
+                            setState(() => _wbLength = WordLength.medium);
+                          },
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -957,8 +1020,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
                           isSelected: _wbLength == WordLength.long,
                           title: 'Long',
                           subtitle: '6+ kana per word',
-                          onTap: () =>
-                              setState(() => _wbLength = WordLength.long),
+                          onTap: () {
+                            TactileFeedback.toggle();
+                            setState(() => _wbLength = WordLength.long);
+                          },
                         ),
                       ),
                     ],
@@ -990,8 +1055,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4.0),
                           child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _wbWordsPerRound = count),
+                            onTap: () {
+                              TactileFeedback.press();
+                              setState(() => _wbWordsPerRound = count);
+                            },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 150),
                               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1096,6 +1163,262 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   // ===========================================================================
+  // 5. VOCABULARY LIBRARY / WORD BANK SCREEN
+  // ===========================================================================
+  Widget _buildVocabularyLibraryView() {
+    final systemName = _isHiragana ? 'Hiragana' : 'Katakana';
+
+    // Reads from VocabularyService (offline JSON asset) with graceful fallback to allVocabulary
+    final pool = VocabularyService.instance.allWords.isNotEmpty
+        ? VocabularyService.instance.allWords
+        : allVocabulary;
+
+    final filteredWords = pool.where((w) => w.isHiragana == _isHiragana).where((
+      w,
+    ) {
+      if (_vocabSearchQuery.isEmpty) return true;
+      final q = _vocabSearchQuery.toLowerCase();
+      return w.kana.contains(q) ||
+          w.romaji.toLowerCase().contains(q) ||
+          w.english.toLowerCase().contains(q);
+    }).toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cream,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.textDark, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.textDark,
+            offset: Offset(0, 4),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: const BoxDecoration(
+              color: AppColors.sand,
+              border: Border(
+                bottom: BorderSide(color: AppColors.textDark, width: 2),
+              ),
+            ),
+            child: Row(
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    TactileFeedback.toggle();
+                    setState(() => _activeSubScreen = null);
+                  },
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.arrow_back_ios_new,
+                        color: AppColors.textDark,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Vocabulary Library',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${filteredWords.length} words',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Search Field
+                TextField(
+                  onChanged: (val) => setState(() => _vocabSearchQuery = val),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textDark,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Search $systemName, Romaji, or English...',
+                    hintStyle: const TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 13,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.textDark,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.beige.withOpacity(0.5),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.textDark,
+                        width: 1.5,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.textDark,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Word List
+                filteredWords.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Text(
+                          'No words match your search.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: filteredWords.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final word = filteredWords[index];
+                          final bool isMastered = ProgressService.instance
+                              .isWordMastered(word.kana);
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isMastered
+                                  ? AppColors.lightSage
+                                  : AppColors.beige.withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.textDark,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            word.kana,
+                                            style: const TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.textDark,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            word.romaji,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.textLight,
+                                            ),
+                                          ),
+                                          if (isMastered) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.sage,
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                border: Border.all(
+                                                  color: AppColors.textDark,
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Mastered',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.textDark,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        word.english,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textDark,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.volume_up_rounded,
+                                    color: AppColors.textDark,
+                                  ),
+                                  onPressed: () => _speakWord(word.kana),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================================
   // REUSABLE ACCORDION ROW SELECTOR & HELPERS
   // ===========================================================================
   Widget _buildAccordionSelector(String systemName) {
@@ -1109,7 +1432,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
       child: Column(
         children: [
           InkWell(
-            onTap: () => setState(() => _isRowsExpanded = !_isRowsExpanded),
+            onTap: () {
+              TactileFeedback.toggle();
+              setState(() => _isRowsExpanded = !_isRowsExpanded);
+            },
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -1221,10 +1547,13 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       FlashcardQuestionType.kanaToRomaji,
                   title: '${_isHiragana ? "あ" : "ア"}  ➔  a',
                   subtitle: 'Kana to romaji',
-                  onTap: () => setState(
-                    () => _selectedQuestionType =
-                        FlashcardQuestionType.kanaToRomaji,
-                  ),
+                  onTap: () {
+                    TactileFeedback.toggle();
+                    setState(
+                      () => _selectedQuestionType =
+                          FlashcardQuestionType.kanaToRomaji,
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 14),
@@ -1234,10 +1563,13 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       _selectedQuestionType == FlashcardQuestionType.listening,
                   title: '🔊  ➔  ${_isHiragana ? "あ" : "ア"}ᵃ',
                   subtitle: 'Listening',
-                  onTap: () => setState(
-                    () =>
-                        _selectedQuestionType = FlashcardQuestionType.listening,
-                  ),
+                  onTap: () {
+                    TactileFeedback.toggle();
+                    setState(
+                      () => _selectedQuestionType =
+                          FlashcardQuestionType.listening,
+                    );
+                  },
                 ),
               ),
             ],
@@ -1252,10 +1584,13 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       FlashcardQuestionType.romajiToKana,
                   title: 'a  ➔  ${_isHiragana ? "あ" : "ア"}',
                   subtitle: 'Romaji to kana',
-                  onTap: () => setState(
-                    () => _selectedQuestionType =
-                        FlashcardQuestionType.romajiToKana,
-                  ),
+                  onTap: () {
+                    TactileFeedback.toggle();
+                    setState(
+                      () => _selectedQuestionType =
+                          FlashcardQuestionType.romajiToKana,
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 14),
@@ -1265,9 +1600,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       _selectedQuestionType == FlashcardQuestionType.mix,
                   title: 'Mix',
                   subtitle: 'All three',
-                  onTap: () => setState(
-                    () => _selectedQuestionType = FlashcardQuestionType.mix,
-                  ),
+                  onTap: () {
+                    TactileFeedback.toggle();
+                    setState(
+                      () => _selectedQuestionType = FlashcardQuestionType.mix,
+                    );
+                  },
                 ),
               ),
             ],
@@ -1345,6 +1683,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               chars: chars,
               isSelected: isSelected,
               onToggle: () {
+                TactileFeedback.toggle();
                 setState(() {
                   if (isSelected) {
                     _selectedRowIds.remove(id);
@@ -1440,7 +1779,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   void _startFlashcards() {
+    TactileFeedback.press();
     if (_selectedRowIds.isEmpty) {
+      TactileFeedback.error();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select at least one row.')),
       );
@@ -1480,12 +1821,17 @@ class _PracticeScreenState extends State<PracticeScreen> {
     );
   }
 
-  /// Starts the Word Builder session by filtering from the master allVocabulary dataset
+  /// Starts the Word Builder session by filtering from the loaded offline vocabulary database
   void _startWordBuilder() {
+    TactileFeedback.press();
+
+    // Uses loaded JSON vocabulary with fallback to bundled allVocabulary
+    final pool = VocabularyService.instance.allWords.isNotEmpty
+        ? VocabularyService.instance.allWords
+        : allVocabulary;
+
     // 1. Filter by script (Hiragana vs Katakana)
-    var filtered = allVocabulary
-        .where((w) => w.isHiragana == _isHiragana)
-        .toList();
+    var filtered = pool.where((w) => w.isHiragana == _isHiragana).toList();
 
     // 2. Filter by selected word length
     if (_wbLength == WordLength.short) {
@@ -1498,9 +1844,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
     // Fallback if the selected length filter yields no results
     if (filtered.isEmpty) {
-      filtered = allVocabulary
-          .where((w) => w.isHiragana == _isHiragana)
-          .toList();
+      filtered = pool.where((w) => w.isHiragana == _isHiragana).toList();
     }
 
     filtered.shuffle();
@@ -1521,7 +1865,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
 }
 
 // =============================================================================
-// 5. WORD BUILDER GAMEPLAY SCREEN
+// 6. WORD BUILDER GAMEPLAY SCREEN (WITH PERSISTENCE & TACTILE HOOKS)
 // =============================================================================
 
 class WordBuilderGameScreen extends StatefulWidget {
@@ -1563,8 +1907,11 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
     _initTts();
     _questions = List.from(widget.words);
     if (_questions.isEmpty) {
+      final pool = VocabularyService.instance.allWords.isNotEmpty
+          ? VocabularyService.instance.allWords
+          : allVocabulary;
       _questions = List.from(
-        allVocabulary.where((w) => w.isHiragana == widget.isHiragana),
+        pool.where((w) => w.isHiragana == widget.isHiragana),
       );
     }
     _questions.shuffle();
@@ -1630,6 +1977,8 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
   void _onChoiceTapped(int index) {
     if (_hasChecked || _choiceUsed[index]) return;
 
+    TactileFeedback.press();
+
     // Find first empty slot
     final emptyIndex = _userSlots.indexOf(null);
     if (emptyIndex != -1) {
@@ -1643,6 +1992,8 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
   void _onSlotTapped(int slotIndex) {
     if (_hasChecked || _userSlots[slotIndex] == null) return;
 
+    TactileFeedback.press();
+
     final value = _userSlots[slotIndex];
     // Return to available choices
     final choiceIndex = _currentChoices.indexOf(value!);
@@ -1654,6 +2005,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
     });
   }
 
+  /// Validates answer and persists word mastery into ProgressService
   void _checkAnswer() {
     if (_userSlots.contains(null) || _hasChecked) return;
 
@@ -1677,10 +2029,23 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
       _isCorrect = match;
     });
 
+    if (match) {
+      TactileFeedback.success();
+
+      // Persists completed vocabulary word and marks characters in local storage
+      ProgressService.instance.recordWordCompleted(
+        word: currentQ.kana,
+        wasCorrectFirstTry: !_isHintActive,
+      );
+    } else {
+      TactileFeedback.error();
+    }
+
     _speakWord(currentQ.kana);
   }
 
   void _advanceToNext() {
+    TactileFeedback.press();
     if (_currentIndex < widget.totalQuestions - 1) {
       setState(() {
         _currentIndex++;
@@ -1727,7 +2092,10 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                           color: AppColors.textDark,
                           size: 22,
                         ),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          TactileFeedback.toggle();
+                          Navigator.pop(context);
+                        },
                       ),
                       const SizedBox(width: 8),
                       const Text(
@@ -1768,7 +2136,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                         children: [
                           // Progress Text & Bar
                           Text(
-                            '${_currentIndex} of ${widget.totalQuestions}',
+                            '${_currentIndex + 1} of ${widget.totalQuestions}',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -1777,7 +2145,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                           ),
                           const SizedBox(height: 6),
                           LinearProgressIndicator(
-                            value: (_currentIndex) / widget.totalQuestions,
+                            value: (_currentIndex + 1) / widget.totalQuestions,
                             backgroundColor: AppColors.beige,
                             valueColor: const AlwaysStoppedAnimation<Color>(
                               AppColors.taupe,
@@ -1977,6 +2345,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                   icon: Icons.lightbulb_outline,
                                   bgColor: AppColors.sand,
                                   onTap: () {
+                                    TactileFeedback.toggle();
                                     setState(() {
                                       _isHintActive = true;
                                     });
@@ -2119,7 +2488,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// HELPER 3D INTERACTIVE BUTTONS
+// HELPER 3D INTERACTIVE BUTTONS WITH TACTILE CLICKS
 // -----------------------------------------------------------------------------
 
 class _Interactive3DCard extends StatefulWidget {
@@ -2143,7 +2512,10 @@ class _Interactive3DCardState extends State<_Interactive3DCard> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapDown: (_) {
+        TactileFeedback.press();
+        setState(() => _isPressed = true);
+      },
       onTapUp: (_) {
         setState(() => _isPressed = false);
         widget.onTap();
@@ -2195,7 +2567,10 @@ class _Interactive3DButtonState extends State<_Interactive3DButton> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapDown: (_) {
+        TactileFeedback.press();
+        setState(() => _isPressed = true);
+      },
       onTapUp: (_) {
         setState(() => _isPressed = false);
         widget.onTap();
