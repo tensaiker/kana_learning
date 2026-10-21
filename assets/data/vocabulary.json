@@ -1,30 +1,30 @@
 [
   {
-    "kana": "ねこ",
-    "romaji": "neko",
-    "english": "Cat",
+    "kana": "おはよう",
+    "romaji": "ohayou",
+    "english": "Good morning",
     "isHiragana": true,
-    "syllables": ["ne", "ko"],
-    "kanaSyllables": ["ね", "こ"],
-    "category": "Animals"
+    "syllables": ["o", "ha", "yo", "u"],
+    "kanaSyllables": ["お", "は", "よ", "う"],
+    "category": "Greetings"
   },
   {
-    "kana": "いぬ",
-    "romaji": "inu",
-    "english": "Dog",
+    "kana": "こんにちは",
+    "romaji": "konnichiwa",
+    "english": "Hello / Good afternoon",
     "isHiragana": true,
-    "syllables": ["i", "nu"],
-    "kanaSyllables": ["い", "ぬ"],
-    "category": "Animals"
+    "syllables": ["ko", "n", "ni", "chi", "wa"],
+    "kanaSyllables": ["こ", "ん", "に", "ち", "は"],
+    "category": "Greetings"
   },
   {
-    "kana": "さくら",
-    "romaji": "sakura",
-    "english": "Cherry blossom",
+    "kana": "こんばんは",
+    "romaji": "konbanwa",
+    "english": "Good evening",
     "isHiragana": true,
-    "syllables": ["sa", "ku", "ra"],
-    "kanaSyllables": ["さ", "く", "ら"],
-    "category": "Nature"
+    "syllables": ["ko", "n", "ba", "n", "wa"],
+    "kanaSyllables": ["こ", "ん", "ば", "ん", "は"],
+    "category": "Greetings"
   },
   {
     "kana": "ありがとう",
@@ -45,6 +45,492 @@
     "category": "Greetings"
   },
   {
+    "kana": "すみません",
+    "romaji": "sumimasen",
+    "english": "Excuse me / Sorry",
+    "isHiragana": true,
+    "syllables": ["su", "mi", "ma", "se", "n"],
+    "kanaSyllables": ["す", "み", "ま", "せ", "ん"],
+    "category": "Greetings"
+  },
+  {
+    "kana": "じゃあね",
+    "romaji": "jaane",
+    "english": "See you later",
+    "isHiragana": true,
+    "syllables": ["jaa", "ne"],
+    "kanaSyllables": ["じゃあ", "ね"],
+    "category": "Greetings"
+  },
+  {
+    "kana": "はい",
+    "romaji": "hai",
+    "english": "Yes",
+    "isHiragana": true,
+    "syllables": ["ha", "i"],
+    "kanaSyllables": ["は", "い"],
+    "category": "Greetings"
+  },
+  {
+    "kana": "いいえ",
+    "romaji": "iie",
+    "english": "No",
+    "isHiragana": true,
+    "syllables": ["i", "i", "e"],
+    "kanaSyllables": ["い", "い", "え"],
+    "category": "Greetings"
+  },
+  {
+    "kana": "ねこ",
+    "romaji": "neko",
+    "english": "Cat",
+    "isHiragana": true,
+    "syllables": ["ne", "ko"],
+    "kanaSyllables": ["ね", "こ"],
+    "category": "Animals"
+  },
+  {
+    "kana": "いぬ",
+    "romaji": "inu",
+    "english": "Dog",
+    "isHiragana": true,
+    "syllables": ["i", "nu"],
+    "kanaSyllables": ["い", "ぬ"],
+    "category": "Animals"
+  },
+  {
+    "kana": "とり",
+    "romaji": "tori",
+    "english": "Bird",
+    "isHiragana": true,
+    "syllables": ["to", "ri"],
+    "kanaSyllables": ["と", "り"],
+    "category": "Animals"
+  },
+  {
+    "kana": "さかな",
+    "romaji": "sakana",
+    "english": "Fish",
+    "isHiragana": true,
+    "syllables": ["sa", "ka", "na"],
+    "kanaSyllables": ["さ", "か", "な"],
+    "category": "Animals"
+  },
+  {
+    "kana": "うま",
+    "romaji": "uma",
+    "english": "Horse",
+    "isHiragana": true,
+    "syllables": ["u", "ma"],
+    "kanaSyllables": ["う", "ま"],
+    "category": "Animals"
+  },
+  {
+    "kana": "うさぎ",
+    "romaji": "usagi",
+    "english": "Rabbit",
+    "isHiragana": true,
+    "syllables": ["u", "sa", "gi"],
+    "kanaSyllables": ["う", "さ", "ぎ"],
+    "category": "Animals"
+  },
+  {
+    "kana": "さくら",
+    "romaji": "sakura",
+    "english": "Cherry blossom",
+    "isHiragana": true,
+    "syllables": ["sa", "ku", "ra"],
+    "kanaSyllables": ["さ", "く", "ら"],
+    "category": "Nature"
+  },
+  {
+    "kana": "はな",
+    "romaji": "hana",
+    "english": "Flower",
+    "isHiragana": true,
+    "syllables": ["ha", "na"],
+    "kanaSyllables": ["は", "な"],
+    "category": "Nature"
+  },
+  {
+    "kana": "やま",
+    "romaji": "yama",
+    "english": "Mountain",
+    "isHiragana": true,
+    "syllables": ["ya", "ma"],
+    "kanaSyllables": ["や", "ま"],
+    "category": "Nature"
+  },
+  {
+    "kana": "かわ",
+    "romaji": "kawa",
+    "english": "River",
+    "isHiragana": true,
+    "syllables": ["ka", "wa"],
+    "kanaSyllables": ["か", "わ"],
+    "category": "Nature"
+  },
+  {
+    "kana": "あめ",
+    "romaji": "ame",
+    "english": "Rain",
+    "isHiragana": true,
+    "syllables": ["a", "me"],
+    "kanaSyllables": ["あ", "め"],
+    "category": "Nature"
+  },
+  {
+    "kana": "ゆき",
+    "romaji": "yuki",
+    "english": "Snow",
+    "isHiragana": true,
+    "syllables": ["yu", "ki"],
+    "kanaSyllables": ["ゆ", "き"],
+    "category": "Nature"
+  },
+  {
+    "kana": "そら",
+    "romaji": "sora",
+    "english": "Sky",
+    "isHiragana": true,
+    "syllables": ["so", "ra"],
+    "kanaSyllables": ["そ", "ら"],
+    "category": "Nature"
+  },
+  {
+    "kana": "みず",
+    "romaji": "mizu",
+    "english": "Water",
+    "isHiragana": true,
+    "syllables": ["mi", "zu"],
+    "kanaSyllables": ["み", "ず"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "おちゃ",
+    "romaji": "ocha",
+    "english": "Green tea",
+    "isHiragana": true,
+    "syllables": ["o", "cha"],
+    "kanaSyllables": ["お", "ちゃ"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "ごはん",
+    "romaji": "gohan",
+    "english": "Cooked rice / Meal",
+    "isHiragana": true,
+    "syllables": ["go", "ha", "n"],
+    "kanaSyllables": ["ご", "は", "ん"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "たまご",
+    "romaji": "tamago",
+    "english": "Egg",
+    "isHiragana": true,
+    "syllables": ["ta", "ma", "go"],
+    "kanaSyllables": ["た", "ま", "ご"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "くだもの",
+    "romaji": "kudamono",
+    "english": "Fruit",
+    "isHiragana": true,
+    "syllables": ["ku", "da", "mo", "no"],
+    "kanaSyllables": ["く", "だ", "も", "の"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "やさい",
+    "romaji": "yasai",
+    "english": "Vegetable",
+    "isHiragana": true,
+    "syllables": ["ya", "sa", "i"],
+    "kanaSyllables": ["や", "さ", "い"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "おにぎり",
+    "romaji": "onigiri",
+    "english": "Rice ball",
+    "isHiragana": true,
+    "syllables": ["o", "ni", "gi", "ri"],
+    "kanaSyllables": ["お", "に", "ぎ", "り"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "すし",
+    "romaji": "sushi",
+    "english": "Sushi",
+    "isHiragana": true,
+    "syllables": ["su", "shi"],
+    "kanaSyllables": ["す", "し"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "おかあさん",
+    "romaji": "okaasan",
+    "english": "Mother",
+    "isHiragana": true,
+    "syllables": ["o", "ka", "a", "sa", "n"],
+    "kanaSyllables": ["お", "か", "あ", "さ", "ん"],
+    "category": "Family"
+  },
+  {
+    "kana": "おとうさん",
+    "romaji": "otousan",
+    "english": "Father",
+    "isHiragana": true,
+    "syllables": ["o", "to", "u", "sa", "n"],
+    "kanaSyllables": ["お", "と", "う", "さ", "ん"],
+    "category": "Family"
+  },
+  {
+    "kana": "おねえさん",
+    "romaji": "oneesan",
+    "english": "Older sister",
+    "isHiragana": true,
+    "syllables": ["o", "ne", "e", "sa", "n"],
+    "kanaSyllables": ["お", "ね", "え", "さ", "ん"],
+    "category": "Family"
+  },
+  {
+    "kana": "おにいさん",
+    "romaji": "oniisan",
+    "english": "Older brother",
+    "isHiragana": true,
+    "syllables": ["o", "ni", "i", "sa", "n"],
+    "kanaSyllables": ["お", "に", "い", "さ", "ん"],
+    "category": "Family"
+  },
+  {
+    "kana": "いもうと",
+    "romaji": "imouto",
+    "english": "Younger sister",
+    "isHiragana": true,
+    "syllables": ["i", "mo", "u", "to"],
+    "kanaSyllables": ["い", "も", "う", "と"],
+    "category": "Family"
+  },
+  {
+    "kana": "おとうと",
+    "romaji": "otouto",
+    "english": "Younger brother",
+    "isHiragana": true,
+    "syllables": ["o", "to", "u", "to"],
+    "kanaSyllables": ["お", "と", "う", "と"],
+    "category": "Family"
+  },
+  {
+    "kana": "ともだち",
+    "romaji": "tomodachi",
+    "english": "Friend",
+    "isHiragana": true,
+    "syllables": ["to", "mo", "da", "chi"],
+    "kanaSyllables": ["と", "も", "だ", "ち"],
+    "category": "Family"
+  },
+  {
+    "kana": "せんせい",
+    "romaji": "sensei",
+    "english": "Teacher",
+    "isHiragana": true,
+    "syllables": ["se", "n", "se", "i"],
+    "kanaSyllables": ["せ", "ん", "せ", "い"],
+    "category": "People"
+  },
+  {
+    "kana": "がくせい",
+    "romaji": "gakusei",
+    "english": "Student",
+    "isHiragana": true,
+    "syllables": ["ga", "ku", "se", "i"],
+    "kanaSyllables": ["が", "く", "せ", "い"],
+    "category": "People"
+  },
+  {
+    "kana": "いち",
+    "romaji": "ichi",
+    "english": "One (1)",
+    "isHiragana": true,
+    "syllables": ["i", "chi"],
+    "kanaSyllables": ["い", "ち"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "に",
+    "romaji": "ni",
+    "english": "Two (2)",
+    "isHiragana": true,
+    "syllables": ["ni"],
+    "kanaSyllables": ["に"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "さん",
+    "romaji": "san",
+    "english": "Three (3)",
+    "isHiragana": true,
+    "syllables": ["sa", "n"],
+    "kanaSyllables": ["さ", "ん"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "よん",
+    "romaji": "yon",
+    "english": "Four (4)",
+    "isHiragana": true,
+    "syllables": ["yo", "n"],
+    "kanaSyllables": ["よ", "ん"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "ご",
+    "romaji": "go",
+    "english": "Five (5)",
+    "isHiragana": true,
+    "syllables": ["go"],
+    "kanaSyllables": ["ご"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "ろく",
+    "romaji": "roku",
+    "english": "Six (6)",
+    "isHiragana": true,
+    "syllables": ["ro", "ku"],
+    "kanaSyllables": ["ろ", "く"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "なな",
+    "romaji": "nana",
+    "english": "Seven (7)",
+    "isHiragana": true,
+    "syllables": ["na", "na"],
+    "kanaSyllables": ["な", "な"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "はち",
+    "romaji": "hachi",
+    "english": "Eight (8)",
+    "isHiragana": true,
+    "syllables": ["ha", "chi"],
+    "kanaSyllables": ["は", "ち"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "きゅう",
+    "romaji": "kyuu",
+    "english": "Nine (9)",
+    "isHiragana": true,
+    "syllables": ["kyu", "u"],
+    "kanaSyllables": ["きゅ", "う"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "じゅう",
+    "romaji": "juu",
+    "english": "Ten (10)",
+    "isHiragana": true,
+    "syllables": ["ju", "u"],
+    "kanaSyllables": ["じゅ", "う"],
+    "category": "Numbers"
+  },
+  {
+    "kana": "ほん",
+    "romaji": "hon",
+    "english": "Book",
+    "isHiragana": true,
+    "syllables": ["ho", "n"],
+    "kanaSyllables": ["ほ", "ん"],
+    "category": "Objects"
+  },
+  {
+    "kana": "くるま",
+    "romaji": "kuruma",
+    "english": "Car",
+    "isHiragana": true,
+    "syllables": ["ku", "ru", "ma"],
+    "kanaSyllables": ["く", "る", "ま"],
+    "category": "Objects"
+  },
+  {
+    "kana": "とけい",
+    "romaji": "tokei",
+    "english": "Clock / Watch",
+    "isHiragana": true,
+    "syllables": ["to", "ke", "i"],
+    "kanaSyllables": ["と", "け", "い"],
+    "category": "Objects"
+  },
+  {
+    "kana": "かばん",
+    "romaji": "kaban",
+    "english": "Bag",
+    "isHiragana": true,
+    "syllables": ["ka", "ba", "n"],
+    "kanaSyllables": ["か", "ば", "ん"],
+    "category": "Objects"
+  },
+  {
+    "kana": "えんぴつ",
+    "romaji": "enpitsu",
+    "english": "Pencil",
+    "isHiragana": true,
+    "syllables": ["e", "n", "pi", "tsu"],
+    "kanaSyllables": ["え", "ん", "ぴ", "つ"],
+    "category": "Objects"
+  },
+  {
+    "kana": "いえ",
+    "romaji": "ie",
+    "english": "House",
+    "isHiragana": true,
+    "syllables": ["i", "e"],
+    "kanaSyllables": ["い", "え"],
+    "category": "Places"
+  },
+  {
+    "kana": "がっこう",
+    "romaji": "gakkou",
+    "english": "School",
+    "isHiragana": true,
+    "syllables": ["ga", "k", "ko", "u"],
+    "kanaSyllables": ["が", "っ", "こ", "う"],
+    "category": "Places"
+  },
+  {
+    "kana": "えき",
+    "romaji": "eki",
+    "english": "Train station",
+    "isHiragana": true,
+    "syllables": ["e", "ki"],
+    "kanaSyllables": ["え", "き"],
+    "category": "Places"
+  },
+  {
+    "kana": "みせ",
+    "romaji": "mise",
+    "english": "Shop / Store",
+    "isHiragana": true,
+    "syllables": ["mi", "se"],
+    "kanaSyllables": ["み", "せ"],
+    "category": "Places"
+  },
+  {
+    "kana": "パン",
+    "romaji": "pan",
+    "english": "Bread",
+    "isHiragana": false,
+    "syllables": ["pa", "n"],
+    "kanaSyllables": ["パ", "ン"],
+    "category": "Food & Drink"
+  },
+  {
     "kana": "コーヒー",
     "romaji": "ko-hi-",
     "english": "Coffee",
@@ -54,12 +540,66 @@
     "category": "Food & Drink"
   },
   {
-    "kana": "パン",
-    "romaji": "pan",
-    "english": "Bread",
+    "kana": "ミルク",
+    "romaji": "miruku",
+    "english": "Milk",
     "isHiragana": false,
-    "syllables": ["pa", "n"],
-    "kanaSyllables": ["パ", "ン"],
+    "syllables": ["mi", "ru", "ku"],
+    "kanaSyllables": ["ミ", "ル", "ク"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "ジュース",
+    "romaji": "ju-su",
+    "english": "Juice",
+    "isHiragana": false,
+    "syllables": ["ju", "ー", "su"],
+    "kanaSyllables": ["ジ", "ュ", "ー", "ス"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "ケーキ",
+    "romaji": "ke-ki",
+    "english": "Cake",
+    "isHiragana": false,
+    "syllables": ["ke", "ー", "ki"],
+    "kanaSyllables": ["ケ", "ー", "キ"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "アイスクリーム",
+    "romaji": "aisukuri-mu",
+    "english": "Ice cream",
+    "isHiragana": false,
+    "syllables": ["a", "i", "su", "ku", "ri", "ー", "mu"],
+    "kanaSyllables": ["ア", "イ", "ス", "ク", "リ", "ー", "ム"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "ピザ",
+    "romaji": "piza",
+    "english": "Pizza",
+    "isHiragana": false,
+    "syllables": ["pi", "za"],
+    "kanaSyllables": ["ピ", "ザ"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "サラダ",
+    "romaji": "sarada",
+    "english": "Salad",
+    "isHiragana": false,
+    "syllables": ["sa", "ra", "da"],
+    "kanaSyllables": ["サ", "ラ", "ダ"],
+    "category": "Food & Drink"
+  },
+  {
+    "kana": "ラーメン",
+    "romaji": "ra-men",
+    "english": "Ramen",
+    "isHiragana": false,
+    "syllables": ["ra", "ー", "me", "n"],
+    "kanaSyllables": ["ラ", "ー", "メ", "ン"],
     "category": "Food & Drink"
   },
   {
@@ -72,6 +612,60 @@
     "category": "Objects"
   },
   {
+    "kana": "テレビ",
+    "romaji": "terebi",
+    "english": "Television",
+    "isHiragana": false,
+    "syllables": ["te", "re", "bi"],
+    "kanaSyllables": ["テ", "レ", "ビ"],
+    "category": "Objects"
+  },
+  {
+    "kana": "ラジオ",
+    "romaji": "rajio",
+    "english": "Radio",
+    "isHiragana": false,
+    "syllables": ["ra", "ji", "o"],
+    "kanaSyllables": ["ラ", "ジ", "オ"],
+    "category": "Objects"
+  },
+  {
+    "kana": "ノート",
+    "romaji": "no-to",
+    "english": "Notebook",
+    "isHiragana": false,
+    "syllables": ["no", "ー", "to"],
+    "kanaSyllables": ["ノ", "ー", "ト"],
+    "category": "Objects"
+  },
+  {
+    "kana": "ペン",
+    "romaji": "pen",
+    "english": "Pen",
+    "isHiragana": false,
+    "syllables": ["pe", "n"],
+    "kanaSyllables": ["ペ", "ン"],
+    "category": "Objects"
+  },
+  {
+    "kana": "スマホ",
+    "romaji": "sumaho",
+    "english": "Smartphone",
+    "isHiragana": false,
+    "syllables": ["su", "ma", "ho"],
+    "kanaSyllables": ["ス", "マ", "ホ"],
+    "category": "Objects"
+  },
+  {
+    "kana": "パソコン",
+    "romaji": "pasokon",
+    "english": "Personal computer",
+    "isHiragana": false,
+    "syllables": ["pa", "so", "ko", "n"],
+    "kanaSyllables": ["パ", "ソ", "コ", "ン"],
+    "category": "Objects"
+  },
+  {
     "kana": "ホテル",
     "romaji": "hoteru",
     "english": "Hotel",
@@ -81,12 +675,66 @@
     "category": "Places"
   },
   {
-    "kana": "アイスクリーム",
-    "romaji": "aisukuri-mu",
-    "english": "Ice cream",
+    "kana": "レストラン",
+    "romaji": "resutoran",
+    "english": "Restaurant",
     "isHiragana": false,
-    "syllables": ["a", "i", "su", "ku", "ri", "ー", "mu"],
-    "kanaSyllables": ["ア", "イ", "ス", "ク", "リ", "ー", "ム"],
-    "category": "Food & Drink"
+    "syllables": ["re", "su", "to", "ra", "n"],
+    "kanaSyllables": ["レ", "ス", "ト", "ラ", "ン"],
+    "category": "Places"
+  },
+  {
+    "kana": "トイレ",
+    "romaji": "toire",
+    "english": "Toilet / Restroom",
+    "isHiragana": false,
+    "syllables": ["to", "i", "re"],
+    "kanaSyllables": ["ト", "イ", "レ"],
+    "category": "Places"
+  },
+  {
+    "kana": "アパート",
+    "romaji": "apa-to",
+    "english": "Apartment",
+    "isHiragana": false,
+    "syllables": ["a", "pa", "ー", "to"],
+    "kanaSyllables": ["ア", "パ", "ー", "ト"],
+    "category": "Places"
+  },
+  {
+    "kana": "タクシー",
+    "romaji": "takushi-",
+    "english": "Taxi",
+    "isHiragana": false,
+    "syllables": ["ta", "ku", "shi", "ー"],
+    "kanaSyllables": ["タ", "ク", "シ", "ー"],
+    "category": "Travel"
+  },
+  {
+    "kana": "バス",
+    "romaji": "basu",
+    "english": "Bus",
+    "isHiragana": false,
+    "syllables": ["ba", "su"],
+    "kanaSyllables": ["バ", "ス"],
+    "category": "Travel"
+  },
+  {
+    "kana": "ドア",
+    "romaji": "doa",
+    "english": "Door",
+    "isHiragana": false,
+    "syllables": ["do", "a"],
+    "kanaSyllables": ["ド", "ア"],
+    "category": "Objects"
+  },
+  {
+    "kana": "シャツ",
+    "romaji": "shatsu",
+    "english": "Shirt",
+    "isHiragana": false,
+    "syllables": ["sha", "tsu"],
+    "kanaSyllables": ["シ", "ャ", "ツ"],
+    "category": "Objects"
   }
 ]

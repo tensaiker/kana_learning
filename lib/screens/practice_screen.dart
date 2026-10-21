@@ -20,6 +20,7 @@ class AppColors {
   // Hiragana Colors (Green)
   static const Color sage = Color(0xFFB7C9B2);
   static const Color lightSage = Color(0xFFE4EFE7);
+  static const Color greenButton = Color(0xFF6EAA78);
 
   // Katakana Colors (Blue)
   static const Color skyBlue = Color(0xFFA5C4E5);
@@ -30,6 +31,7 @@ class AppColors {
   static const Color ratingHard = Color(0xFFE29E57); // Soft pastel orange
   static const Color ratingGood = Color(0xFF9FB89A); // Sage green
   static const Color ratingEasy = Color(0xFFA5C4E5); // Soft pastel blue
+  static const Color flameOrange = Color(0xFFE06229);
 }
 
 // Question types for flashcard learning
@@ -80,60 +82,70 @@ class _PracticeScreenState extends State<PracticeScreen> {
   final List<Map<String, dynamic>> _basicRows = [
     {
       'id': 'a',
+      'title': 'A row',
       'h': ['あ', 'い', 'う', 'え', 'お'],
       'k': ['ア', 'イ', 'ウ', 'エ', 'オ'],
       'r': ['a', 'i', 'u', 'e', 'o'],
     },
     {
       'id': 'ka',
+      'title': 'Ka row',
       'h': ['か', 'き', 'く', 'け', 'こ'],
       'k': ['カ', 'キ', 'ク', 'ケ', 'コ'],
       'r': ['ka', 'ki', 'ku', 'ke', 'ko'],
     },
     {
       'id': 'sa',
+      'title': 'Sa row',
       'h': ['さ', 'し', 'す', 'せ', 'そ'],
       'k': ['サ', 'シ', 'ス', 'セ', 'ソ'],
       'r': ['sa', 'shi', 'su', 'se', 'so'],
     },
     {
       'id': 'ta',
+      'title': 'Ta row',
       'h': ['た', 'ち', 'つ', 'て', 'と'],
       'k': ['タ', 'チ', 'ツ', 'テ', 'ト'],
       'r': ['ta', 'chi', 'tsu', 'te', 'to'],
     },
     {
       'id': 'na',
+      'title': 'Na row',
       'h': ['な', 'に', 'ぬ', 'ね', 'の'],
       'k': ['ナ', 'ニ', 'ヌ', 'ネ', 'ノ'],
       'r': ['na', 'ni', 'nu', 'ne', 'no'],
     },
     {
       'id': 'ha',
+      'title': 'Ha row',
       'h': ['は', 'ひ', 'ふ', 'へ', 'ほ'],
       'k': ['ハ', 'ヒ', 'フ', 'ヘ', 'ホ'],
       'r': ['ha', 'hi', 'fu', 'he', 'ho'],
     },
     {
       'id': 'ma',
+      'title': 'Ma row',
       'h': ['ま', 'み', 'む', 'め', 'も'],
       'k': ['マ', 'ミ', 'ム', 'メ', 'モ'],
       'r': ['ma', 'mi', 'mu', 'me', 'mo'],
     },
     {
       'id': 'ya',
+      'title': 'Ya row',
       'h': ['や', '', 'ゆ', '', 'よ'],
       'k': ['ヤ', '', 'ユ', '', 'ヨ'],
       'r': ['ya', '', 'yu', '', 'yo'],
     },
     {
       'id': 'ra',
+      'title': 'Ra row',
       'h': ['ら', 'り', 'る', 'れ', 'ろ'],
       'k': ['ラ', 'リ', 'ル', 'レ', 'ロ'],
       'r': ['ra', 'ri', 'ru', 're', 'ro'],
     },
     {
       'id': 'wa',
+      'title': 'Wa / N row',
       'h': ['わ', '', 'を', '', 'ん'],
       'k': ['ワ', '', 'ヲ', '', 'ン'],
       'r': ['wa', '', 'wo', '', 'n'],
@@ -143,30 +155,35 @@ class _PracticeScreenState extends State<PracticeScreen> {
   final List<Map<String, dynamic>> _dakuonRows = [
     {
       'id': 'ga',
+      'title': 'Ga row',
       'h': ['が', 'ぎ', 'ぐ', 'げ', 'ご'],
       'k': ['ガ', 'ギ', 'グ', 'ゲ', 'ゴ'],
       'r': ['ga', 'gi', 'gu', 'ge', 'go'],
     },
     {
       'id': 'za',
+      'title': 'Za row',
       'h': ['ざ', 'じ', 'ず', 'ぜ', 'ぞ'],
       'k': ['ザ', 'ジ', 'ズ', 'ゼ', 'ゾ'],
       'r': ['za', 'ji', 'zu', 'ze', 'zo'],
     },
     {
       'id': 'da',
+      'title': 'Da row',
       'h': ['だ', 'ぢ', 'づ', 'で', 'ど'],
       'k': ['ダ', 'ヂ', 'ヅ', 'デ', 'ド'],
       'r': ['da', 'ji', 'zu', 'de', 'do'],
     },
     {
       'id': 'ba',
+      'title': 'Ba row',
       'h': ['ば', 'び', 'ぶ', 'べ', 'ぼ'],
       'k': ['バ', 'ビ', 'ブ', 'ベ', 'ボ'],
       'r': ['ba', 'bi', 'bu', 'be', 'bo'],
     },
     {
       'id': 'pa',
+      'title': 'Pa row',
       'h': ['ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ'],
       'k': ['パ', 'ピ', 'プ', 'ペ', 'ポ'],
       'r': ['pa', 'pi', 'pu', 'pe', 'po'],
@@ -176,66 +193,77 @@ class _PracticeScreenState extends State<PracticeScreen> {
   final List<Map<String, dynamic>> _yoonRows = [
     {
       'id': 'kya',
+      'title': 'Kya row',
       'h': ['きゃ', '', 'きゅ', '', 'きょ'],
       'k': ['キャ', '', 'キュ', '', 'キョ'],
       'r': ['kya', '', 'kyu', '', 'kyo'],
     },
     {
       'id': 'sha',
+      'title': 'Sha row',
       'h': ['しゃ', '', 'しゅ', '', 'しょ'],
       'k': ['シャ', '', 'シュ', '', 'ショ'],
       'r': ['sha', '', 'shu', '', 'sho'],
     },
     {
       'id': 'cha',
+      'title': 'Cha row',
       'h': ['ちゃ', '', 'ちゅ', '', 'ちょ'],
       'k': ['チャ', '', 'チュ', '', 'チョ'],
       'r': ['cha', '', 'chu', '', 'cho'],
     },
     {
       'id': 'nya',
+      'title': 'Nya row',
       'h': ['にゃ', '', 'にゅ', '', 'にょ'],
       'k': ['ニャ', '', 'ニュ', '', 'ニョ'],
       'r': ['nya', '', 'nyu', '', 'nyo'],
     },
     {
       'id': 'hya',
+      'title': 'Hya row',
       'h': ['ひゃ', '', 'ひゅ', '', 'ひょ'],
       'k': ['ヒャ', '', 'ヒュ', '', 'ヒョ'],
       'r': ['hya', '', 'hyu', '', 'hyo'],
     },
     {
       'id': 'mya',
+      'title': 'Mya row',
       'h': ['みゃ', '', 'みゅ', '', 'みょ'],
       'k': ['ミャ', '', 'ミュ', '', 'ミョ'],
       'r': ['mya', '', 'myu', '', 'myo'],
     },
     {
       'id': 'rya',
+      'title': 'Rya row',
       'h': ['りゃ', '', 'りゅ', '', 'りょ'],
       'k': ['リャ', '', 'リュ', '', 'リョ'],
       'r': ['rya', '', 'ryu', '', 'ryo'],
     },
     {
       'id': 'gya',
+      'title': 'Gya row',
       'h': ['ぎゃ', '', 'ぎゅ', '', 'ぎょ'],
       'k': ['ギャ', '', 'ギュ', '', 'ギョ'],
       'r': ['gya', '', 'gyu', '', 'gyo'],
     },
     {
       'id': 'ja',
+      'title': 'Ja row',
       'h': ['じゃ', '', 'じゅ', '', 'じょ'],
       'k': ['ジャ', '', 'ジュ', '', 'ジョ'],
       'r': ['ja', '', 'ju', '', 'jo'],
     },
     {
       'id': 'bya',
+      'title': 'Bya row',
       'h': ['びゃ', '', 'びゅ', '', 'びょ'],
       'k': ['ビャ', '', 'ビュ', '', 'ビョ'],
       'r': ['bya', '', 'byu', '', 'byo'],
     },
     {
       'id': 'pya',
+      'title': 'Pya row',
       'h': ['ぴゃ', '', 'ぴゅ', '', 'ぴょ'],
       'k': ['ピャ', '', 'ピュ', '', 'ピョ'],
       'r': ['pya', '', 'pyu', '', 'pyo'],
@@ -245,6 +273,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   @override
   void initState() {
     super.initState();
+    // All rows are unlocked and pre-selected by default for full practice availability
     _selectedRowIds = {
       ..._basicRows.map((r) => r['id'] as String),
       ..._dakuonRows.map((r) => r['id'] as String),
@@ -1865,7 +1894,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
 }
 
 // =============================================================================
-// 6. WORD BUILDER GAMEPLAY SCREEN (WITH PERSISTENCE & TACTILE HOOKS)
+// 6. WORD BUILDER GAMEPLAY SCREEN (WITH PERSISTENCE & RESULTS SUMMARY)
 // =============================================================================
 
 class WordBuilderGameScreen extends StatefulWidget {
@@ -1891,6 +1920,11 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
   late List<WordBuilderQuestion> _questions;
   int _currentIndex = 0;
 
+  // Session Statistics & Results Tracking
+  late DateTime _sessionStartTime;
+  int _correctCount = 0;
+  final List<Map<String, dynamic>> _sessionWordLog = [];
+
   // Player answer state
   late List<String?> _userSlots;
   late List<String> _currentChoices;
@@ -1904,6 +1938,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
   @override
   void initState() {
     super.initState();
+    _sessionStartTime = DateTime.now();
     _initTts();
     _questions = List.from(widget.words);
     if (_questions.isEmpty) {
@@ -1938,28 +1973,22 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
     _userSlots = List.filled(targetSyllables.length, null);
 
-    // Build choices (correct syllables + distractors)
+    // Build choices: correct syllables + dynamic distractors from other questions in this round
     final Set<String> choicesPool = Set.from(targetSyllables);
-    final distractors = isRomajiChoices
-        ? [
-            'ma',
-            'ru',
-            'so',
-            'ka',
-            'ta',
-            'ne',
-            'a',
-            'ki',
-            'shi',
-            'to',
-            'ha',
-            're',
-          ]
-        : ['あ', 'ら', 'ま', 'る', 'か', 'て', 'す', 'お', 'し', 'と', 'は', 'れ'];
+    final List<String> availableDistractors = [];
 
-    distractors.shuffle();
+    for (var q in _questions) {
+      final syllables = isRomajiChoices ? q.syllables : q.kanaSyllables;
+      for (var s in syllables) {
+        if (!choicesPool.contains(s) && !availableDistractors.contains(s)) {
+          availableDistractors.add(s);
+        }
+      }
+    }
+
+    availableDistractors.shuffle();
     final int targetChoiceCount = max(8, targetSyllables.length);
-    for (var d in distractors) {
+    for (var d in availableDistractors) {
       if (choicesPool.length >= targetChoiceCount) break;
       choicesPool.add(d);
     }
@@ -2005,7 +2034,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
     });
   }
 
-  /// Validates answer and persists word mastery into ProgressService
+  /// Validates answer, persists word mastery, and records round statistics
   void _checkAnswer() {
     if (_userSlots.contains(null) || _hasChecked) return;
 
@@ -2031,6 +2060,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
     if (match) {
       TactileFeedback.success();
+      _correctCount++;
 
       // Persists completed vocabulary word and marks characters in local storage
       ProgressService.instance.recordWordCompleted(
@@ -2040,6 +2070,14 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
     } else {
       TactileFeedback.error();
     }
+
+    // Append to review summary for the Results Screen
+    _sessionWordLog.add({
+      'kana': currentQ.kana,
+      'romaji': currentQ.romaji,
+      'english': currentQ.english,
+      'isCorrect': match,
+    });
 
     _speakWord(currentQ.kana);
   }
@@ -2052,7 +2090,34 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
         _loadCurrentQuestion();
       });
     } else {
-      Navigator.pop(context);
+      // Round Complete: Navigate to the Practice Results Screen
+      final elapsed = DateTime.now().difference(_sessionStartTime);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WordBuilderResultScreen(
+            totalQuestions: widget.totalQuestions,
+            correctCount: _correctCount,
+            elapsedDuration: elapsed,
+            summaryList: _sessionWordLog,
+            isHiragana: widget.isHiragana,
+            onPlayAgain: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WordBuilderGameScreen(
+                    isHiragana: widget.isHiragana,
+                    questionType: widget.questionType,
+                    totalQuestions: widget.totalQuestions,
+                    words: widget.words,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
     }
   }
 
@@ -2482,6 +2547,492 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// 7. WORD BUILDER RESULTS SCREEN & STATS SUMMARY
+// =============================================================================
+
+class WordBuilderResultScreen extends StatelessWidget {
+  final int totalQuestions;
+  final int correctCount;
+  final Duration elapsedDuration;
+  final List<Map<String, dynamic>> summaryList;
+  final bool isHiragana;
+  final VoidCallback onPlayAgain;
+
+  const WordBuilderResultScreen({
+    super.key,
+    required this.totalQuestions,
+    required this.correctCount,
+    required this.elapsedDuration,
+    required this.summaryList,
+    required this.isHiragana,
+    required this.onPlayAgain,
+  });
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes;
+    final seconds = d.inSeconds % 60;
+    if (minutes > 0) {
+      return '${minutes}m ${seconds}s';
+    }
+    return '${seconds}s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double percent = totalQuestions > 0
+        ? (correctCount / totalQuestions)
+        : 0.0;
+    final int percentInt = (percent * 100).toInt();
+
+    String titleMessage;
+    String subtitleMessage;
+    if (percent >= 0.9) {
+      titleMessage = 'Taihen Yoku Dekimashita! 🎉';
+      subtitleMessage = 'Outstanding performance! You mastered this set!';
+    } else if (percent >= 0.7) {
+      titleMessage = 'Yoku Dekimashita! 🌸';
+      subtitleMessage = 'Great work! Keep up the daily practice!';
+    } else {
+      titleMessage = 'Ganbatte! 💪';
+      subtitleMessage = 'Good effort! Review the words below and try again!';
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.beige,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top App Bar
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              decoration: const BoxDecoration(
+                color: AppColors.sand,
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(16),
+                ),
+                border: Border(
+                  bottom: BorderSide(color: AppColors.textDark, width: 2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: AppColors.textDark,
+                      size: 22,
+                    ),
+                    onPressed: () {
+                      TactileFeedback.toggle();
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Practice Summary',
+                    style: TextStyle(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 20,
+                ),
+                child: Column(
+                  children: [
+                    // Main Score Card
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.cream,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.textDark, width: 2),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: AppColors.textDark,
+                            offset: Offset(0, 4),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: AppColors.sand,
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: AppColors.textDark,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.military_tech_outlined,
+                                  color: AppColors.textDark,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Round Results',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: AppColors.textDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              children: [
+                                // Circular Percentage Indicator
+                                Container(
+                                  width: 110,
+                                  height: 110,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.beige,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.textDark,
+                                      width: 2.2,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: AppColors.textDark,
+                                        offset: Offset(0, 3),
+                                        blurRadius: 0,
+                                      ),
+                                    ],
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '$percentInt%',
+                                        style: const TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w900,
+                                          color: AppColors.textDark,
+                                        ),
+                                      ),
+                                      const Text(
+                                        'Score',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textLight,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
+                                  titleMessage,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textDark,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  subtitleMessage,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textLight,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+
+                                // 3 Metrics Badges: Score, Mastered Words, Study Time
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildResultStatBadge(
+                                        icon: Icons.check_circle_outline,
+                                        iconColor: AppColors.greenButton,
+                                        value: '$correctCount/$totalQuestions',
+                                        label: 'Accuracy',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildResultStatBadge(
+                                        icon: Icons.menu_book_rounded,
+                                        iconColor: AppColors.skyBlue,
+                                        value:
+                                            '${ProgressService.instance.totalMasteredWords}',
+                                        label: 'Mastered',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildResultStatBadge(
+                                        icon: Icons.timer_outlined,
+                                        iconColor: AppColors.flameOrange,
+                                        value: _formatDuration(elapsedDuration),
+                                        label: 'Time Spent',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Words Reviewed Breakdown Card
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.cream,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.textDark, width: 2),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: AppColors.textDark,
+                            offset: Offset(0, 4),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: AppColors.sand,
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: AppColors.textDark,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.list_alt_rounded,
+                                  color: AppColors.textDark,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Words Reviewed',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: AppColors.textDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(16),
+                            itemCount: summaryList.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final item = summaryList[index];
+                              final bool isCorrect = item['isCorrect'] ?? false;
+                              final String kana = item['kana'] ?? '';
+                              final String romaji = item['romaji'] ?? '';
+                              final String english = item['english'] ?? '';
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isCorrect
+                                      ? AppColors.lightSage.withOpacity(0.5)
+                                      : const Color(0xFFFDE8E7),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.textDark,
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isCorrect
+                                          ? Icons.check_circle
+                                          : Icons.cancel,
+                                      color: isCorrect
+                                          ? AppColors.greenButton
+                                          : AppColors.ratingAgain,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                kana,
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.textDark,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                romaji,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.textLight,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Text(
+                                            english,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.textDark,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () {
+                                        TactileFeedback.press();
+                                        FlutterTts().speak(kana);
+                                      },
+                                      child: const Icon(
+                                        Icons.volume_up_rounded,
+                                        color: AppColors.textDark,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Action Buttons (Play Again & Back to Practice)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _Interactive3DButton(
+                            label: 'Play Again',
+                            icon: Icons.replay,
+                            bgColor: AppColors.sand,
+                            onTap: onPlayAgain,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: _Interactive3DButton(
+                            label: 'Done',
+                            icon: Icons.check,
+                            bgColor: AppColors.taupe,
+                            onTap: () {
+                              TactileFeedback.toggle();
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultStatBadge({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: AppColors.beige.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.textDark, width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textDark,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textLight,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
