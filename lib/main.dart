@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'screens/learn_screen.dart';
 import 'screens/practice_screen.dart';
 import 'screens/progress_screen.dart';
+import 'screens/profile_screen.dart'; // Imports the Profile & Settings tab
 import 'services/progress_service.dart';
 
 void main() async {
-  // Ensure Flutter engine bindings are initialized before calling SharedPreferences[cite: 30]
+  // Ensure Flutter engine bindings are initialized before calling SharedPreferences
   WidgetsFlutterBinding.ensureInitialized();
   await ProgressService.instance.init();
 
@@ -79,16 +80,8 @@ class MainNavigatorState extends State<MainNavigator> {
       const LearnScreen(),
       const PracticeScreen(),
       const ProgressScreen(),
-      const Center(
-        child: Text(
-          'Profile Tab',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
-          ),
-        ),
-      ),
+      // Replaces the placeholder Text widget with the actual ProfileScreen
+      const ProfileScreen(),
     ];
 
     return Scaffold(
@@ -167,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _buildTopHeader(),
             Expanded(
-              // ListenableBuilder dynamically rebuilds Home on progress and streak updates[cite: 30]
+              // ListenableBuilder dynamically rebuilds Home on progress and streak updates
               child: ListenableBuilder(
                 listenable: ProgressService.instance,
                 builder: (context, _) {
@@ -237,8 +230,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildOverallProgressCard(ProgressService ps) {
-    // 104 standard Kana per system (46 basic + 25 dakuon + 33 yoon)[cite: 30]
-    const int totalKana = 208; // 104 Hiragana + 104 Katakana[cite: 30]
+    // 104 standard Kana per system (46 basic + 25 dakuon + 33 yoon)
+    const int totalKana = 208; // 104 Hiragana + 104 Katakana
     final double overallPercent = (ps.totalMastered / totalKana).clamp(
       0.0,
       1.0,
@@ -645,7 +638,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              // Daily dots driven by shared_preferences calendar data[cite: 30]
+              // Daily dots driven by shared_preferences calendar data
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: List.generate(7, (index) {

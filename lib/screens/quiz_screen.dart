@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine
+import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine[cite: 25]
 import 'dart:math';
-import '../services/progress_service.dart'; // Imports shared_preferences persistence service
+import '../services/progress_service.dart'; // Imports shared_preferences persistence service[cite: 25]
+import '../utils/tactile_feedback.dart'; // Imports tactile mechanical audio clicks and haptic feedback
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -14,21 +15,25 @@ class AppColors {
   static const Color sage = Color(0xFFB7C9B2);
 
   // Validation Colors
-  static const Color correctBg = Color(0xFFB4CDB4); // Soft pastel green
+  static const Color correctBg = Color(
+    0xFFB4CDB4,
+  ); // Soft pastel green[cite: 25]
   static const Color correctIcon = Color(0xFF5CA95C);
-  static const Color incorrectBg = Color(0xFFD88A82); // Soft pastel red
+  static const Color incorrectBg = Color(
+    0xFFD88A82,
+  ); // Soft pastel red[cite: 25]
   static const Color incorrectIcon = Color(0xFFC95B50);
 }
 
-// The 4 distinct types of questions in the quiz
+// The 4 distinct types of questions in the quiz[cite: 25]
 enum QuizType {
-  seeKanaPickRomaji, // Visual: Kana -> Romaji
-  seeRomajiPickKana, // Visual: Romaji -> Kana
-  listenPickRomaji, // Audio: Sound -> Romaji
-  listenPickKana, // Audio: Sound -> Kana
+  seeKanaPickRomaji, // Visual: Kana -> Romaji[cite: 25]
+  seeRomajiPickKana, // Visual: Romaji -> Kana[cite: 25]
+  listenPickRomaji, // Audio: Sound -> Romaji[cite: 25]
+  listenPickKana, // Audio: Sound -> Kana[cite: 25]
 }
 
-// Button states for feedback rendering
+// Button states for feedback rendering[cite: 25]
 enum ButtonState { idle, correct, incorrect, revealedCorrect }
 
 class QuizQuestion {
@@ -47,7 +52,7 @@ class QuizQuestion {
 
 class QuizScreen extends StatefulWidget {
   final String rowTitle;
-  final String writingSystem; // e.g., "Hiragana" or "Katakana"
+  final String writingSystem; // e.g., "Hiragana" or "Katakana"[cite: 25]
   final List<Map<String, String>> characters;
 
   const QuizScreen({
@@ -66,15 +71,15 @@ class _QuizScreenState extends State<QuizScreen> {
   int _currentQuestionIndex = 0;
   final Random _random = Random();
 
-  // Answer validation states
+  // Answer validation states[cite: 25]
   bool _hasAnswered = false;
   String? _selectedOption;
   bool _isQuizComplete = false;
 
-  // Native text-to-speech engine instance
+  // Native text-to-speech engine instance[cite: 25]
   final FlutterTts _flutterTts = FlutterTts();
 
-  // Score tracking per category
+  // Score tracking per category[cite: 25]
   final Map<QuizType, int> _scores = {
     QuizType.seeKanaPickRomaji: 0,
     QuizType.seeRomajiPickKana: 0,
@@ -87,7 +92,7 @@ class _QuizScreenState extends State<QuizScreen> {
     super.initState();
     _initTts();
     _generateQuestions();
-    // Automatically trigger audio if the first question is a listening question
+    // Automatically trigger audio if the first question is a listening question[cite: 25]
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _speakCurrentQuestion();
     });
@@ -99,15 +104,17 @@ class _QuizScreenState extends State<QuizScreen> {
     super.dispose();
   }
 
-  /// Configures the native TTS engine with Japanese language settings
+  /// Configures the native TTS engine with Japanese language settings[cite: 25]
   Future<void> _initTts() async {
     await _flutterTts.setLanguage("ja-JP");
-    await _flutterTts.setSpeechRate(0.5); // Slower rate ideal for learners
+    await _flutterTts.setSpeechRate(
+      0.5,
+    ); // Slower rate ideal for learners[cite: 25]
     await _flutterTts.setVolume(1.0);
     await _flutterTts.setPitch(1.0);
   }
 
-  /// Speaks the target kana aloud if the current question requires audio
+  /// Speaks the target kana aloud if the current question requires audio[cite: 25]
   Future<void> _speakCurrentQuestion() async {
     if (_questions.isEmpty || _isQuizComplete) return;
     final currentQ = _questions[_currentQuestionIndex];
@@ -118,7 +125,7 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
-  /// Generates exactly 5 questions for each of the 4 quiz types (20 total).
+  /// Generates exactly 5 questions for each of the 4 quiz types (20 total).[cite: 25]
   void _generateQuestions() {
     _questions = [];
     final validChars = widget.characters
@@ -174,9 +181,9 @@ class _QuizScreenState extends State<QuizScreen> {
     _questions.shuffle(_random);
   }
 
-  /// Saves the current question checkpoint to local storage when exiting.
-  /// For example, exiting on question 5 saves 5/20 so the Home tab and Progress
-  /// service immediately reflect 5/20 progress.
+  /// Saves the current question checkpoint to local storage when exiting.[cite: 25]
+  /// For example, exiting on question 5 saves 5/20 so the Home tab and Progress[cite: 25]
+  /// service immediately reflect 5/20 progress.[cite: 25]
   void _exitAndSaveProgress() {
     int progressCount = _isQuizComplete
         ? _questions.length
@@ -192,9 +199,9 @@ class _QuizScreenState extends State<QuizScreen> {
     Navigator.pop(context);
   }
 
-  /// Processes the user's answer, logs mastery in local storage, shows validation, and advances.
+  /// Processes the user's answer, logs mastery in local storage, shows validation, and advances.[cite: 25]
   void _handleAnswer(String selectedOption) async {
-    if (_hasAnswered) return; // Prevent double-clicking
+    if (_hasAnswered) return; // Prevent double-clicking[cite: 25]
 
     final currentQ = _questions[_currentQuestionIndex];
     bool isRomajiOptions =
@@ -208,30 +215,36 @@ class _QuizScreenState extends State<QuizScreen> {
       _hasAnswered = true;
       _selectedOption = selectedOption;
 
-      // Update score and persist character mastery when answer is correct
+      // Update score and persist character mastery when answer is correct[cite: 25]
       if (selectedOption == correctAnswer) {
         _scores[currentQ.type] = _scores[currentQ.type]! + 1;
 
-        // Persists the mastered kana to SharedPreferences in real time.
+        // Persists the mastered kana to SharedPreferences in real time.[cite: 25]
         ProgressService.instance.markKanaMastered(currentQ.targetKana);
+
+        // Tactile confirmation: Plays a positive haptic and audio click
+        TactileFeedback.success();
+      } else {
+        // Tactile error: Triggers a distinctive error bump
+        TactileFeedback.error();
       }
     });
 
-    // Wait for 1.5 seconds to let the user see the correct/incorrect colors
+    // Wait for 1.5 seconds to let the user see the correct/incorrect colors[cite: 25]
     await Future.delayed(const Duration(milliseconds: 1500));
 
-    // Proceed to next question or complete quiz
+    // Proceed to next question or complete quiz[cite: 25]
     if (!mounted) return;
     setState(() {
       if (_currentQuestionIndex < _questions.length - 1) {
         _currentQuestionIndex++;
         _hasAnswered = false;
         _selectedOption = null;
-        _speakCurrentQuestion(); // Speak if next question is listening type
+        _speakCurrentQuestion(); // Speak if next question is listening type[cite: 25]
       } else {
         _isQuizComplete = true;
 
-        // Mark full row completion (e.g., 20/20) and unlock the prerequisite for the next row
+        // Mark full row completion (e.g., 20/20) and unlock the prerequisite for the next row[cite: 25]
         ProgressService.instance.saveRowProgress(
           writingSystem: widget.writingSystem,
           rowTitle: widget.rowTitle,
@@ -263,7 +276,7 @@ class _QuizScreenState extends State<QuizScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Top Header (Frame 135: Close 'X', Writing System, and '${rowTitle} learn')
+            // 1. Top Header (Frame 135: Close 'X', Writing System, and '${rowTitle} learn')[cite: 25]
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               decoration: const BoxDecoration(
@@ -284,7 +297,10 @@ class _QuizScreenState extends State<QuizScreen> {
                       color: AppColors.textDark,
                       size: 28,
                     ),
-                    onPressed: _exitAndSaveProgress,
+                    onPressed: () {
+                      TactileFeedback.toggle();
+                      _exitAndSaveProgress();
+                    },
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -318,7 +334,7 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
             ),
 
-            // 2. Progress Bar
+            // 2. Progress Bar[cite: 25]
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Row(
@@ -360,7 +376,7 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
             ),
 
-            // 3. Main Question Area
+            // 3. Main Question Area[cite: 25]
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -406,7 +422,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
             const SizedBox(height: 20),
 
-            // 4. Answer Grid (2x2)
+            // 4. Answer Grid (2x2)[cite: 25]
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Column(
@@ -455,7 +471,7 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  /// Evaluates the state of a button based on the user's answer to display the correct colors/icons.
+  /// Evaluates the state of a button based on the user's answer to display the correct colors/icons.[cite: 25]
   Widget _buildChoiceButton(QuizQuestion currentQ, String option) {
     if (option.isEmpty) return const SizedBox();
 
@@ -485,7 +501,7 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  /// The final score summary screen shown at the end of the quiz
+  /// The final score summary screen shown at the end of the quiz[cite: 25]
   Widget _buildSummaryScreen() {
     int totalCorrect = _scores.values.fold(0, (sum, val) => sum + val);
 
@@ -495,7 +511,7 @@ class _QuizScreenState extends State<QuizScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Top Header
+            // Top Header[cite: 25]
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               decoration: const BoxDecoration(
@@ -515,7 +531,10 @@ class _QuizScreenState extends State<QuizScreen> {
                       color: AppColors.textDark,
                       size: 28,
                     ),
-                    onPressed: _exitAndSaveProgress,
+                    onPressed: () {
+                      TactileFeedback.toggle();
+                      _exitAndSaveProgress();
+                    },
                   ),
                   const SizedBox(width: 8),
                   Column(
@@ -545,7 +564,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
             const SizedBox(height: 32),
 
-            // Summary Card
+            // Summary Card[cite: 25]
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -578,7 +597,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Breakdown Rows
+                      // Breakdown Rows[cite: 25]
                       _buildScoreRow(
                         "Pick the romaji",
                         QuizType.seeKanaPickRomaji,
@@ -601,9 +620,12 @@ class _QuizScreenState extends State<QuizScreen> {
 
                       const Spacer(),
 
-                      // Continue Button to exit quiz and record full progress
+                      // Continue Button to exit quiz and record full progress[cite: 25]
                       GestureDetector(
-                        onTap: _exitAndSaveProgress,
+                        onTap: () {
+                          TactileFeedback.press();
+                          _exitAndSaveProgress();
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           width: double.infinity,
@@ -725,10 +747,10 @@ class _QuizScreenState extends State<QuizScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// INTERACTIVE 3D BUTTON COMPONENTS
+// INTERACTIVE 3D BUTTON COMPONENTS WITH TACTILE CLICKS & HAPTICS
 // -----------------------------------------------------------------------------
 
-/// The animated 2x2 grid choice buttons with validation colors and icons.
+/// The animated 2x2 grid choice buttons with validation colors and tactile feedback.
 class Interactive3DChoiceButton extends StatefulWidget {
   final String label;
   final ButtonState state;
@@ -768,7 +790,11 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
 
     return GestureDetector(
       onTapDown: (_) {
-        if (widget.state == ButtonState.idle) setState(() => _isPressed = true);
+        if (widget.state == ButtonState.idle) {
+          // Triggers immediate crisp mechanical click and subtle vibration
+          TactileFeedback.press();
+          setState(() => _isPressed = true);
+        }
       },
       onTapUp: (_) {
         if (widget.state == ButtonState.idle) {
@@ -802,7 +828,7 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
                 style: const TextStyle(fontSize: 40, color: AppColors.textDark),
               ),
             ),
-            // Result Validation Icons
+            // Result Validation Icons[cite: 25]
             if (widget.state == ButtonState.correct ||
                 widget.state == ButtonState.revealedCorrect)
               const Positioned(
@@ -831,7 +857,7 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
   }
 }
 
-/// The animated large speaker button for audio questions.
+/// The animated large speaker button for audio questions with tactile feedback.
 class Interactive3DSpeakerButton extends StatefulWidget {
   final VoidCallback onTap;
 
@@ -849,7 +875,11 @@ class _Interactive3DSpeakerButtonState
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapDown: (_) {
+        // Triggers physical mechanical press down feedback
+        TactileFeedback.press();
+        setState(() => _isPressed = true);
+      },
       onTapUp: (_) {
         setState(() => _isPressed = false);
         widget.onTap();

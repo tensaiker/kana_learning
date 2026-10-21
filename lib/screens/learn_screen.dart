@@ -3,6 +3,7 @@ import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech 
 import 'write_screen.dart'; // Imports the drawing screen[cite: 23]
 import 'quiz_screen.dart'; // Imports the interactive quiz/practice screen[cite: 23]
 import '../services/progress_service.dart'; // Imports persistent progress service for real-time mastery counts and row locks[cite: 23]
+import '../utils/tactile_feedback.dart'; // Imports tactile stationery mechanical clicks and haptic feedback
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -36,7 +37,7 @@ class _LearnScreenState extends State<LearnScreen> {
   // Native text-to-speech controller instance[cite: 23]
   final FlutterTts _flutterTts = FlutterTts();
 
-  // Basic row progression order used to enforce prerequisite completion[cite: 26]
+  // Basic row progression order used to enforce prerequisite completion
   final List<String> _basicRowOrder = [
     'A row',
     'Ka row',
@@ -82,7 +83,7 @@ class _LearnScreenState extends State<LearnScreen> {
   @override
   Widget build(BuildContext context) {
     // ListenableBuilder ensures the screen responds immediately when ProgressService updates
-    // (such as when switching from Home via "Continue Katakana" or when finishing a quiz row)[cite: 27]
+    // (such as when switching from Home via "Continue Katakana" or when finishing a quiz row)
     return ListenableBuilder(
       listenable: ProgressService.instance,
       builder: (context, _) {
@@ -156,8 +157,10 @@ class _LearnScreenState extends State<LearnScreen> {
         children: [
           // Hiragana Option (あ)[cite: 23]
           GestureDetector(
-            onTap: () =>
-                ProgressService.instance.setLearnScript(isHiragana: true),
+            onTap: () {
+              TactileFeedback.toggle(); // Tactile tick on script switch
+              ProgressService.instance.setLearnScript(isHiragana: true);
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -182,8 +185,10 @@ class _LearnScreenState extends State<LearnScreen> {
           ),
           // Katakana Option (ア)[cite: 23]
           GestureDetector(
-            onTap: () =>
-                ProgressService.instance.setLearnScript(isHiragana: false),
+            onTap: () {
+              TactileFeedback.toggle(); // Tactile tick on script switch
+              ProgressService.instance.setLearnScript(isHiragana: false);
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -255,6 +260,7 @@ class _LearnScreenState extends State<LearnScreen> {
                     // Sound Master Toggle Button[cite: 23]
                     GestureDetector(
                       onTap: () {
+                        TactileFeedback.toggle();
                         setState(() {
                           _isSoundEnabled = !_isSoundEnabled;
                         });
@@ -269,7 +275,7 @@ class _LearnScreenState extends State<LearnScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // --- BASIC KANA ROWS (SEQUENTIALLY UNLOCKED) ---[cite: 26]
+                // --- BASIC KANA ROWS (SEQUENTIALLY UNLOCKED) ---
                 ..._buildBasicRowsWithPrerequisites(
                   isHiragana,
                   writingSystem,
@@ -659,7 +665,7 @@ class _LearnScreenState extends State<LearnScreen> {
     );
   }
 
-  /// Builds the basic 10 rows while enforcing sequential locks based on prerequisite completion[cite: 26]
+  /// Builds the basic 10 rows while enforcing sequential locks based on prerequisite completion
   List<Widget> _buildBasicRowsWithPrerequisites(
     bool isHiragana,
     String writingSystem,
@@ -825,7 +831,7 @@ class _LearnScreenState extends State<LearnScreen> {
       bool isLocked = false;
       String prerequisiteName = '';
 
-      // First row ('A row') is always unlocked; subsequent rows require the previous row finished[cite: 26]
+      // First row ('A row') is always unlocked; subsequent rows require the previous row finished
       if (i > 0) {
         final prevRowKey = _basicRowOrder[i - 1];
         prerequisiteName = prevRowKey;
@@ -996,6 +1002,8 @@ class _LearnScreenState extends State<LearnScreen> {
                       romaji: c['romaji']!,
                       bgColor: charBgColor,
                       isSoundEnabled: _isSoundEnabled && !isLocked,
+                      isLocked: isLocked,
+                      prerequisiteName: prerequisiteName,
                       onTapAudio: () => _speakKana(c['kana']!),
                     ),
                   )
@@ -1011,6 +1019,7 @@ class _LearnScreenState extends State<LearnScreen> {
                   bgColor: AppColors.taupe,
                   onTap: () {
                     if (isLocked) {
+                      TactileFeedback.error(); // Haptic error vibration on locked item tap
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
@@ -1039,6 +1048,7 @@ class _LearnScreenState extends State<LearnScreen> {
                   bgColor: buttonBgColor,
                   onTap: () {
                     if (isLocked) {
+                      TactileFeedback.error(); // Haptic error vibration on locked item tap
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
@@ -1070,7 +1080,7 @@ class _LearnScreenState extends State<LearnScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// INTERACTIVE BUTTON COMPONENTS[cite: 23]
+// INTERACTIVE BUTTON COMPONENTS WITH TACTILE CLICKS & HAPTICS[cite: 23]
 // -----------------------------------------------------------------------------
 
 /// An interactive, 3D animated button for the individual Kana characters.
@@ -1079,6 +1089,8 @@ class Interactive3DCharButton extends StatefulWidget {
   final String romaji;
   final Color bgColor;
   final bool isSoundEnabled;
+  final bool isLocked;
+  final String prerequisiteName;
   final VoidCallback onTapAudio;
 
   const Interactive3DCharButton({
@@ -1087,6 +1099,8 @@ class Interactive3DCharButton extends StatefulWidget {
     required this.romaji,
     required this.bgColor,
     required this.isSoundEnabled,
+    this.isLocked = false,
+    this.prerequisiteName = '',
     required this.onTapAudio,
   });
 
@@ -1105,8 +1119,23 @@ class _Interactive3DCharButtonState extends State<Interactive3DCharButton> {
     }
 
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapDown: (_) {
+        if (widget.isLocked) {
+          TactileFeedback.error();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Finish ${widget.prerequisiteName} first to unlock!',
+              ),
+            ),
+          );
+          return;
+        }
+        TactileFeedback.press(); // Physical tactile click down
+        setState(() => _isPressed = true);
+      },
       onTapUp: (_) {
+        if (widget.isLocked) return;
         setState(() => _isPressed = false);
         if (widget.isSoundEnabled) {
           widget
@@ -1178,7 +1207,10 @@ class _Interactive3DActionButtonState extends State<Interactive3DActionButton> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapDown: (_) {
+        TactileFeedback.press(); // Physical tactile mechanical press down
+        setState(() => _isPressed = true);
+      },
       onTapUp: (_) {
         setState(() => _isPressed = false);
         widget.onTap();
