@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine[cite: 23]
-import 'write_screen.dart'; // Imports the drawing screen[cite: 23]
-import 'quiz_screen.dart'; // Imports the interactive quiz/practice screen[cite: 23]
-import '../services/progress_service.dart'; // Imports persistent progress service for real-time mastery counts and row locks[cite: 23]
+import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine[cite: 13]
+import 'package:shared_preferences/shared_preferences.dart'; // Imports SharedPreferences for TTS settings lookup
+import 'write_screen.dart'; // Imports the drawing screen[cite: 13]
+import 'quiz_screen.dart'; // Imports the interactive quiz/practice screen[cite: 13]
+import '../services/progress_service.dart'; // Imports persistent progress service for real-time mastery counts and row locks[cite: 13]
 import '../utils/tactile_feedback.dart'; // Imports tactile stationery mechanical clicks and haptic feedback
 
 // --- COLOR PALETTE ---
@@ -14,11 +15,11 @@ class AppColors {
   static const Color textDark = Color(0xFF5D534A);
   static const Color textLight = Color(0xFF8B8076);
 
-  // Hiragana Colors (Green)[cite: 23]
+  // Hiragana Colors (Green)[cite: 13]
   static const Color sage = Color(0xFFB7C9B2);
   static const Color lightSage = Color(0xFFE4EFE7);
 
-  // Katakana Colors (Blue)[cite: 23]
+  // Katakana Colors (Blue)[cite: 13]
   static const Color skyBlue = Color(0xFFA5C4E5);
   static const Color lightSkyBlue = Color(0xFFEBF0F5);
 }
@@ -31,10 +32,10 @@ class LearnScreen extends StatefulWidget {
 }
 
 class _LearnScreenState extends State<LearnScreen> {
-  // Sound toggle state: Controls whether tapping cards plays audio[cite: 23]
+  // Sound toggle state: Controls whether tapping cards plays audio[cite: 13]
   bool _isSoundEnabled = true;
 
-  // Native text-to-speech controller instance[cite: 23]
+  // Native text-to-speech controller instance[cite: 13]
   final FlutterTts _flutterTts = FlutterTts();
 
   // Basic row progression order used to enforce prerequisite completion
@@ -57,20 +58,22 @@ class _LearnScreenState extends State<LearnScreen> {
     _initTts();
   }
 
-  /// Initializes the speech engine with Japanese language settings[cite: 23]
+  /// Initializes the speech engine synchronized with user audio preferences
   Future<void> _initTts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final double rate = prefs.getDouble('settings_speech_rate') ?? 0.5;
+    final double volume = prefs.getDouble('settings_speech_volume') ?? 1.0;
+
     await _flutterTts.setLanguage("ja-JP");
-    await _flutterTts.setSpeechRate(
-      0.5,
-    ); // Comfortable learning speed[cite: 23]
-    await _flutterTts.setVolume(1.0);
+    await _flutterTts.setSpeechRate(rate);
+    await _flutterTts.setVolume(volume);
     await _flutterTts.setPitch(1.0);
   }
 
-  /// Speaks the selected kana character using native device speech synthesis[cite: 23]
+  /// Speaks the selected kana character using native device speech synthesis[cite: 13]
   Future<void> _speakKana(String kana) async {
     if (!_isSoundEnabled || kana.isEmpty) return;
-    await _flutterTts.stop(); // Stop any overlapping speech queues[cite: 23]
+    await _flutterTts.stop(); // Stop any overlapping speech queues[cite: 13]
     await _flutterTts.speak(kana);
   }
 
@@ -142,7 +145,7 @@ class _LearnScreenState extends State<LearnScreen> {
     );
   }
 
-  /// Custom rounded pill toggle switch synchronized with ProgressService[cite: 23]
+  /// Custom rounded pill toggle switch synchronized with ProgressService[cite: 13]
   Widget _buildToggle(bool isHiragana) {
     return Container(
       height: 38,
@@ -155,7 +158,7 @@ class _LearnScreenState extends State<LearnScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Hiragana Option (あ)[cite: 23]
+          // Hiragana Option (あ)[cite: 13]
           GestureDetector(
             onTap: () {
               TactileFeedback.toggle(); // Tactile tick on script switch
@@ -183,7 +186,7 @@ class _LearnScreenState extends State<LearnScreen> {
               ),
             ),
           ),
-          // Katakana Option (ア)[cite: 23]
+          // Katakana Option (ア)[cite: 13]
           GestureDetector(
             onTap: () {
               TactileFeedback.toggle(); // Tactile tick on script switch
@@ -216,7 +219,7 @@ class _LearnScreenState extends State<LearnScreen> {
     );
   }
 
-  /// Builds the large central container holding the progress header and ALL Kana rows[cite: 23].
+  /// Builds the large central container holding the progress header and ALL Kana rows[cite: 13].
   Widget _buildMainCard(
     bool isHiragana,
     String writingSystem,
@@ -257,7 +260,7 @@ class _LearnScreenState extends State<LearnScreen> {
                         color: AppColors.textDark,
                       ),
                     ),
-                    // Sound Master Toggle Button[cite: 23]
+                    // Sound Master Toggle Button[cite: 13]
                     GestureDetector(
                       onTap: () {
                         TactileFeedback.toggle();
@@ -284,7 +287,7 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 const SizedBox(height: 32),
 
-                // --- DAKUON & HANDAKUON ROWS ---[cite: 23]
+                // --- DAKUON & HANDAKUON ROWS ---[cite: 13]
                 const Text(
                   'Dakuon',
                   style: TextStyle(
@@ -406,7 +409,7 @@ class _LearnScreenState extends State<LearnScreen> {
 
                 const SizedBox(height: 32),
 
-                // --- YOON (Contracted Sounds) ROWS ---[cite: 23]
+                // --- YOON (Contracted Sounds) ROWS ---[cite: 13]
                 const Text(
                   'Yoon',
                   style: TextStyle(
@@ -858,7 +861,7 @@ class _LearnScreenState extends State<LearnScreen> {
     return widgets;
   }
 
-  // --- DYNAMIC CARD HEADER LINKED TO PROGRESS SERVICE ---[cite: 23]
+  // --- DYNAMIC CARD HEADER LINKED TO PROGRESS SERVICE ---[cite: 13]
   Widget _buildCardHeader(bool isHiragana, ProgressService ps) {
     final int currentMastered = isHiragana
         ? ps.masteredHiraganaCount
@@ -1080,7 +1083,7 @@ class _LearnScreenState extends State<LearnScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// INTERACTIVE BUTTON COMPONENTS WITH TACTILE CLICKS & HAPTICS[cite: 23]
+// INTERACTIVE BUTTON COMPONENTS WITH TACTILE CLICKS & HAPTICS[cite: 13]
 // -----------------------------------------------------------------------------
 
 /// An interactive, 3D animated button for the individual Kana characters.
@@ -1139,7 +1142,7 @@ class _Interactive3DCharButtonState extends State<Interactive3DCharButton> {
         setState(() => _isPressed = false);
         if (widget.isSoundEnabled) {
           widget
-              .onTapAudio(); // Triggers native text-to-speech pronunciation[cite: 23]
+              .onTapAudio(); // Triggers native text-to-speech pronunciation[cite: 13]
         }
       },
       onTapCancel: () => setState(() => _isPressed = false),

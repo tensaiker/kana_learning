@@ -2,21 +2,28 @@ import 'package:flutter/material.dart';
 import 'screens/learn_screen.dart';
 import 'screens/practice_screen.dart';
 import 'screens/progress_screen.dart';
-import 'screens/profile_screen.dart'; // Imports the Profile & Settings tab
+import 'screens/profile_screen.dart'; // Imports the Profile & Settings tab[cite: 11]
 import 'services/progress_service.dart';
-import 'services/vocabulary_service.dart'; // Imports offline JSON vocabulary database service
+import 'services/vocabulary_service.dart'; // Imports offline JSON vocabulary database service[cite: 11]
+import 'utils/tactile_feedback.dart'; // Imports tactile sound & haptic utility
 
 void main() async {
-  // Ensure Flutter engine bindings are initialized before calling SharedPreferences
+  // Ensure Flutter engine bindings are initialized before calling SharedPreferences[cite: 11]
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Loads saved tactile click sound effects and vibration preferences into memory at startup
+  await TactileFeedback.init();
+
+  // Initializes user progress, streaks, and row checkpoints[cite: 11]
   await ProgressService.instance.init();
-  await VocabularyService.instance
-      .init(); // Preloads offline vocabulary JSON on app startup
+
+  // Preloads offline vocabulary JSON on app startup[cite: 11]
+  await VocabularyService.instance.init();
 
   runApp(const KanaLearningApp());
 }
 
-// --- COLOR PALETTE ---
+// --- COLOR PALETTE ---[cite: 11]
 class AppColors {
   static const Color cream = Color(0xFFFDF8F3);
   static const Color beige = Color(0xFFEADFD1);
@@ -32,10 +39,10 @@ class AppColors {
   static const Color flameCardBgActive = Color(0xFFFFD4BE);
 }
 
-/// Helper model defining sequential rows, titles, and characters for the Continue panel
+/// Helper model defining sequential rows, titles, and characters for the Continue panel[cite: 11]
 class _RowInfo {
   final String
-  key; // Matches rowTitle in ProgressService (e.g. 'A row', 'Ka row')
+  key; // Matches rowTitle in ProgressService (e.g. 'A row', 'Ka row')[cite: 11]
   final String displayName;
   final String hiraganaChars;
   final String katakanaChars;
@@ -81,7 +88,7 @@ class MainNavigatorState extends State<MainNavigator> {
   int _currentIndex = 0;
 
   /// Switches the active tab. When targeting Learn (tab 1), it sets
-  /// the active writing system (Hiragana vs Katakana) in ProgressService.
+  /// the active writing system (Hiragana vs Katakana) in ProgressService.[cite: 11]
   void switchTab(int index, {bool isHiragana = true}) {
     if (index == 1) {
       ProgressService.instance.setLearnScript(isHiragana: isHiragana);
@@ -157,7 +164,7 @@ class MainNavigatorState extends State<MainNavigator> {
 }
 
 class HomeScreen extends StatefulWidget {
-  // Accepts a script parameter to navigate directly to Hiragana or Katakana in LearnScreen
+  // Accepts a script parameter to navigate directly to Hiragana or Katakana in LearnScreen[cite: 11]
   final void Function({required bool isHiragana})? onNavigateToLearn;
 
   const HomeScreen({super.key, this.onNavigateToLearn});
@@ -169,7 +176,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isStreakActive = false;
 
-  // The 10 sequential Basic Kana rows with their respective characters
+  // The 10 sequential Basic Kana rows with their respective characters[cite: 11]
   static const List<_RowInfo> _basicRowProgression = [
     _RowInfo(
       key: 'A row',
@@ -233,8 +240,8 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ];
 
-  /// Finds the first incomplete row for the given writing system.
-  /// If the current row is completed (20/20), it automatically advances to the next row (e.g. A row -> Ka row).
+  /// Finds the first incomplete row for the given writing system.[cite: 11]
+  /// If the current row is completed (20/20), it automatically advances to the next row (e.g. A row -> Ka row).[cite: 11]
   _RowInfo _getActiveRow(ProgressService ps, String writingSystem) {
     for (final row in _basicRowProgression) {
       final isCompleted = ps.isRowCompleted(
@@ -246,12 +253,12 @@ class _HomeScreenState extends State<HomeScreen> {
         rowTitle: row.key,
       );
 
-      // If not yet completed and questions remain, this is the active row to continue
+      // If not yet completed and questions remain, this is the active row to continue[cite: 11]
       if (!isCompleted && prog.current < prog.total) {
         return row;
       }
     }
-    // If all rows are 100% completed, display the final row
+    // If all rows are 100% completed, display the final row[cite: 11]
     return _basicRowProgression.last;
   }
 
@@ -264,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _buildTopHeader(),
             Expanded(
-              // ListenableBuilder dynamically rebuilds Home on progress and streak updates
+              // ListenableBuilder dynamically rebuilds Home on progress and streak updates[cite: 11]
               child: ListenableBuilder(
                 listenable: ProgressService.instance,
                 builder: (context, _) {
@@ -277,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _buildOverallProgressCard(ps),
                       const SizedBox(height: 24),
-                      // Passes ProgressService to dynamically update active row & checkpoints
+                      // Passes ProgressService to dynamically update active row & checkpoints[cite: 11]
                       _buildContinueLearningCard(ps),
                       const SizedBox(height: 24),
                       _buildInteractiveStreakCard(ps),
@@ -334,8 +341,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildOverallProgressCard(ProgressService ps) {
-    // 104 standard Kana per system (46 basic + 25 dakuon + 33 yoon)
-    const int totalKana = 208; // 104 Hiragana + 104 Katakana
+    // 104 standard Kana per system (46 basic + 25 dakuon + 33 yoon)[cite: 11]
+    const int totalKana = 208; // 104 Hiragana + 104 Katakana[cite: 11]
     final double overallPercent = (ps.totalMastered / totalKana).clamp(
       0.0,
       1.0,
@@ -501,14 +508,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Displays the continue cards reading real stored progress checkpoints.
-  /// Automatically advances to the next row (e.g. Ka row) once the previous row is completed.
+  /// Displays the continue cards reading real stored progress checkpoints.[cite: 11]
+  /// Automatically advances to the next row (e.g. Ka row) once the previous row is completed.[cite: 11]
   Widget _buildContinueLearningCard(ProgressService ps) {
-    // 1. Dynamically determine active rows for Hiragana and Katakana
+    // 1. Dynamically determine active rows for Hiragana and Katakana[cite: 11]
     final hRow = _getActiveRow(ps, 'Hiragana');
     final kRow = _getActiveRow(ps, 'Katakana');
 
-    // 2. Read saved checkpoints for each active row
+    // 2. Read saved checkpoints for each active row[cite: 11]
     final hProg = ps.getRowProgress(
       writingSystem: 'Hiragana',
       rowTitle: hRow.key,
@@ -530,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
       headerIcon: Icons.school_outlined,
       child: Column(
         children: [
-          // Hiragana Active Row Subcard
+          // Hiragana Active Row Subcard[cite: 11]
           _buildContinueRowSubCard(
             title: 'Hiragana - ${hRow.displayName}',
             characters: hRow.hiraganaChars,
@@ -540,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Katakana Active Row Subcard (Displays characters and advances automatically)
+          // Katakana Active Row Subcard (Displays characters and advances automatically)[cite: 11]
           _buildContinueRowSubCard(
             title: 'Katakana - ${kRow.displayName}',
             characters: kRow.katakanaChars,
@@ -724,8 +731,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Formatted as "day/s" to match design specs
                       Text(
-                        '${ps.streakDays} days',
+                        '${ps.streakDays} day/s',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
@@ -746,7 +754,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              // Daily dots driven by shared_preferences calendar data
+              // Daily dots driven by shared_preferences calendar data[cite: 11]
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: List.generate(7, (index) {
