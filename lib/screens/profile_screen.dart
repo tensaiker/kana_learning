@@ -14,6 +14,9 @@ class AppColors {
   static const Color textLight = Color(0xFF8B8076);
 
   static const Color sage = Color(0xFFB7C9B2);
+  static const Color lightSage = Color(0xFFE4EFE7);
+  static const Color skyBlue = Color(0xFFA5C4E5);
+  static const Color lightSkyBlue = Color(0xFFEBF0F5);
   static const Color greenButton = Color(0xFF6EAA78);
   static const Color dangerRed = Color(0xFFD88A82);
   static const Color flameOrange = Color(0xFFE06229);
@@ -43,10 +46,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Icons.coffee,
   ];
 
-  // Study goal preferences
-  int _dailyGoalMinutes = 10;
-  final List<int> _goalOptions = [5, 10, 15, 20];
-
   // Speech engine settings
   double _speechRate = 0.5;
   double _speechVolume = 1.0;
@@ -72,7 +71,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _userName = _prefs.getString('profile_username') ?? 'Kerby';
       _selectedAvatarIndex = _prefs.getInt('profile_avatar_idx') ?? 0;
-      _dailyGoalMinutes = _prefs.getInt('settings_daily_goal') ?? 10;
       _speechRate = _prefs.getDouble('settings_speech_rate') ?? 0.5;
       _speechVolume = _prefs.getDouble('settings_speech_volume') ?? 1.0;
       _soundFxEnabled = _prefs.getBool('settings_sound_fx') ?? true;
@@ -106,6 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEditNameDialog() {
+    TactileFeedback.press();
     final controller = TextEditingController(text: _userName);
     showDialog(
       context: context,
@@ -152,7 +151,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              TactileFeedback.toggle();
+              Navigator.pop(context);
+            },
             child: const Text(
               'Cancel',
               style: TextStyle(color: AppColors.textLight),
@@ -160,6 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           GestureDetector(
             onTap: () {
+              TactileFeedback.press();
               final newName = controller.text.trim();
               if (newName.isNotEmpty) {
                 setState(() => _userName = newName);
@@ -189,6 +192,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showAvatarPicker() {
+    TactileFeedback.press();
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.cream,
@@ -255,6 +259,350 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ===========================================================================
+  // SOUND & TTS MODAL SHEET (Audio + Tactile & Haptics)
+  // ===========================================================================
+  void _showSoundSettingsModal() {
+    TactileFeedback.press();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              16,
+              20,
+              MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.taupe,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.volume_up_outlined,
+                        color: AppColors.textDark,
+                        size: 24,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Sound & Audio Settings',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  // SUBSECTION 1: AUDIO & PRONUNCIATION (TTS)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.beige.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.textDark, width: 1.5),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Audio & Pronunciation (TTS)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Speech Speed',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            Text(
+                              '${_speechRate.toStringAsFixed(2)}x',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: AppColors.taupe,
+                            inactiveTrackColor: AppColors.beige,
+                            thumbColor: AppColors.sand,
+                            overlayColor: AppColors.sand.withOpacity(0.3),
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 9,
+                            ),
+                            trackHeight: 5,
+                          ),
+                          child: Slider(
+                            value: _speechRate,
+                            min: 0.25,
+                            max: 1.0,
+                            divisions: 15,
+                            onChanged: (val) {
+                              setModalState(() => _speechRate = val);
+                              setState(() => _speechRate = val);
+                              _savePreference('settings_speech_rate', val);
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Speech Volume',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            Text(
+                              '${(_speechVolume * 100).toInt()}%',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: AppColors.taupe,
+                            inactiveTrackColor: AppColors.beige,
+                            thumbColor: AppColors.sand,
+                            overlayColor: AppColors.sand.withOpacity(0.3),
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 9,
+                            ),
+                            trackHeight: 5,
+                          ),
+                          child: Slider(
+                            value: _speechVolume,
+                            min: 0.0,
+                            max: 1.0,
+                            divisions: 10,
+                            onChanged: (val) {
+                              setModalState(() => _speechVolume = val);
+                              setState(() => _speechVolume = val);
+                              _savePreference('settings_speech_volume', val);
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Center(
+                          child: GestureDetector(
+                            onTap: _testPronunciation,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.sand,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: AppColors.textDark,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.volume_up,
+                                    color: AppColors.textDark,
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Test Voice: こんにちは',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: AppColors.textDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // SUBSECTION 2: TACTILE AND HAPTICS
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.beige.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.textDark, width: 1.5),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Tactile & Haptics',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _buildToggleRow(
+                          label: 'Sound Effects (Clicks)',
+                          value: _soundFxEnabled,
+                          onChanged: (val) {
+                            TactileFeedback.toggle();
+                            setModalState(() => _soundFxEnabled = val);
+                            setState(() => _soundFxEnabled = val);
+                            _savePreference('settings_sound_fx', val);
+                            TactileFeedback.soundEnabled = val;
+                          },
+                        ),
+                        const Divider(
+                          color: AppColors.textDark,
+                          height: 24,
+                          thickness: 1,
+                        ),
+                        _buildToggleRow(
+                          label: 'Haptic Feedback (Vibrations)',
+                          value: _hapticsEnabled,
+                          onChanged: (val) {
+                            TactileFeedback.toggle();
+                            setModalState(() => _hapticsEnabled = val);
+                            setState(() => _hapticsEnabled = val);
+                            _savePreference('settings_haptics', val);
+                            TactileFeedback.hapticsEnabled = val;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // DATA MANAGEMENT MODAL (Reset Progress)
+  // ===========================================================================
+  void _showDataManagementModal() {
+    TactileFeedback.press();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.taupe,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Row(
+              children: [
+                Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.dangerRed,
+                  size: 24,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Data Management',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildActionButton(
+              label: 'Reset Mastered Kana',
+              color: AppColors.taupe,
+              onTap: () {
+                Navigator.pop(context);
+                _showResetConfirmDialog(resetAll: false);
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildActionButton(
+              label: 'Reset All Data & Streaks',
+              color: AppColors.dangerRed,
+              isDestructive: true,
+              onTap: () {
+                Navigator.pop(context);
+                _showResetConfirmDialog(resetAll: true);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showResetConfirmDialog({required bool resetAll}) {
     TactileFeedback.error();
     showDialog(
@@ -291,7 +639,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              TactileFeedback.toggle();
+              Navigator.pop(context);
+            },
             child: const Text(
               'Cancel',
               style: TextStyle(color: AppColors.textDark),
@@ -393,24 +744,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       vertical: 20,
                     ),
                     children: [
-                      // 1. Profile User Badge Card
+                      // 1. Learner Profile Card with 3 Badges (Streak, Hiragana, Katakana)
                       _buildProfileCard(ps),
                       const SizedBox(height: 24),
 
-                      // 2. Daily Study Goals Card
-                      _buildDailyGoalsCard(),
+                      // 2. Preferences Card (Notification, Sound -> TTS & Haptics, Appearance)
+                      _buildPreferencesCard(),
                       const SizedBox(height: 24),
 
-                      // 3. Audio & Speech Settings Card
-                      _buildAudioSettingsCard(),
-                      const SizedBox(height: 24),
-
-                      // 4. Tactile & Haptic Feedback Toggles Card
-                      _buildTactileSettingsCard(),
-                      const SizedBox(height: 24),
-
-                      // 5. Danger Zone / Data Management Card
-                      _buildDangerZoneCard(),
+                      // 3. App Card (About the app -> Features, Reset Progress -> Data Management)
+                      _buildAppCard(),
                       const SizedBox(height: 30),
                     ],
                   );
@@ -438,26 +781,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Profile & Settings',
+            'Profile',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
             ),
           ),
-          Icon(Icons.settings_outlined, color: AppColors.textDark, size: 28),
+          Icon(Icons.person_outline, color: AppColors.textDark, size: 28),
         ],
       ),
     );
   }
 
   // ===========================================================================
-  // 2. USER PROFILE SUMMARY CARD
+  // 2. USER PROFILE SUMMARY CARD (WITH 3 STAT BADGES)
   // ===========================================================================
   Widget _buildProfileCard(ProgressService ps) {
     return _buildCardBase(
       headerText: 'Learner Profile',
       headerIcon: Icons.badge_outlined,
+      trailingAction: GestureDetector(
+        onTap: _showEditNameDialog,
+        child: const Icon(
+          Icons.edit_outlined,
+          color: AppColors.textDark,
+          size: 20,
+        ),
+      ),
       child: Column(
         children: [
           Row(
@@ -542,7 +893,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'Japanese Kana Explorer',
+                      'Japanese Kana Learner',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textLight,
@@ -555,24 +906,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          // Quick Stats Bar
+
+          // 3 Stat Badges side by side (Streak, Hiragana Masters, Katakana Masters)
           Row(
             children: [
               Expanded(
                 child: _buildStatBadge(
                   icon: Icons.local_fire_department,
                   iconColor: AppColors.flameOrange,
-                  title: '${ps.streakDays} Days',
+                  title: '${ps.streakDays}',
                   subtitle: 'Streak',
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildStatBadge(
                   icon: Icons.check_circle_outline,
                   iconColor: AppColors.greenButton,
-                  title: '${ps.totalMastered} Kana',
-                  subtitle: 'Mastered',
+                  title: '${ps.masteredHiraganaCount}/104',
+                  subtitle: 'Hiragana',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatBadge(
+                  icon: Icons.check_circle_outline,
+                  iconColor: AppColors.skyBlue,
+                  title: '${ps.masteredKatakanaCount}/104',
+                  subtitle: 'Katakana',
                 ),
               ),
             ],
@@ -589,107 +950,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String subtitle,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
         color: AppColors.beige.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.textDark, width: 1.5),
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 24),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textLight,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // 3. DAILY STUDY GOAL CARD
-  // ===========================================================================
-  Widget _buildDailyGoalsCard() {
-    return _buildCardBase(
-      headerText: 'Daily Study Goal',
-      headerIcon: Icons.timer_outlined,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Target practice time each day:',
-            style: TextStyle(
+          Icon(icon, color: iconColor, size: 22),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
               color: AppColors.textDark,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: _goalOptions.map((minutes) {
-              final isSelected = _dailyGoalMinutes == minutes;
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: GestureDetector(
-                    onTap: () {
-                      TactileFeedback.press();
-                      setState(() => _dailyGoalMinutes = minutes);
-                      _savePreference('settings_daily_goal', minutes);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.sand : AppColors.beige,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppColors.textDark,
-                          width: isSelected ? 2.2 : 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.textDark,
-                            offset: Offset(0, isSelected ? 1 : 3),
-                            blurRadius: 0,
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '${minutes}m',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: isSelected
-                              ? FontWeight.w900
-                              : FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                    ),
-                  ),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textLight,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // 3. PREFERENCES CARD
+  // ===========================================================================
+  Widget _buildPreferencesCard() {
+    return _buildCardBase(
+      headerText: 'Preferences',
+      headerIcon: Icons.tune_rounded,
+      child: Column(
+        children: [
+          _buildSettingsNavigationTile(
+            icon: Icons.notifications_none_rounded,
+            title: 'Notification',
+            subtitle: 'Manage your notifications',
+            onTap: () {
+              TactileFeedback.press();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Daily study reminders are scheduled.'),
+                  duration: Duration(seconds: 2),
                 ),
               );
-            }).toList(),
+            },
+          ),
+          const Divider(color: AppColors.textDark, height: 20, thickness: 1),
+          _buildSettingsNavigationTile(
+            icon: Icons.volume_up_outlined,
+            title: 'Sound',
+            subtitle: 'Adjust audio & tactile settings',
+            onTap: _showSoundSettingsModal,
+          ),
+          const Divider(color: AppColors.textDark, height: 20, thickness: 1),
+          _buildSettingsNavigationTile(
+            icon: Icons.palette_outlined,
+            title: 'Appearance',
+            subtitle: 'Customize your app theme',
+            onTap: () {
+              TactileFeedback.press();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Cozy stationery pastel palette is active.'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -697,181 +1034,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ===========================================================================
-  // 4. AUDIO & PRONUNCIATION SETTINGS CARD
+  // 4. APP CARD
   // ===========================================================================
-  Widget _buildAudioSettingsCard() {
+  Widget _buildAppCard() {
     return _buildCardBase(
-      headerText: 'Audio & Pronunciation (TTS)',
-      headerIcon: Icons.volume_up_outlined,
+      headerText: 'App',
+      headerIcon: Icons.info_outline_rounded,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Speech Rate Slider
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Speech Speed',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: AppColors.textDark,
+          _buildSettingsNavigationTile(
+            icon: Icons.info_outline,
+            title: 'About the app',
+            subtitle: 'Version 1.0.0',
+            onTap: () {
+              TactileFeedback.press();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AboutApplicationScreen(),
                 ),
-              ),
-              Text(
-                '${(_speechRate).toStringAsFixed(2)}x',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: AppColors.textDark,
-                ),
-              ),
-            ],
+              );
+            },
           ),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: AppColors.taupe,
-              inactiveTrackColor: AppColors.beige,
-              thumbColor: AppColors.sand,
-              overlayColor: AppColors.sand.withOpacity(0.3),
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-              trackHeight: 6,
-            ),
-            child: Slider(
-              value: _speechRate,
-              min: 0.25,
-              max: 1.0,
-              divisions: 15,
-              onChanged: (val) {
-                setState(() => _speechRate = val);
-                _savePreference('settings_speech_rate', val);
-              },
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Speech Volume Slider
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Speech Volume',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: AppColors.textDark,
-                ),
-              ),
-              Text(
-                '${(_speechVolume * 100).toInt()}%',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: AppColors.textDark,
-                ),
-              ),
-            ],
-          ),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: AppColors.taupe,
-              inactiveTrackColor: AppColors.beige,
-              thumbColor: AppColors.sand,
-              overlayColor: AppColors.sand.withOpacity(0.3),
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-              trackHeight: 6,
-            ),
-            child: Slider(
-              value: _speechVolume,
-              min: 0.0,
-              max: 1.0,
-              divisions: 10,
-              onChanged: (val) {
-                setState(() => _speechVolume = val);
-                _savePreference('settings_speech_volume', val);
-              },
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Pronunciation Test Button
-          Center(
-            child: GestureDetector(
-              onTap: _testPronunciation,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.taupe,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.textDark, width: 1.8),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppColors.textDark,
-                      offset: Offset(0, 3),
-                      blurRadius: 0,
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.play_circle_outline,
-                      color: AppColors.textDark,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Test Voice: こんにちは',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          const Divider(color: AppColors.textDark, height: 20, thickness: 1),
+          _buildSettingsNavigationTile(
+            icon: Icons.refresh_rounded,
+            title: 'Reset Progress',
+            subtitle: 'Clear your data and start over',
+            onTap: _showDataManagementModal,
           ),
         ],
       ),
     );
   }
 
-  // ===========================================================================
-  // 5. TACTILE & FEEDBACK SETTINGS CARD
-  // ===========================================================================
-  Widget _buildTactileSettingsCard() {
-    return _buildCardBase(
-      headerText: 'Tactile & Haptics',
-      headerIcon: Icons.vibration_outlined,
-      child: Column(
+  Widget _buildSettingsNavigationTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
         children: [
-          _buildToggleRow(
-            label: 'Sound Effects (Clicks)',
-            value: _soundFxEnabled,
-            onChanged: (val) {
-              TactileFeedback.toggle();
-              setState(() => _soundFxEnabled = val);
-              _savePreference('settings_sound_fx', val);
-              TactileFeedback.soundEnabled = val;
-            },
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.beige.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.textDark, width: 1.2),
+            ),
+            child: Icon(icon, color: AppColors.textDark, size: 20),
           ),
-          const Divider(color: AppColors.textDark, height: 24, thickness: 1),
-          _buildToggleRow(
-            label: 'Haptic Feedback (Vibrations)',
-            value: _hapticsEnabled,
-            onChanged: (val) {
-              TactileFeedback.toggle();
-              setState(() => _hapticsEnabled = val);
-              _savePreference('settings_haptics', val);
-              TactileFeedback.hapticsEnabled = val;
-            },
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
+          const Icon(Icons.chevron_right, color: AppColors.textDark, size: 22),
         ],
       ),
     );
@@ -924,32 +1166,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ===========================================================================
-  // 6. DANGER ZONE / DATA RESET CARD
-  // ===========================================================================
-  Widget _buildDangerZoneCard() {
-    return _buildCardBase(
-      headerText: 'Data Management',
-      headerIcon: Icons.delete_outline_rounded,
-      child: Column(
-        children: [
-          _buildActionButton(
-            label: 'Reset Mastered Kana',
-            color: AppColors.taupe,
-            onTap: () => _showResetConfirmDialog(resetAll: false),
-          ),
-          const SizedBox(height: 14),
-          _buildActionButton(
-            label: 'Reset All Data & Streaks',
-            color: AppColors.dangerRed,
-            isDestructive: true,
-            onTap: () => _showResetConfirmDialog(resetAll: true),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActionButton({
     required String label,
     required Color color,
@@ -992,6 +1208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildCardBase({
     required String headerText,
     required IconData headerIcon,
+    Widget? trailingAction,
     required Widget child,
   }) {
     return Container(
@@ -1030,12 +1247,376 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppColors.textDark,
                   ),
                 ),
+                const Spacer(),
+                if (trailingAction != null) trailingAction,
               ],
             ),
           ),
           Padding(padding: const EdgeInsets.all(20.0), child: child),
         ],
       ),
+    );
+  }
+}
+
+// =============================================================================
+// ABOUT APPLICATION SCREEN (FEATURES PANEL & CREDITS)
+// =============================================================================
+class AboutApplicationScreen extends StatelessWidget {
+  const AboutApplicationScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.beige,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top Bar
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              decoration: const BoxDecoration(
+                color: AppColors.sand,
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(16),
+                ),
+                border: Border(
+                  bottom: BorderSide(color: AppColors.textDark, width: 2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: AppColors.textDark,
+                      size: 22,
+                    ),
+                    onPressed: () {
+                      TactileFeedback.toggle();
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'About',
+                    style: TextStyle(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 20,
+                ),
+                children: [
+                  // 1. Application Information
+                  _buildAboutCard(
+                    headerText: 'Application Information',
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 68,
+                          height: 68,
+                          decoration: BoxDecoration(
+                            color: AppColors.sage,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.textDark,
+                              width: 2,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'かな',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Kana Application',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                'A cozy, tactile Japanese Kana learning companion crafted with spaced repetition, native audio pronunciation, and interactive stroke tracing.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textLight,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // 2. Features Panel
+                  _buildAboutCard(
+                    headerText: 'Features',
+                    headerIcon: Icons.menu_book_rounded,
+                    child: Column(
+                      children: [
+                        _buildFeaturePill(
+                          kanaChar: 'あ',
+                          title: 'Hiragana Lessons',
+                          description:
+                              'Master all 46 basic characters, dakuon, and compound yoon.',
+                          bgColor: AppColors.lightSage,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildFeaturePill(
+                          kanaChar: 'ア',
+                          title: 'Katakana Lessons',
+                          description:
+                              'Build your reading confidence for loanwords and foreign terms.',
+                          bgColor: const Color(0xFFF3E7F7),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildFeaturePill(
+                          icon: Icons.edit_note_rounded,
+                          title: 'Interactive Stroke Writing',
+                          description:
+                              'Follow stroke animations and trace Kana on canvas with real-time accuracy.',
+                          bgColor: AppColors.lightSkyBlue,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildFeaturePill(
+                          icon: Icons.extension_outlined,
+                          title: 'Word Builder',
+                          description:
+                              'Assemble real JLPT vocabulary from syllable tiles with instant TTS feedback.',
+                          bgColor: const Color(0xFFFFF0D4),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildFeaturePill(
+                          icon: Icons.style_outlined,
+                          title: 'Flashcard SRS',
+                          description:
+                              'Reinforce recognition with customizable spaced-repetition difficulty ratings.',
+                          bgColor: AppColors.beige.withOpacity(0.6),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildFeaturePill(
+                          icon: Icons.menu_book_rounded,
+                          title: 'Vocabulary Library',
+                          description:
+                              'Offline dictionary with live search, English meanings, and audio replay.',
+                          bgColor: AppColors.cream,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // 3. Credits
+                  _buildAboutCard(
+                    headerText: 'Credits',
+                    headerIcon: Icons.code_rounded,
+                    child: const Column(
+                      children: [
+                        _CreditRow(label: 'Developer', value: 'Kerby Cruz'),
+                        SizedBox(height: 10),
+                        _CreditRow(label: 'UI/UX Design', value: 'Kerby Cruz'),
+                        SizedBox(height: 10),
+                        _CreditRow(
+                          label: 'Software Used',
+                          value:
+                              '• Flutter / Dart — app development\n• VS Code — code editor\n• Figma — UI/UX design',
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAboutCard({
+    required String headerText,
+    IconData? headerIcon,
+    required Widget child,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cream,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.textDark, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.textDark,
+            offset: Offset(0, 4),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: AppColors.sand,
+              border: Border(
+                bottom: BorderSide(color: AppColors.textDark, width: 2),
+              ),
+            ),
+            child: Row(
+              children: [
+                if (headerIcon != null) ...[
+                  Icon(headerIcon, color: AppColors.textDark, size: 18),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  headerText,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(padding: const EdgeInsets.all(16.0), child: child),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeaturePill({
+    String? kanaChar,
+    IconData? icon,
+    required String title,
+    required String description,
+    required Color bgColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.textDark, width: 1.5),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.cream,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.textDark, width: 1.2),
+            ),
+            alignment: Alignment.center,
+            child: kanaChar != null
+                ? Text(
+                    kanaChar,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
+                  )
+                : Icon(icon, color: AppColors.textDark, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textLight,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreditRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _CreditRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textLight,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

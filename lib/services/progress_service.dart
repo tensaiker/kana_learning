@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Lightweight data holder for row-level question checkpoints (e.g., 5/20)[cite: 15]
+/// Lightweight data holder for row-level question checkpoints (e.g., 5/20)
 class RowProgressData {
   final int current;
   final int total;
@@ -9,7 +9,7 @@ class RowProgressData {
 }
 
 /// Central singleton service managing persistent app progress, streaks,
-/// row checkpoints, practice session statistics, and row completion locks via SharedPreferences.[cite: 15]
+/// row checkpoints, practice session statistics, and row completion locks via SharedPreferences.
 class ProgressService extends ChangeNotifier {
   static final ProgressService instance = ProgressService._internal();
   ProgressService._internal();
@@ -21,7 +21,7 @@ class ProgressService extends ChangeNotifier {
   String _lastActiveDate = '';
   List<bool> _activeDaysThisWeek = List.filled(7, false);
 
-  // Active script state for LearnScreen (true = Hiragana, false = Katakana)[cite: 15]
+  // Active script state for LearnScreen (true = Hiragana, false = Katakana)
   bool selectedLearnIsHiragana = true;
 
   // --- PRACTICE & VOCABULARY PERSISTENCE STATES ---
@@ -29,7 +29,7 @@ class ProgressService extends ChangeNotifier {
   int _wordsCompletedCount = 0;
   int _flashcardsReviewedCount = 0;
 
-  /// Initializes SharedPreferences and loads saved progress[cite: 15]
+  /// Initializes SharedPreferences and loads saved progress
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _loadData();
@@ -89,14 +89,13 @@ class ProgressService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sets whether the Learn screen displays Hiragana or Katakana[cite: 15]
+  /// Sets whether the Learn screen displays Hiragana or Katakana
   void setLearnScript({required bool isHiragana}) {
     selectedLearnIsHiragana = isHiragana;
     notifyListeners();
   }
 
-  /// Saves row question progress when exiting a quiz session (e.g., 5/20)[cite: 15]
-  /// Fixes error in quiz_screen.dart[cite: 15]
+  /// Saves row question progress when exiting a quiz session (e.g., 5/20)
   Future<void> saveRowProgress({
     required String writingSystem,
     required String rowTitle,
@@ -109,7 +108,7 @@ class ProgressService extends ChangeNotifier {
     await _prefs.setInt(keyCurrent, currentQuestion);
     await _prefs.setInt(keyTotal, totalQuestions);
 
-    // If all questions are finished, mark the row completed to unlock next row[cite: 15]
+    // If all questions are finished, mark the row completed to unlock next row
     if (currentQuestion >= totalQuestions && totalQuestions > 0) {
       await _prefs.setBool('row_completed_${writingSystem}_$rowTitle', true);
     }
@@ -117,8 +116,7 @@ class ProgressService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Retrieves stored row progress for Home dashboard display (defaults to 0/20)[cite: 15]
-  /// Fixes error in main.dart[cite: 15]
+  /// Retrieves stored row progress for Home dashboard display (defaults to 0/20)
   RowProgressData getRowProgress({
     required String writingSystem,
     required String rowTitle,
@@ -130,8 +128,7 @@ class ProgressService extends ChangeNotifier {
     return RowProgressData(current: current, total: total);
   }
 
-  /// Checks if a prerequisite row is completed[cite: 15]
-  /// Fixes error in learn_screen.dart[cite: 15]
+  /// Checks if a prerequisite row is completed
   bool isRowCompleted({
     required String writingSystem,
     required String rowTitle,
@@ -139,7 +136,7 @@ class ProgressService extends ChangeNotifier {
     return _prefs.getBool('row_completed_${writingSystem}_$rowTitle') ?? false;
   }
 
-  /// Saves a newly mastered character[cite: 15]
+  /// Saves a newly mastered character
   void markKanaMastered(String kana) {
     if (kana.isEmpty || _masteredKana.contains(kana)) return;
 
@@ -153,7 +150,6 @@ class ProgressService extends ChangeNotifier {
   // ===========================================================================
 
   /// Increments total reviewed flashcard count in SharedPreferences.
-  /// Call this when a card is flipped or rated in flashcard_screen.dart.
   Future<void> recordFlashcardReviewed() async {
     _flashcardsReviewedCount += 1;
     await _prefs.setInt('flashcardsReviewedCount', _flashcardsReviewedCount);
@@ -188,15 +184,65 @@ class ProgressService extends ChangeNotifier {
     return _masteredWords.contains(word);
   }
 
-  // --- GETTERS ---
-  int get streakDays => _streakDays; //[cite: 15]
-  List<bool> get activeDaysThisWeek => _activeDaysThisWeek; //[cite: 15]
-  int get totalMastered => _masteredKana.length; //[cite: 15]
+  // ===========================================================================
+  // DATA MANAGEMENT & RESET METHODS
+  // ===========================================================================
 
-  int get masteredHiraganaCount =>
-      _masteredKana.where(_isHiragana).length; //[cite: 15]
-  int get masteredKatakanaCount =>
-      _masteredKana.where(_isKatakana).length; //[cite: 15]
+  /// Resets only mastered Kana characters and mastered vocabulary words.
+  /// Preserves the user's study streak, calendar dots, and profile settings.
+  Future<void> resetMasteredKana() async {
+    _masteredKana.clear();
+    _masteredWords.clear();
+    await _prefs.remove('masteredKana');
+    await _prefs.remove('masteredWords');
+    notifyListeners();
+  }
+
+  /// Resets all row question progress checkpoints (e.g., 5/20) and unlocked row flags.
+  Future<void> resetRowCheckpoints() async {
+    final keys = _prefs.getKeys();
+    for (final key in keys) {
+      if (key.startsWith('row_progress_') || key.startsWith('row_completed_')) {
+        await _prefs.remove(key);
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Complete reset: erases mastered characters, row progress, streaks, and practice metrics.
+  /// User preferences (username, avatar, TTS settings) are preserved.
+  Future<void> resetAllProgress() async {
+    _masteredKana.clear();
+    _masteredWords.clear();
+    _wordsCompletedCount = 0;
+    _flashcardsReviewedCount = 0;
+    _streakDays = 0;
+    _lastActiveDate = '';
+    _activeDaysThisWeek = List.filled(7, false);
+
+    await _prefs.remove('masteredKana');
+    await _prefs.remove('masteredWords');
+    await _prefs.remove('wordsCompletedCount');
+    await _prefs.remove('flashcardsReviewedCount');
+    await _prefs.remove('streakDays');
+    await _prefs.remove('lastActiveDate');
+
+    for (int i = 0; i < 7; i++) {
+      await _prefs.remove('activeDay_$i');
+    }
+
+    await resetRowCheckpoints();
+    _updateStreak();
+    notifyListeners();
+  }
+
+  // --- GETTERS ---
+  int get streakDays => _streakDays;
+  List<bool> get activeDaysThisWeek => _activeDaysThisWeek;
+  int get totalMastered => _masteredKana.length;
+
+  int get masteredHiraganaCount => _masteredKana.where(_isHiragana).length;
+  int get masteredKatakanaCount => _masteredKana.where(_isKatakana).length;
 
   // Practice getters
   int get wordsCompletedCount => _wordsCompletedCount;
@@ -205,14 +251,14 @@ class ProgressService extends ChangeNotifier {
   Set<String> get masteredWords => Set.unmodifiable(_masteredWords);
 
   bool _isHiragana(String c) {
-    if (c.isEmpty) return false; //[cite: 15]
-    int code = c.codeUnitAt(0); //[cite: 15]
-    return code >= 0x3040 && code <= 0x309F; //[cite: 15]
+    if (c.isEmpty) return false;
+    int code = c.codeUnitAt(0);
+    return code >= 0x3040 && code <= 0x309F;
   }
 
   bool _isKatakana(String c) {
-    if (c.isEmpty) return false; //[cite: 15]
-    int code = c.codeUnitAt(0); //[cite: 15]
-    return code >= 0x30A0 && code <= 0x30FF; //[cite: 15]
+    if (c.isEmpty) return false;
+    int code = c.codeUnitAt(0);
+    return code >= 0x30A0 && code <= 0x30FF;
   }
 }
