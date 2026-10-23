@@ -4,11 +4,11 @@ import 'dart:math';
 import 'quiz_screen.dart';
 import 'flashcard_screen.dart';
 import '../features/writing/data/vocabulary_data.dart';
-import '../services/progress_service.dart'; // Imports persistence service for vocabulary & practice metrics[cite: 17]
-import '../services/vocabulary_service.dart'; // Imports offline JSON vocabulary database service[cite: 17]
-import '../utils/tactile_feedback.dart'; // Imports physical tactile sound & haptic feedback[cite: 17]
+import '../services/progress_service.dart';
+import '../services/vocabulary_service.dart';
+import '../utils/tactile_feedback.dart';
 
-// --- COLOR PALETTE ---[cite: 17]
+// --- COLOR PALETTE ---
 class AppColors {
   static const Color cream = Color(0xFFFDF8F3);
   static const Color beige = Color(0xFFEADFD1);
@@ -17,33 +17,25 @@ class AppColors {
   static const Color textDark = Color(0xFF5D534A);
   static const Color textLight = Color(0xFF8B8076);
 
-  // Hiragana Colors (Green)[cite: 17]
+  // Hiragana Colors (Green)
   static const Color sage = Color(0xFFB7C9B2);
   static const Color lightSage = Color(0xFFE4EFE7);
   static const Color greenButton = Color(0xFF6EAA78);
 
-  // Katakana Colors (Blue)[cite: 17]
+  // Katakana Colors (Blue)
   static const Color skyBlue = Color(0xFFA5C4E5);
   static const Color lightSkyBlue = Color(0xFFEBF0F5);
 
-  // Difficulty & Feedback Colors[cite: 17]
-  static const Color ratingAgain = Color(
-    0xFFD88A82,
-  ); // Soft pastel red[cite: 17]
-  static const Color ratingHard = Color(
-    0xFFE29E57,
-  ); // Soft pastel orange[cite: 17]
-  static const Color ratingGood = Color(0xFF9FB89A); // Sage green[cite: 17]
-  static const Color ratingEasy = Color(
-    0xFFA5C4E5,
-  ); // Soft pastel blue[cite: 17]
+  // Difficulty & Feedback Colors
+  static const Color ratingAgain = Color(0xFFD88A82);
+  static const Color ratingHard = Color(0xFFE29E57);
+  static const Color ratingGood = Color(0xFF9FB89A);
+  static const Color ratingEasy = Color(0xFFA5C4E5);
   static const Color flameOrange = Color(0xFFE06229);
 }
 
-// Question types for flashcard learning[cite: 17]
 enum FlashcardQuestionType { kanaToRomaji, listening, romajiToKana, mix }
 
-// Question types for word builder[cite: 17]
 enum WordBuilderQuestionType { kanaToRomaji, romajiToKana }
 
 enum WordLength { short, medium, long }
@@ -56,36 +48,24 @@ class PracticeScreen extends StatefulWidget {
 }
 
 class _PracticeScreenState extends State<PracticeScreen> {
-  // Master toggle: true = Hiragana, false = Katakana[cite: 17]
   bool _isHiragana = true;
-
-  // Sub-screen navigation: null = Hub, 'flashcard', 'word_builder', 'vocab_library'[cite: 17]
   String? _activeSubScreen;
 
-  // Flashcard setup state[cite: 17]
   FlashcardQuestionType _selectedQuestionType =
       FlashcardQuestionType.kanaToRomaji;
-  String _selectedDifficulty =
-      'All'; // 'Easy', 'Hard', 'Good', 'Again', 'All'[cite: 17]
+  String _selectedDifficulty = 'All';
   bool _showDifficultyFilter = false;
   bool _isRowsExpanded = false;
 
-  // Word Builder setup state[cite: 17]
   WordBuilderQuestionType _wbQuestionType =
       WordBuilderQuestionType.romajiToKana;
   WordLength _wbLength = WordLength.short;
   int _wbWordsPerRound = 30;
 
-  // Vocabulary Library search query[cite: 17]
   String _vocabSearchQuery = '';
-
-  // Selected row IDs[cite: 17]
   late Set<String> _selectedRowIds;
-
-  // TTS Engine for previewing vocabulary words[cite: 17]
   final FlutterTts _flutterTts = FlutterTts();
 
-  // Row Definitions (Hiragana and Katakana)[cite: 17]
   final List<Map<String, dynamic>> _basicRows = [
     {
       'id': 'a',
@@ -1231,7 +1211,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: const BoxDecoration(
@@ -1280,8 +1259,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
               ],
             ),
           ),
-
-          // Search Field
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
@@ -1321,8 +1298,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
               ),
             ),
           ),
-
-          // Virtualized List: Only renders items currently on screen
           Expanded(
             child: filteredWords.isEmpty
                 ? const Center(
@@ -1353,7 +1328,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
     );
   }
 
-  /// Vocabulary Card matching the requested design (Spaced Kana, Romaji, English, Speaker on right)
   Widget _buildVocabularyCard(WordBuilderQuestion word) {
     final bool isMastered = ProgressService.instance.isWordMastered(word.kana);
 
@@ -1428,9 +1402,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
     );
   }
 
-  // ===========================================================================
-  // REUSABLE ACCORDION ROW SELECTOR & HELPERS
-  // ===========================================================================
   Widget _buildAccordionSelector(String systemName) {
     return Container(
       decoration: BoxDecoration(
@@ -1853,7 +1824,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
     }
 
     filtered.shuffle();
-
     final selectedSet = filtered.take(_wbWordsPerRound).toList();
 
     Navigator.push(
@@ -1871,7 +1841,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
 }
 
 // =============================================================================
-// 6. WORD BUILDER GAMEPLAY SCREEN (WITH ADAPTIVE RESPONSIVE SLOTS & DUPLICATE SUPPORT)
+// 6. WORD BUILDER GAMEPLAY SCREEN (PERFORMANCE & ZERO-JANK OPTIMIZED)
 // =============================================================================
 
 class WordBuilderGameScreen extends StatefulWidget {
@@ -1901,12 +1871,13 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
   int _correctCount = 0;
   final List<Map<String, dynamic>> _sessionWordLog = [];
 
-  // Player answer state
   late List<String?> _userSlots;
-  // Maps each slot index to the exact choice button index to support identical repeating syllables
   late List<int?> _slotChoiceIndices;
   late List<String> _currentChoices;
   late List<bool> _choiceUsed;
+
+  // Cached set of lowercase answer syllables for zero-allocation O(1) hint checks
+  late Set<String> _targetLowerSet;
 
   bool _isHintActive = false;
   bool _hasChecked = false;
@@ -1951,16 +1922,21 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
     _userSlots = List.filled(targetSyllables.length, null);
     _slotChoiceIndices = List.filled(targetSyllables.length, null);
 
-    // FIX: Start with a List containing ALL target syllables directly (preserving duplicates like multiple 'ta's)[cite: 17, 18]
+    // Precompute lowercase set for instant O(1) lookup during UI builds
+    _targetLowerSet = targetSyllables.map((s) => s.toLowerCase()).toSet();
+
+    // Preserve all target syllables (including duplicates)
     final List<String> choicesList = List<String>.from(targetSyllables);
     final Set<String> targetSet = Set.from(targetSyllables);
+    final Set<String> addedDistractors = Set.from(targetSet);
     final List<String> availableDistractors = [];
 
-    // Collect distractors from other questions in the pool[cite: 17]
+    // O(1) distractor collection
     for (var q in _questions) {
       final syllables = isRomajiChoices ? q.syllables : q.kanaSyllables;
       for (var s in syllables) {
-        if (!targetSet.contains(s) && !availableDistractors.contains(s)) {
+        if (!addedDistractors.contains(s)) {
+          addedDistractors.add(s);
           availableDistractors.add(s);
         }
       }
@@ -1968,7 +1944,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
     availableDistractors.shuffle();
 
-    // Ensure the 4-column GridView always has complete rows (minimum 8 choices)[cite: 17]
     final int minNeeded = max(8, targetSyllables.length + 2);
     final int targetChoiceCount = ((minNeeded + 3) ~/ 4) * 4;
 
@@ -1977,7 +1952,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
       choicesList.add(d);
     }
 
-    // Fallback distractors if the question list is small[cite: 17]
     if (choicesList.length < targetChoiceCount) {
       final fallbackDistractors = isRomajiChoices
           ? [
@@ -2052,13 +2026,11 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
     TactileFeedback.press();
 
-    // Find first empty slot[cite: 17]
     final emptyIndex = _userSlots.indexOf(null);
     if (emptyIndex != -1) {
       setState(() {
         _userSlots[emptyIndex] = _currentChoices[index];
-        _slotChoiceIndices[emptyIndex] =
-            index; // Binds exact choice index to this slot[cite: 17]
+        _slotChoiceIndices[emptyIndex] = index;
         _choiceUsed[index] = true;
       });
     }
@@ -2069,7 +2041,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
     TactileFeedback.press();
 
-    // Retrieves and un-uses the exact choice button instance[cite: 17]
     final choiceIndex = _slotChoiceIndices[slotIndex];
     setState(() {
       _userSlots[slotIndex] = null;
@@ -2181,7 +2152,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
           children: [
             Column(
               children: [
-                // Top Header Bar[cite: 17]
+                // Top Header Bar
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   decoration: const BoxDecoration(
@@ -2219,7 +2190,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                   ),
                 ),
 
-                // Main Gameplay Card[cite: 17]
+                // Main Gameplay Card
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
@@ -2263,7 +2234,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Prompt Box[cite: 17]
+                          // Prompt Box
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -2321,13 +2292,11 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                 ),
                                 const SizedBox(height: 18),
 
-                                // --- ADAPTIVE DYNAMIC SLOTS ---[cite: 17]
+                                // High-Performance Auto-Adjusting Slots
                                 LayoutBuilder(
                                   builder: (context, constraints) {
                                     final int totalSlots =
                                         targetSyllables.length;
-
-                                    // Margin scales down as word length increases[cite: 17]
                                     final double horizontalMargin =
                                         totalSlots > 5
                                         ? 2.5
@@ -2337,14 +2306,11 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                     final double availableWidth =
                                         constraints.maxWidth - totalMargin;
 
-                                    // Dynamic square dimension scaling[cite: 17]
                                     double slotDimension =
                                         (availableWidth / totalSlots).clamp(
                                           32.0,
                                           56.0,
                                         );
-
-                                    // Typography scales down proportionally[cite: 17]
                                     double slotFontSize = (slotDimension * 0.44)
                                         .clamp(13.0, 22.0);
 
@@ -2372,10 +2338,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
                                           return GestureDetector(
                                             onTap: () => _onSlotTapped(i),
-                                            child: AnimatedContainer(
-                                              duration: const Duration(
-                                                milliseconds: 150,
-                                              ),
+                                            child: Container(
                                               width: slotDimension,
                                               height: slotDimension,
                                               margin: EdgeInsets.symmetric(
@@ -2427,7 +2390,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
                           const SizedBox(height: 24),
 
-                          // 2x4 Choice Grid (Dynamic complete rows of 4)[cite: 17]
+                          // Optimized 2x4 Choice Grid (Direct Container rendering)
                           GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -2443,16 +2406,15 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                               final text = _currentChoices[i];
                               final isUsed = _choiceUsed[i];
 
-                              final bool isPartOfAnswer = targetSyllables
-                                  .map((s) => s.toLowerCase())
-                                  .contains(text.toLowerCase());
+                              // O(1) hash set lookup instead of O(N) linear map & search
                               final bool highlightHint =
-                                  _isHintActive && isPartOfAnswer && !isUsed;
+                                  _isHintActive &&
+                                  !isUsed &&
+                                  _targetLowerSet.contains(text.toLowerCase());
 
                               return GestureDetector(
                                 onTap: () => _onChoiceTapped(i),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 150),
+                                child: Container(
                                   decoration: BoxDecoration(
                                     color: isUsed
                                         ? AppColors.beige.withOpacity(0.3)
@@ -2465,7 +2427,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                       width: highlightHint ? 2.8 : 1.5,
                                     ),
                                     boxShadow: isUsed
-                                        ? []
+                                        ? const []
                                         : const [
                                             BoxShadow(
                                               color: AppColors.textDark,
@@ -2498,7 +2460,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
                           const SizedBox(height: 32),
 
-                          // Hint & Check buttons[cite: 17]
+                          // Hint & Check buttons
                           Row(
                             children: [
                               Expanded(
@@ -2903,7 +2865,7 @@ class WordBuilderResultScreen extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
-                    // Words Breakdown Card[cite: 17]
+                    // Words Breakdown Card
                     Container(
                       decoration: BoxDecoration(
                         color: AppColors.cream,
@@ -3133,7 +3095,7 @@ class WordBuilderResultScreen extends StatelessWidget {
 }
 
 // -----------------------------------------------------------------------------
-// HELPER 3D INTERACTIVE BUTTONS WITH TACTILE CLICKS[cite: 17]
+// HELPER 3D INTERACTIVE BUTTONS WITH TACTILE CLICKS
 // -----------------------------------------------------------------------------
 
 class _Interactive3DCard extends StatefulWidget {
