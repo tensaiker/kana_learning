@@ -4,11 +4,11 @@ import 'dart:math';
 import 'quiz_screen.dart';
 import 'flashcard_screen.dart';
 import '../features/writing/data/vocabulary_data.dart';
-import '../services/progress_service.dart'; // Imports persistence service for vocabulary & practice metrics
-import '../services/vocabulary_service.dart'; // Imports offline JSON vocabulary database service
-import '../utils/tactile_feedback.dart'; // Imports physical tactile sound & haptic feedback
+import '../services/progress_service.dart'; // Imports persistence service for vocabulary & practice metrics[cite: 17]
+import '../services/vocabulary_service.dart'; // Imports offline JSON vocabulary database service[cite: 17]
+import '../utils/tactile_feedback.dart'; // Imports physical tactile sound & haptic feedback[cite: 17]
 
-// --- COLOR PALETTE ---
+// --- COLOR PALETTE ---[cite: 17]
 class AppColors {
   static const Color cream = Color(0xFFFDF8F3);
   static const Color beige = Color(0xFFEADFD1);
@@ -17,27 +17,33 @@ class AppColors {
   static const Color textDark = Color(0xFF5D534A);
   static const Color textLight = Color(0xFF8B8076);
 
-  // Hiragana Colors (Green)
+  // Hiragana Colors (Green)[cite: 17]
   static const Color sage = Color(0xFFB7C9B2);
   static const Color lightSage = Color(0xFFE4EFE7);
   static const Color greenButton = Color(0xFF6EAA78);
 
-  // Katakana Colors (Blue)
+  // Katakana Colors (Blue)[cite: 17]
   static const Color skyBlue = Color(0xFFA5C4E5);
   static const Color lightSkyBlue = Color(0xFFEBF0F5);
 
-  // Difficulty & Feedback Colors
-  static const Color ratingAgain = Color(0xFFD88A82); // Soft pastel red
-  static const Color ratingHard = Color(0xFFE29E57); // Soft pastel orange
-  static const Color ratingGood = Color(0xFF9FB89A); // Sage green
-  static const Color ratingEasy = Color(0xFFA5C4E5); // Soft pastel blue
+  // Difficulty & Feedback Colors[cite: 17]
+  static const Color ratingAgain = Color(
+    0xFFD88A82,
+  ); // Soft pastel red[cite: 17]
+  static const Color ratingHard = Color(
+    0xFFE29E57,
+  ); // Soft pastel orange[cite: 17]
+  static const Color ratingGood = Color(0xFF9FB89A); // Sage green[cite: 17]
+  static const Color ratingEasy = Color(
+    0xFFA5C4E5,
+  ); // Soft pastel blue[cite: 17]
   static const Color flameOrange = Color(0xFFE06229);
 }
 
-// Question types for flashcard learning
+// Question types for flashcard learning[cite: 17]
 enum FlashcardQuestionType { kanaToRomaji, listening, romajiToKana, mix }
 
-// Question types for word builder
+// Question types for word builder[cite: 17]
 enum WordBuilderQuestionType { kanaToRomaji, romajiToKana }
 
 enum WordLength { short, medium, long }
@@ -50,35 +56,36 @@ class PracticeScreen extends StatefulWidget {
 }
 
 class _PracticeScreenState extends State<PracticeScreen> {
-  // Master toggle: true = Hiragana, false = Katakana
+  // Master toggle: true = Hiragana, false = Katakana[cite: 17]
   bool _isHiragana = true;
 
-  // Sub-screen navigation: null = Hub, 'flashcard', 'word_builder', 'vocab_library'
+  // Sub-screen navigation: null = Hub, 'flashcard', 'word_builder', 'vocab_library'[cite: 17]
   String? _activeSubScreen;
 
-  // Flashcard setup state
+  // Flashcard setup state[cite: 17]
   FlashcardQuestionType _selectedQuestionType =
       FlashcardQuestionType.kanaToRomaji;
-  String _selectedDifficulty = 'All'; // 'Easy', 'Hard', 'Good', 'Again', 'All'
+  String _selectedDifficulty =
+      'All'; // 'Easy', 'Hard', 'Good', 'Again', 'All'[cite: 17]
   bool _showDifficultyFilter = false;
   bool _isRowsExpanded = false;
 
-  // Word Builder setup state
+  // Word Builder setup state[cite: 17]
   WordBuilderQuestionType _wbQuestionType =
       WordBuilderQuestionType.romajiToKana;
   WordLength _wbLength = WordLength.short;
   int _wbWordsPerRound = 30;
 
-  // Vocabulary Library search query
+  // Vocabulary Library search query[cite: 17]
   String _vocabSearchQuery = '';
 
-  // Selected row IDs
+  // Selected row IDs[cite: 17]
   late Set<String> _selectedRowIds;
 
-  // TTS Engine for previewing vocabulary words
+  // TTS Engine for previewing vocabulary words[cite: 17]
   final FlutterTts _flutterTts = FlutterTts();
 
-  // Row Definitions (Hiragana and Katakana)
+  // Row Definitions (Hiragana and Katakana)[cite: 17]
   final List<Map<String, dynamic>> _basicRows = [
     {
       'id': 'a',
@@ -273,7 +280,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
   @override
   void initState() {
     super.initState();
-    // All rows are unlocked and pre-selected by default for full practice availability
     _selectedRowIds = {
       ..._basicRows.map((r) => r['id'] as String),
       ..._dakuonRows.map((r) => r['id'] as String),
@@ -341,15 +347,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
         child: Column(
           children: [
             _buildTopHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 20,
-                ),
-                child: _buildActiveScreenContent(),
-              ),
-            ),
+            Expanded(child: _buildActiveScreenContent()),
           ],
         ),
       ),
@@ -358,13 +356,22 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
   Widget _buildActiveScreenContent() {
     if (_activeSubScreen == 'flashcard') {
-      return _buildFlashcardSetupCard();
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: _buildFlashcardSetupCard(),
+      );
     } else if (_activeSubScreen == 'word_builder') {
-      return _buildWordBuilderSetupCard();
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: _buildWordBuilderSetupCard(),
+      );
     } else if (_activeSubScreen == 'vocab_library') {
       return _buildVocabularyLibraryView();
     }
-    return _buildPracticeHubCard();
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: _buildPracticeHubCard(),
+    );
   }
 
   // ===========================================================================
@@ -931,7 +938,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Kana Row selector
                 const Text(
                   'Kana',
                   style: TextStyle(
@@ -944,7 +950,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 _buildAccordionSelector(systemName),
                 const SizedBox(height: 22),
 
-                // 2. Question type (2 cards side by side)
                 const Text(
                   'Question type',
                   style: TextStyle(
@@ -1001,7 +1006,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 const SizedBox(height: 22),
 
-                // 3. Word length
                 const Text(
                   'Word length',
                   style: TextStyle(
@@ -1060,7 +1064,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 const SizedBox(height: 22),
 
-                // 4. Words per round
                 const Text(
                   'Words per round',
                   style: TextStyle(
@@ -1127,7 +1130,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Start Game Button
                 _buildStartButton(onTap: () => _startWordBuilder()),
               ],
             ),
@@ -1192,12 +1194,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   // ===========================================================================
-  // 5. VOCABULARY LIBRARY / WORD BANK SCREEN
+  // 5. VOCABULARY LIBRARY / WORD BANK SCREEN (OPTIMIZED FOR 1,000+ WORDS)
   // ===========================================================================
   Widget _buildVocabularyLibraryView() {
     final systemName = _isHiragana ? 'Hiragana' : 'Katakana';
 
-    // Reads from VocabularyService (offline JSON asset) with graceful fallback to allVocabulary
     final pool = VocabularyService.instance.allWords.isNotEmpty
         ? VocabularyService.instance.allWords
         : allVocabulary;
@@ -1213,6 +1214,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     }).toList();
 
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(20),
@@ -1229,6 +1231,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: const BoxDecoration(
@@ -1277,169 +1280,147 @@ class _PracticeScreenState extends State<PracticeScreen> {
               ],
             ),
           ),
+
+          // Search Field
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Search Field
-                TextField(
-                  onChanged: (val) => setState(() => _vocabSearchQuery = val),
-                  style: const TextStyle(
-                    fontSize: 14,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              onChanged: (val) => setState(() => _vocabSearchQuery = val),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textDark,
+                fontWeight: FontWeight.bold,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search $systemName, Romaji, or English...',
+                hintStyle: const TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: 13,
+                ),
+                prefixIcon: const Icon(Icons.search, color: AppColors.textDark),
+                filled: true,
+                fillColor: AppColors.beige.withOpacity(0.5),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
                     color: AppColors.textDark,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Search $systemName, Romaji, or English...',
-                    hintStyle: const TextStyle(
-                      color: AppColors.textLight,
-                      fontSize: 13,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: AppColors.textDark,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.beige.withOpacity(0.5),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.textDark,
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.textDark,
-                        width: 2,
-                      ),
-                    ),
+                    width: 1.5,
                   ),
                 ),
-                const SizedBox(height: 16),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppColors.textDark,
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
 
-                // Word List
-                filteredWords.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Text(
-                          'No words match your search.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textLight,
-                          ),
+          // Virtualized List: Only renders items currently on screen
+          Expanded(
+            child: filteredWords.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: Text(
+                        'No words match your search.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textLight,
                         ),
-                      )
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: filteredWords.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final word = filteredWords[index];
-                          final bool isMastered = ProgressService.instance
-                              .isWordMastered(word.kana);
-
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isMastered
-                                  ? AppColors.lightSage
-                                  : AppColors.beige.withOpacity(0.4),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.textDark,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            word.kana,
-                                            style: const TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.textDark,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Text(
-                                            word.romaji,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.textLight,
-                                            ),
-                                          ),
-                                          if (isMastered) ...[
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.sage,
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                                border: Border.all(
-                                                  color: AppColors.textDark,
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                'Mastered',
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: AppColors.textDark,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        word.english,
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textDark,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.volume_up_rounded,
-                                    color: AppColors.textDark,
-                                  ),
-                                  onPressed: () => _speakWord(word.kana),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
                       ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredWords.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final word = filteredWords[index];
+                      return _buildVocabularyCard(word);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Vocabulary Card matching the requested design (Spaced Kana, Romaji, English, Speaker on right)
+  Widget _buildVocabularyCard(WordBuilderQuestion word) {
+    final bool isMastered = ProgressService.instance.isWordMastered(word.kana);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: isMastered ? AppColors.lightSage : AppColors.beige,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.textDark, width: 2.0),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.textDark,
+            offset: Offset(0, 3),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  word.kana.split('').join(' '),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  word.romaji,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  word.english,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textDark,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => _speakWord(word.kana),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              color: Colors.transparent,
+              child: const Icon(
+                Icons.volume_up_rounded,
+                color: AppColors.textDark,
+                size: 34,
+              ),
             ),
           ),
         ],
@@ -1850,19 +1831,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
     );
   }
 
-  /// Starts the Word Builder session by filtering from the loaded offline vocabulary database
   void _startWordBuilder() {
     TactileFeedback.press();
 
-    // Uses loaded JSON vocabulary with fallback to bundled allVocabulary
     final pool = VocabularyService.instance.allWords.isNotEmpty
         ? VocabularyService.instance.allWords
         : allVocabulary;
 
-    // 1. Filter by script (Hiragana vs Katakana)
     var filtered = pool.where((w) => w.isHiragana == _isHiragana).toList();
 
-    // 2. Filter by selected word length
     if (_wbLength == WordLength.short) {
       filtered = filtered.where((w) => w.length <= 3).toList();
     } else if (_wbLength == WordLength.medium) {
@@ -1871,22 +1848,22 @@ class _PracticeScreenState extends State<PracticeScreen> {
       filtered = filtered.where((w) => w.length >= 6).toList();
     }
 
-    // Fallback if the selected length filter yields no results
     if (filtered.isEmpty) {
       filtered = pool.where((w) => w.isHiragana == _isHiragana).toList();
     }
 
     filtered.shuffle();
 
-    // Navigate to gameplay screen with the filtered dataset
+    final selectedSet = filtered.take(_wbWordsPerRound).toList();
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WordBuilderGameScreen(
           isHiragana: _isHiragana,
           questionType: _wbQuestionType,
-          totalQuestions: min(_wbWordsPerRound, filtered.length),
-          words: filtered,
+          totalQuestions: min(_wbWordsPerRound, selectedSet.length),
+          words: selectedSet,
         ),
       ),
     );
@@ -1894,14 +1871,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
 }
 
 // =============================================================================
-// 6. WORD BUILDER GAMEPLAY SCREEN (WITH PERSISTENCE & RESULTS SUMMARY)
+// 6. WORD BUILDER GAMEPLAY SCREEN (WITH ADAPTIVE RESPONSIVE SLOTS & DUPLICATE SUPPORT)
 // =============================================================================
 
 class WordBuilderGameScreen extends StatefulWidget {
   final bool isHiragana;
   final WordBuilderQuestionType questionType;
   final int totalQuestions;
-  final List<WordBuilderQuestion> words; // Passed filtered dataset
+  final List<WordBuilderQuestion> words;
 
   const WordBuilderGameScreen({
     super.key,
@@ -1920,17 +1897,17 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
   late List<WordBuilderQuestion> _questions;
   int _currentIndex = 0;
 
-  // Session Statistics & Results Tracking
   late DateTime _sessionStartTime;
   int _correctCount = 0;
   final List<Map<String, dynamic>> _sessionWordLog = [];
 
   // Player answer state
   late List<String?> _userSlots;
+  // Maps each slot index to the exact choice button index to support identical repeating syllables
+  late List<int?> _slotChoiceIndices;
   late List<String> _currentChoices;
   late List<bool> _choiceUsed;
 
-  // Hint & Feedback states
   bool _isHintActive = false;
   bool _hasChecked = false;
   bool _isCorrect = false;
@@ -1972,34 +1949,101 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
         : currentQ.kanaSyllables;
 
     _userSlots = List.filled(targetSyllables.length, null);
+    _slotChoiceIndices = List.filled(targetSyllables.length, null);
 
-    // Build choices: correct syllables + dynamic distractors from other questions in this round
-    final Set<String> choicesPool = Set.from(targetSyllables);
+    // FIX: Start with a List containing ALL target syllables directly (preserving duplicates like multiple 'ta's)[cite: 17, 18]
+    final List<String> choicesList = List<String>.from(targetSyllables);
+    final Set<String> targetSet = Set.from(targetSyllables);
     final List<String> availableDistractors = [];
 
+    // Collect distractors from other questions in the pool[cite: 17]
     for (var q in _questions) {
       final syllables = isRomajiChoices ? q.syllables : q.kanaSyllables;
       for (var s in syllables) {
-        if (!choicesPool.contains(s) && !availableDistractors.contains(s)) {
+        if (!targetSet.contains(s) && !availableDistractors.contains(s)) {
           availableDistractors.add(s);
         }
       }
     }
 
     availableDistractors.shuffle();
-    final int targetChoiceCount = max(8, targetSyllables.length);
+
+    // Ensure the 4-column GridView always has complete rows (minimum 8 choices)[cite: 17]
+    final int minNeeded = max(8, targetSyllables.length + 2);
+    final int targetChoiceCount = ((minNeeded + 3) ~/ 4) * 4;
+
     for (var d in availableDistractors) {
-      if (choicesPool.length >= targetChoiceCount) break;
-      choicesPool.add(d);
+      if (choicesList.length >= targetChoiceCount) break;
+      choicesList.add(d);
     }
 
-    _currentChoices = choicesPool.toList()..shuffle();
+    // Fallback distractors if the question list is small[cite: 17]
+    if (choicesList.length < targetChoiceCount) {
+      final fallbackDistractors = isRomajiChoices
+          ? [
+              'ka',
+              'sa',
+              'ta',
+              'na',
+              'ha',
+              'ma',
+              'ya',
+              'ra',
+              'wa',
+              'a',
+              'i',
+              'u',
+              'e',
+              'o',
+            ]
+          : (widget.isHiragana
+                ? [
+                    'か',
+                    'さ',
+                    'た',
+                    'な',
+                    'は',
+                    'ま',
+                    'や',
+                    'ら',
+                    'わ',
+                    'あ',
+                    'い',
+                    'う',
+                    'え',
+                    'お',
+                  ]
+                : [
+                    'カ',
+                    'サ',
+                    'タ',
+                    'ナ',
+                    'ハ',
+                    'マ',
+                    'ヤ',
+                    'ラ',
+                    'ワ',
+                    'ア',
+                    'イ',
+                    'ウ',
+                    'エ',
+                    'オ',
+                  ]);
+      fallbackDistractors.shuffle();
+      for (var d in fallbackDistractors) {
+        if (choicesList.length >= targetChoiceCount) break;
+        if (!choicesList.contains(d)) {
+          choicesList.add(d);
+        }
+      }
+    }
+
+    _currentChoices = choicesList..shuffle();
     _choiceUsed = List.filled(_currentChoices.length, false);
     _isHintActive = false;
     _hasChecked = false;
     _isCorrect = false;
 
-    // Speak audio for question
     _speakWord(currentQ.kana);
   }
 
@@ -2008,11 +2052,13 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
     TactileFeedback.press();
 
-    // Find first empty slot
+    // Find first empty slot[cite: 17]
     final emptyIndex = _userSlots.indexOf(null);
     if (emptyIndex != -1) {
       setState(() {
         _userSlots[emptyIndex] = _currentChoices[index];
+        _slotChoiceIndices[emptyIndex] =
+            index; // Binds exact choice index to this slot[cite: 17]
         _choiceUsed[index] = true;
       });
     }
@@ -2023,18 +2069,19 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
     TactileFeedback.press();
 
-    final value = _userSlots[slotIndex];
-    // Return to available choices
-    final choiceIndex = _currentChoices.indexOf(value!);
+    // Retrieves and un-uses the exact choice button instance[cite: 17]
+    final choiceIndex = _slotChoiceIndices[slotIndex];
     setState(() {
       _userSlots[slotIndex] = null;
-      if (choiceIndex != -1) {
+      _slotChoiceIndices[slotIndex] = null;
+      if (choiceIndex != null &&
+          choiceIndex >= 0 &&
+          choiceIndex < _choiceUsed.length) {
         _choiceUsed[choiceIndex] = false;
       }
     });
   }
 
-  /// Validates answer, persists word mastery, and records round statistics
   void _checkAnswer() {
     if (_userSlots.contains(null) || _hasChecked) return;
 
@@ -2062,7 +2109,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
       TactileFeedback.success();
       _correctCount++;
 
-      // Persists completed vocabulary word and marks characters in local storage
       ProgressService.instance.recordWordCompleted(
         word: currentQ.kana,
         wasCorrectFirstTry: !_isHintActive,
@@ -2071,7 +2117,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
       TactileFeedback.error();
     }
 
-    // Append to review summary for the Results Screen
     _sessionWordLog.add({
       'kana': currentQ.kana,
       'romaji': currentQ.romaji,
@@ -2090,7 +2135,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
         _loadCurrentQuestion();
       });
     } else {
-      // Round Complete: Navigate to the Practice Results Screen
       final elapsed = DateTime.now().difference(_sessionStartTime);
 
       Navigator.pushReplacement(
@@ -2137,7 +2181,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
           children: [
             Column(
               children: [
-                // Top Header Bar
+                // Top Header Bar[cite: 17]
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   decoration: const BoxDecoration(
@@ -2175,7 +2219,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                   ),
                 ),
 
-                // Main Gameplay Card
+                // Main Gameplay Card[cite: 17]
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
@@ -2199,7 +2243,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Progress Text & Bar
                           Text(
                             '${_currentIndex + 1} of ${widget.totalQuestions}',
                             style: const TextStyle(
@@ -2220,7 +2263,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Prompt Box
+                          // Prompt Box[cite: 17]
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -2278,55 +2321,105 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                 ),
                                 const SizedBox(height: 18),
 
-                                // Target Slots (Green or Red on validation)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: List.generate(
-                                    targetSyllables.length,
-                                    (i) {
-                                      final val = _userSlots[i];
-                                      Color borderColor = AppColors.textDark;
-                                      Color slotBg = val != null
-                                          ? AppColors.cream
-                                          : AppColors.sand.withOpacity(0.5);
+                                // --- ADAPTIVE DYNAMIC SLOTS ---[cite: 17]
+                                LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final int totalSlots =
+                                        targetSyllables.length;
 
-                                      if (_hasChecked) {
-                                        borderColor = _isCorrect
-                                            ? Colors.green
-                                            : Colors.red;
-                                      }
+                                    // Margin scales down as word length increases[cite: 17]
+                                    final double horizontalMargin =
+                                        totalSlots > 5
+                                        ? 2.5
+                                        : (totalSlots > 3 ? 3.5 : 5.0);
+                                    final double totalMargin =
+                                        (totalSlots * horizontalMargin * 2) + 8;
+                                    final double availableWidth =
+                                        constraints.maxWidth - totalMargin;
 
-                                      return GestureDetector(
-                                        onTap: () => _onSlotTapped(i),
-                                        child: Container(
-                                          width: 58,
-                                          height: 58,
-                                          margin: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: slotBg,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
+                                    // Dynamic square dimension scaling[cite: 17]
+                                    double slotDimension =
+                                        (availableWidth / totalSlots).clamp(
+                                          32.0,
+                                          56.0,
+                                        );
+
+                                    // Typography scales down proportionally[cite: 17]
+                                    double slotFontSize = (slotDimension * 0.44)
+                                        .clamp(13.0, 22.0);
+
+                                    return FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: List.generate(totalSlots, (
+                                          i,
+                                        ) {
+                                          final val = _userSlots[i];
+                                          Color borderColor =
+                                              AppColors.textDark;
+                                          Color slotBg = val != null
+                                              ? AppColors.cream
+                                              : AppColors.sand.withOpacity(0.5);
+
+                                          if (_hasChecked) {
+                                            borderColor = _isCorrect
+                                                ? Colors.green
+                                                : Colors.red;
+                                          }
+
+                                          return GestureDetector(
+                                            onTap: () => _onSlotTapped(i),
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 150,
+                                              ),
+                                              width: slotDimension,
+                                              height: slotDimension,
+                                              margin: EdgeInsets.symmetric(
+                                                horizontal: horizontalMargin,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: slotBg,
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      slotDimension > 45
+                                                          ? 12
+                                                          : 8,
+                                                    ),
+                                                border: Border.all(
+                                                  color: borderColor,
+                                                  width: _hasChecked
+                                                      ? 2.5
+                                                      : 1.5,
+                                                ),
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    2.0,
+                                                  ),
+                                                  child: Text(
+                                                    val ?? '',
+                                                    style: TextStyle(
+                                                      fontSize: slotFontSize,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: AppColors.textDark,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                             ),
-                                            border: Border.all(
-                                              color: borderColor,
-                                              width: _hasChecked ? 2.5 : 1.5,
-                                            ),
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            val ?? '',
-                                            style: const TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.textDark,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                          );
+                                        }),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),
@@ -2334,7 +2427,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
                           const SizedBox(height: 24),
 
-                          // 2x4 Grid of Choices (Green border when Hint is tapped)
+                          // 2x4 Choice Grid (Dynamic complete rows of 4)[cite: 17]
                           GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -2384,12 +2477,18 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                   alignment: Alignment.center,
                                   child: isUsed
                                       ? null
-                                      : Text(
-                                          text,
-                                          style: const TextStyle(
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.textDark,
+                                      : FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(4.0),
+                                            child: Text(
+                                              text,
+                                              style: const TextStyle(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.textDark,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                 ),
@@ -2399,10 +2498,9 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
                           const SizedBox(height: 32),
 
-                          // Action Buttons: 💡 Hint and ✓ Check
+                          // Hint & Check buttons[cite: 17]
                           Row(
                             children: [
-                              // Hint Button
                               Expanded(
                                 flex: 2,
                                 child: _Interactive3DButton(
@@ -2418,7 +2516,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                 ),
                               ),
                               const SizedBox(width: 14),
-                              // Check Button
                               Expanded(
                                 flex: 3,
                                 child: _Interactive3DButton(
@@ -2439,7 +2536,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
               ],
             ),
 
-            // Sliding Bottom Feedback Banner (Correct / Not Quite)
             if (_hasChecked)
               Positioned(
                 bottom: 0,
@@ -2507,7 +2603,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // Continue Button
                       GestureDetector(
                         onTap: () => _advanceToNext(),
                         child: Container(
@@ -2553,7 +2648,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 }
 
 // =============================================================================
-// 7. WORD BUILDER RESULTS SCREEN & STATS SUMMARY
+// 7. WORD BUILDER RESULTS SCREEN & STATS SUMMARY (OVERFLOW PROOF)
 // =============================================================================
 
 class WordBuilderResultScreen extends StatelessWidget {
@@ -2608,7 +2703,6 @@ class WordBuilderResultScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Top App Bar
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               decoration: const BoxDecoration(
@@ -2654,7 +2748,6 @@ class WordBuilderResultScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // Main Score Card
                     Container(
                       decoration: BoxDecoration(
                         color: AppColors.cream,
@@ -2708,7 +2801,6 @@ class WordBuilderResultScreen extends StatelessWidget {
                             padding: const EdgeInsets.all(20.0),
                             child: Column(
                               children: [
-                                // Circular Percentage Indicator
                                 Container(
                                   width: 110,
                                   height: 110,
@@ -2771,7 +2863,6 @@ class WordBuilderResultScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 20),
 
-                                // 3 Metrics Badges: Score, Mastered Words, Study Time
                                 Row(
                                   children: [
                                     Expanded(
@@ -2812,7 +2903,7 @@ class WordBuilderResultScreen extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
-                    // Words Reviewed Breakdown Card
+                    // Words Breakdown Card[cite: 17]
                     Container(
                       decoration: BoxDecoration(
                         color: AppColors.cream,
@@ -2908,7 +2999,10 @@ class WordBuilderResultScreen extends StatelessWidget {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Row(
+                                          Wrap(
+                                            crossAxisAlignment:
+                                                WrapCrossAlignment.center,
+                                            spacing: 8,
                                             children: [
                                               Text(
                                                 kana,
@@ -2918,7 +3012,6 @@ class WordBuilderResultScreen extends StatelessWidget {
                                                   color: AppColors.textDark,
                                                 ),
                                               ),
-                                              const SizedBox(width: 8),
                                               Text(
                                                 romaji,
                                                 style: const TextStyle(
@@ -2929,12 +3022,14 @@ class WordBuilderResultScreen extends StatelessWidget {
                                               ),
                                             ],
                                           ),
+                                          const SizedBox(height: 2),
                                           Text(
                                             english,
                                             style: const TextStyle(
                                               fontSize: 12,
                                               color: AppColors.textDark,
                                             ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ],
                                       ),
@@ -2961,7 +3056,6 @@ class WordBuilderResultScreen extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
-                    // Action Buttons (Play Again & Back to Practice)
                     Row(
                       children: [
                         Expanded(
@@ -3039,7 +3133,7 @@ class WordBuilderResultScreen extends StatelessWidget {
 }
 
 // -----------------------------------------------------------------------------
-// HELPER 3D INTERACTIVE BUTTONS WITH TACTILE CLICKS
+// HELPER 3D INTERACTIVE BUTTONS WITH TACTILE CLICKS[cite: 17]
 // -----------------------------------------------------------------------------
 
 class _Interactive3DCard extends StatefulWidget {
