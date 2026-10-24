@@ -20,12 +20,110 @@ class WordBuilderQuestion {
     this.isHiragana = true,
   });
 
-  /// Total syllable length used for filtering by WordLength
+  /// Total syllable length used for filtering by WordLength.
   int get length => kanaSyllables.length;
+
+  /// Returns the raw kana string stripped of spacing (e.g. 'むら').
+  String get plainKana => kana.replaceAll(' ', '');
+
+  /// Checks if every character or syllable in this word is unlocked.
+  ///
+  /// Optimization:
+  /// Uses [isKanaUnlocked] to check each syllable or individual kana character.
+  /// Special characters such as the Katakana long vowel mark 'ー' and small tsu 'ッ'
+  /// are treated as neutral extensions and automatically pass.
+  bool isUnlocked(bool Function(String characterOrSyllable) isKanaUnlocked) {
+    for (final s in kanaSyllables) {
+      if (s == 'ー' || s == 'ッ' || s == 'っ') continue;
+      if (!isKanaUnlocked(s)) return false;
+    }
+    return true;
+  }
+
+  /// Returns a list of prerequisite characters in this word that are still locked.
+  List<String> getMissingPrerequisites(
+    bool Function(String characterOrSyllable) isKanaUnlocked,
+  ) {
+    final List<String> missing = [];
+    for (final s in kanaSyllables) {
+      if (s == 'ー' || s == 'ッ' || s == 'っ') continue;
+      if (!isKanaUnlocked(s) && !missing.contains(s)) {
+        missing.add(s);
+      }
+    }
+    return missing;
+  }
 }
 
+/// Helper lookup map associating Kana characters/syllables to their parent lesson row title.
+/// Used to dynamically check whether the character is unlocked via [ProgressService.isRowUnlocked].
+const Map<String, String> kanaToRowTitleMap = {
+  // --- Hiragana Basic Rows ---
+  'あ': 'A row', 'い': 'A row', 'う': 'A row', 'え': 'A row', 'お': 'A row',
+  'か': 'Ka row', 'き': 'Ka row', 'く': 'Ka row', 'け': 'Ka row', 'こ': 'Ka row',
+  'さ': 'Sa row', 'し': 'Sa row', 'す': 'Sa row', 'せ': 'Sa row', 'そ': 'Sa row',
+  'た': 'Ta row', 'ち': 'Ta row', 'つ': 'Ta row', 'て': 'Ta row', 'と': 'Ta row',
+  'な': 'Na row', 'に': 'Na row', 'ぬ': 'Na row', 'ね': 'Na row', 'の': 'Na row',
+  'は': 'Ha row', 'ひ': 'Ha row', 'ふ': 'Ha row', 'へ': 'Ha row', 'ほ': 'Ha row',
+  'ま': 'Ma row', 'み': 'Ma row', 'む': 'Ma row', 'め': 'Ma row', 'も': 'Ma row',
+  'や': 'Ya row', 'ゆ': 'Ya row', 'よ': 'Ya row',
+  'ら': 'Ra row', 'り': 'Ra row', 'る': 'Ra row', 'れ': 'Ra row', 'ろ': 'Ra row',
+  'わ': 'Wa / N row', 'を': 'Wa / N row', 'ん': 'Wa / N row',
+
+  // --- Hiragana Dakuon & Handakuon Rows ---
+  'が': 'Ga row', 'ぎ': 'Ga row', 'ぐ': 'Ga row', 'げ': 'Ga row', 'ご': 'Ga row',
+  'ざ': 'Za row', 'じ': 'Za row', 'ず': 'Za row', 'ぜ': 'Za row', 'ぞ': 'Za row',
+  'だ': 'Da row', 'ぢ': 'Da row', 'づ': 'Da row', 'で': 'Da row', 'ど': 'Da row',
+  'ば': 'Ba row', 'び': 'Ba row', 'ぶ': 'Ba row', 'べ': 'Ba row', 'ぼ': 'Ba row',
+  'ぱ': 'Pa row', 'ぴ': 'Pa row', 'ぷ': 'Pa row', 'ぺ': 'Pa row', 'ぽ': 'Pa row',
+
+  // --- Hiragana Yoon Rows ---
+  'きゃ': 'Kya row', 'きゅ': 'Kya row', 'きょ': 'Kya row',
+  'しゃ': 'Sha row', 'しゅ': 'Sha row', 'しょ': 'Sha row',
+  'ちゃ': 'Cha row', 'ちゅ': 'Cha row', 'ちょ': 'Cha row',
+  'にゃ': 'Nya row', 'にゅ': 'Nya row', 'にょ': 'Nya row',
+  'ひゃ': 'Hya row', 'ひゅ': 'Hya row', 'ひょ': 'Hya row',
+  'みゃ': 'Mya row', 'みゅ': 'Mya row', 'みょ': 'Mya row',
+  'りゃ': 'Rya row', 'りゅ': 'Rya row', 'りょ': 'Rya row',
+  'ぎゃ': 'Gya row', 'ぎゅ': 'Gya row', 'ぎょ': 'Gya row',
+  'じゃ': 'Ja row', 'じゅ': 'Ja row', 'じょ': 'Ja row',
+  'びゃ': 'Bya row', 'びゅ': 'Bya row', 'びょ': 'Bya row',
+  'ぴゃ': 'Pya row', 'ぴゅ': 'Pya row', 'ぴょ': 'Pya row',
+
+  // --- Katakana Basic Rows ---
+  'ア': 'A row', 'イ': 'A row', 'ウ': 'A row', 'エ': 'A row', 'オ': 'A row',
+  'カ': 'Ka row', 'キ': 'Ka row', 'ク': 'Ka row', 'ケ': 'Ka row', 'コ': 'Ka row',
+  'サ': 'Sa row', 'シ': 'Sa row', 'ス': 'Sa row', 'セ': 'Sa row', 'ソ': 'Sa row',
+  'タ': 'Ta row', 'チ': 'Ta row', 'ツ': 'Ta row', 'テ': 'Ta row', 'ト': 'Ta row',
+  'ナ': 'Na row', 'ニ': 'Na row', 'ヌ': 'Na row', 'ネ': 'Na row', 'ノ': 'Na row',
+  'ハ': 'Ha row', 'ヒ': 'Ha row', 'フ': 'Ha row', 'ヘ': 'Ha row', 'ホ': 'Ha row',
+  'マ': 'Ma row', 'ミ': 'Ma row', 'ム': 'Ma row', 'メ': 'Ma row', 'モ': 'Ma row',
+  'ヤ': 'Ya row', 'ユ': 'Ya row', 'ヨ': 'Ya row',
+  'ラ': 'Ra row', 'リ': 'Ra row', 'ル': 'Ra row', 'レ': 'Ra row', 'ロ': 'Ra row',
+  'ワ': 'Wa / N row', 'ヲ': 'Wa / N row', 'ン': 'Wa / N row',
+
+  // --- Katakana Dakuon & Handakuon Rows ---
+  'ガ': 'Ga row', 'ギ': 'Ga row', 'グ': 'Ga row', 'ゲ': 'Ga row', 'ゴ': 'Ga row',
+  'ザ': 'Za row', 'ジ': 'Za row', 'ズ': 'Za row', 'ゼ': 'Za row', 'ゾ': 'Za row',
+  'ダ': 'Da row', 'ヂ': 'Da row', 'ヅ': 'Da row', 'デ': 'Da row', 'ド': 'Da row',
+  'バ': 'Ba row', 'ビ': 'Ba row', 'ブ': 'Ba row', 'ベ': 'Ba row', 'ボ': 'Ba row',
+  'パ': 'Pa row', 'ピ': 'Pa row', 'プ': 'Pa row', 'ペ': 'Pa row', 'ポ': 'Pa row',
+
+  // --- Katakana Yoon Rows ---
+  'キャ': 'Kya row', 'キュ': 'Kya row', 'キョ': 'Kya row',
+  'シャ': 'Sha row', 'シュ': 'Sha row', 'ショ': 'Sha row',
+  'チャ': 'Cha row', 'チュ': 'Cha row', 'チョ': 'Cha row',
+  'ニャ': 'Nya row', 'ニュ': 'Nya row', 'ニョ': 'Nya row',
+  'ヒャ': 'Hya row', 'ヒュ': 'Hya row', 'ヒョ': 'Hya row',
+  'ミャ': 'Mya row', 'ミュ': 'Mya row', 'ミョ': 'Mya row',
+  'リャ': 'Rya row', 'リュ': 'Rya row', 'リョ': 'Rya row',
+  'ギャ': 'Gya row', 'ギュ': 'Gya row', 'ギョ': 'Gya row',
+  'ジャ': 'Ja row', 'ジュ': 'Ja row', 'ジョ': 'Ja row',
+  'ビャ': 'Bya row', 'ビュ': 'Bya row', 'ビョ': 'Bya row',
+  'ピャ': 'Pya row', 'ピュ': 'Pya row', 'ピョ': 'Pya row',
+};
+
 /// Comprehensive vocabulary database for Word Builder practice.
-/// You can add hundreds or thousands of additional words here.
 const List<WordBuilderQuestion> allVocabulary = [
   // ===========================================================================
   // 1. HIRAGANA - SHORT (2 - 3 Syllables)

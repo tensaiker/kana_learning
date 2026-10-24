@@ -1514,7 +1514,47 @@ const List<_DerivedKanaEntry> _derivedKanaDefinitions = [
   _DerivedKanaEntry('ホ', 'ポ', 'po', 'k_po', isHandakuten: true),
 ];
 
-/// Generates the complete kana list combining base, dakuten, and handakuten characters.
+// =============================================================================
+// SMALL SUBSCRIPT KANA (YOON SUBSCRIPTS & SOKUON STOP)
+// =============================================================================
+
+class _SmallKanaEntry {
+  final String baseKana;
+  final String kana;
+  final String romaji;
+  final String id;
+
+  const _SmallKanaEntry(this.baseKana, this.kana, this.romaji, this.id);
+}
+
+const List<_SmallKanaEntry> _smallKanaDefinitions = [
+  // --- Hiragana Small Yoon & Sokuon ---
+  _SmallKanaEntry('や', 'ゃ', 'ya (small)', 'h_small_ya'),
+  _SmallKanaEntry('ゆ', 'ゅ', 'yu (small)', 'h_small_yu'),
+  _SmallKanaEntry('よ', 'ょ', 'yo (small)', 'h_small_yo'),
+  _SmallKanaEntry('つ', 'っ', 'tsu (small)', 'h_small_tsu'),
+
+  // --- Katakana Small Yoon & Sokuon ---
+  _SmallKanaEntry('ヤ', 'ャ', 'ya (small)', 'k_small_ya'),
+  _SmallKanaEntry('ユ', 'ュ', 'yu (small)', 'k_small_yu'),
+  _SmallKanaEntry('ヨ', 'ョ', 'yo (small)', 'k_small_yo'),
+  _SmallKanaEntry('ツ', 'ッ', 'tsu (small)', 'k_small_tsu'),
+];
+
+/// Transforms root character strokes into lower-left quadrant subscript vectors.
+/// Matches standard Japanese font positioning for small subscript kana.
+KanaStroke _toSubscriptStroke(KanaStroke baseStroke) {
+  return KanaStroke(
+    baseStroke.points.map((point) {
+      return Offset(
+        (0.14 + point.dx * 0.62).clamp(0.0, 1.0),
+        (0.26 + point.dy * 0.62).clamp(0.0, 1.0),
+      );
+    }).toList(),
+  );
+}
+
+/// Generates the complete kana list combining base, dakuten, handakuten, and small kana.
 List<KanaCharacter> _buildComprehensiveKanaData() {
   final Map<String, KanaCharacter> baseMap = {
     for (final char in _baseKanaData) char.kana: char,
@@ -1522,6 +1562,7 @@ List<KanaCharacter> _buildComprehensiveKanaData() {
 
   final List<KanaCharacter> fullList = List<KanaCharacter>.from(_baseKanaData);
 
+  // 1. Compose Dakuten and Handakuten
   for (final entry in _derivedKanaDefinitions) {
     final base = baseMap[entry.baseKana];
     if (base == null) continue;
@@ -1544,10 +1585,28 @@ List<KanaCharacter> _buildComprehensiveKanaData() {
     );
   }
 
+  // 2. Compose Subscript Small Kana (Yoon ya/yu/yo and Sokuon small tsu)
+  for (final entry in _smallKanaDefinitions) {
+    final base = baseMap[entry.baseKana];
+    if (base == null) continue;
+
+    final subscriptStrokes = base.strokes.map(_toSubscriptStroke).toList();
+
+    fullList.add(
+      KanaCharacter(
+        id: entry.id,
+        kana: entry.kana,
+        romaji: entry.romaji,
+        type: base.type,
+        strokes: List<KanaStroke>.unmodifiable(subscriptStrokes),
+      ),
+    );
+  }
+
   return List<KanaCharacter>.unmodifiable(fullList);
 }
 
-/// The complete, verified list of Japanese Kana (Basic, Dakuten, and Handakuten).
+/// The complete, verified list of Japanese Kana (Basic, Voiced, Semi-voiced, and Small).
 final List<KanaCharacter> initialKanaData = _buildComprehensiveKanaData();
 
 // =============================================================================
@@ -1577,13 +1636,13 @@ void _ensureLookupCache() {
 
 /// Helper extension providing O(1) indexed lookups over kana data.
 extension KanaListExtension on List<KanaCharacter> {
-  /// Finds a character by its literal symbol (e.g., 'が' or 'パ') in O(1) time.
+  /// Finds a character by its literal symbol (e.g., 'ゃ' or 'ッ') in O(1) time.
   KanaCharacter? findByKana(String kana) {
     _ensureLookupCache();
     return _byKanaMap?[kana];
   }
 
-  /// Finds a character by its unique identifier (e.g., 'h_ga' or 'k_pa') in O(1) time.
+  /// Finds a character by its unique identifier (e.g., 'h_small_ya' or 'k_small_tsu') in O(1) time.
   KanaCharacter? findById(String id) {
     _ensureLookupCache();
     return _byIdMap?[id];

@@ -21,8 +21,22 @@ class AppColors {
   static const Color dangerRed = Color(0xFFD88A82);
   static const Color flameOrange = Color(0xFFE06229);
   static const Color flameBadgeBg = Color(0xFFFFD2BA);
+  static const Color devPurple = Color(0xFFB8A5C6); // Developer accent tint
 }
 
+/// Profile & Settings Screen with Integrated Developer & Debug Tools.
+///
+/// Features & Guidance:
+/// 1. Learner Profile & Badges: Displays username, avatar, and live streak / mastery stats.
+/// 2. Audio & Speech Settings: Configures TTS rate, volume, and tactile stationery sound/vibrations.
+/// 3. Developer / Debug Tools Card:
+///    - **Unlock All Rows Live Toggle**: Instantly toggles [ProgressService.unlockAllRows] across
+///      the entire app so you can preview all rows without completing lessons.
+///    - **Lock to 'A row' Only**: Resets all row question checkpoints and completion flags back to
+///      the initial state (only 'A row' unlocked) while preserving your streak, username, and avatar.
+///    - **Simulate Flashcard Ratings**: Injects sample SRS ratings ('Easy', 'Good', 'Hard', 'Again')
+///      into SharedPreferences so you can test the new stacked Practice Quiz difficulty UI immediately.
+///    - **Clear Flashcard Ratings**: Removes all `kana_difficulty_*` ratings without affecting lesson progress.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -38,7 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Profile preferences
   String _userName = 'Kerby';
   int _selectedAvatarIndex = 0;
-  final List<IconData> _avatarIcons = [
+  static const List<IconData> _avatarIcons = [
     Icons.person,
     Icons.pets,
     Icons.local_florist,
@@ -66,10 +80,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  /// Loads profile settings and mirrors shared keys for seamless HomeScreen synchronization.
   Future<void> _loadSettings() async {
     _prefs = await SharedPreferences.getInstance();
     setState(() {
-      _userName = _prefs.getString('profile_username') ?? 'Kerby';
+      // Synchronize with both profile-specific keys and general user keys read by HomeScreen
+      _userName =
+          _prefs.getString('profile_username') ??
+          _prefs.getString('user_name') ??
+          'Kerby';
       _selectedAvatarIndex = _prefs.getInt('profile_avatar_idx') ?? 0;
       _speechRate = _prefs.getDouble('settings_speech_rate') ?? 0.5;
       _speechVolume = _prefs.getDouble('settings_speech_volume') ?? 1.0;
@@ -88,11 +107,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await _flutterTts.setVolume(_speechVolume);
   }
 
+  /// Saves a preference with dual-key synchronization when updating identity data.
   Future<void> _savePreference(String key, dynamic value) async {
-    if (value is String) await _prefs.setString(key, value);
-    if (value is int) await _prefs.setInt(key, value);
-    if (value is double) await _prefs.setDouble(key, value);
-    if (value is bool) await _prefs.setBool(key, value);
+    if (value is String) {
+      await _prefs.setString(key, value);
+      if (key == 'profile_username') {
+        // Dual-write so HomeScreen picks up the exact same key immediately
+        await _prefs.setString('user_name', value);
+      }
+    } else if (value is int) {
+      await _prefs.setInt(key, value);
+      if (key == 'profile_avatar_idx') {
+        // Map index to name string for screens reading string-based avatar keys
+        await _prefs.setString('user_avatar', 'avatar_$value');
+      }
+    } else if (value is double) {
+      await _prefs.setDouble(key, value);
+    } else if (value is bool) {
+      await _prefs.setBool(key, value);
+    }
   }
 
   void _testPronunciation() async {
@@ -653,15 +686,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TactileFeedback.press();
               Navigator.pop(context);
               if (resetAll) {
-                final allKeys = _prefs.getKeys();
-                for (var key in allKeys) {
-                  await _prefs.remove(key);
-                }
-                await ProgressService.instance.init();
+                // Clear user profile overrides while retaining essential keys if needed
+                await ProgressService.instance.resetAllProgress();
                 _loadSettings();
               } else {
-                await _prefs.remove('masteredKana');
-                await ProgressService.instance.init();
+                await ProgressService.instance.resetMasteredKana();
               }
 
               if (mounted) {
@@ -716,6 +745,114 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ===========================================================================
+  // DEVELOPER & DEBUG ACTIONS
+  // ===========================================================================
+
+  /// Resets row question checkpoints and completion flags back to initial state
+  /// (enforces 'A row' as the only unlocked row). Preserves study streak and profile.
+  Future<void> _resetRowCheckpointsOnly() async {
+    TactileFeedback.press();
+    await ProgressService.instance.resetRowCheckpoints();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.cream,
+          content: const Text(
+            "Row locks reset! Only 'A row' is unlocked.",
+            style: TextStyle(
+              color: AppColors.textDark,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: AppColors.textDark, width: 1.5),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Injects simulated SRS ratings across Hiragana and Katakana characters
+  /// so all 5 Quiz difficulty buckets (Easy, Good, Hard, Again, All) have testable data.
+  Future<void> _simulateFlashcardRatings() async {
+    TactileFeedback.success();
+
+    final Map<String, String> mockRatings = {
+      // Easy (10 characters)
+      'あ': 'Easy', 'い': 'Easy', 'う': 'Easy', 'え': 'Easy', 'お': 'Easy',
+      'ア': 'Easy', 'イ': 'Easy', 'ウ': 'Easy', 'エ': 'Easy', 'オ': 'Easy',
+      // Good (6 characters)
+      'か': 'Good', 'き': 'Good', 'く': 'Good',
+      'カ': 'Good', 'キ': 'Good', 'ク': 'Good',
+      // Hard (4 characters)
+      'さ': 'Hard', 'し': 'Hard',
+      'サ': 'Hard', 'シ': 'Hard',
+      // Again (3 characters)
+      'た': 'Again',
+      'タ': 'Again', 'チ': 'Again',
+    };
+
+    final writes = <Future<bool>>[];
+    for (final entry in mockRatings.entries) {
+      writes.add(_prefs.setString('kana_difficulty_${entry.key}', entry.value));
+    }
+    await Future.wait(writes);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.cream,
+          content: const Text(
+            'Simulated SRS ratings generated! (Easy: 10, Good: 6, Hard: 4, Again: 3)',
+            style: TextStyle(
+              color: AppColors.textDark,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: AppColors.textDark, width: 1.5),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Erases all stored flashcard difficulty ratings (`kana_difficulty_*`)
+  Future<void> _clearFlashcardRatings() async {
+    TactileFeedback.press();
+    final keys = _prefs
+        .getKeys()
+        .where((k) => k.startsWith('kana_difficulty_'))
+        .toList();
+
+    if (keys.isNotEmpty) {
+      await Future.wait(keys.map((k) => _prefs.remove(k)));
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.cream,
+          content: const Text(
+            'All flashcard difficulty ratings cleared.',
+            style: TextStyle(
+              color: AppColors.textDark,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: AppColors.textDark, width: 1.5),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -754,6 +891,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // 3. App Card (About the app -> Features, Reset Progress -> Data Management)
                       _buildAppCard(),
+                      const SizedBox(height: 24),
+
+                      // 4. Developer / Debug Tools Card (Live Unlocks & Rating Testing)
+                      _buildDeveloperCard(ps),
                       const SizedBox(height: 30),
                     ],
                   );
@@ -1068,6 +1209,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ===========================================================================
+  // 5. DEVELOPER / DEBUG TOOLS CARD
+  // ===========================================================================
+  Widget _buildDeveloperCard(ProgressService ps) {
+    return _buildCardBase(
+      headerText: 'Developer & Debug Tools',
+      headerIcon: Icons.bug_report_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Live Unlock All Rows Toggle
+          _buildToggleRow(
+            label: 'Unlock All Rows (Dev Override)',
+            value: ps.unlockAllRows,
+            onChanged: (val) {
+              TactileFeedback.toggle();
+              ps.setUnlockAllRows(val);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: AppColors.cream,
+                  content: Text(
+                    val
+                        ? 'All rows unlocked across the app.'
+                        : 'Row progression locks re-enforced.',
+                    style: const TextStyle(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  duration: const Duration(seconds: 1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(
+                      color: AppColors.textDark,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          const Divider(color: AppColors.textDark, height: 22, thickness: 1),
+
+          // 2. Lock to 'A row' Only
+          _buildSettingsNavigationTile(
+            icon: Icons.lock_reset_rounded,
+            title: "Lock to 'A row' Only",
+            subtitle: 'Reset row progression without losing streak',
+            onTap: _resetRowCheckpointsOnly,
+          ),
+          const Divider(color: AppColors.textDark, height: 22, thickness: 1),
+
+          // 3. Simulate Flashcard SRS Ratings
+          _buildSettingsNavigationTile(
+            icon: Icons.auto_fix_high_rounded,
+            title: 'Simulate Flashcard Ratings',
+            subtitle: 'Populate Easy, Good, Hard, Again quiz buckets',
+            onTap: _simulateFlashcardRatings,
+          ),
+          const Divider(color: AppColors.textDark, height: 22, thickness: 1),
+
+          // 4. Clear Flashcard Ratings
+          _buildSettingsNavigationTile(
+            icon: Icons.layers_clear_outlined,
+            title: 'Clear Flashcard Ratings',
+            subtitle: 'Reset SRS difficulty ratings back to 0',
+            onTap: _clearFlashcardRatings,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSettingsNavigationTile({
     required IconData icon,
     required String title,
@@ -1127,12 +1341,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
           ),
         ),
         GestureDetector(

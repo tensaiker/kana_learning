@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine[cite: 12]
-import 'package:shared_preferences/shared_preferences.dart'; // Imports SharedPreferences for TTS settings lookup
+import 'package:flutter_tts/flutter_tts.dart'; // Native text-to-speech engine
+import 'package:shared_preferences/shared_preferences.dart'; // Local storage for speech settings and SRS ratings
 import 'dart:math';
-import '../services/progress_service.dart'; // Imports shared_preferences persistence service[cite: 12]
-import '../utils/tactile_feedback.dart'; // Imports tactile mechanical audio clicks and haptic feedback
+import '../services/progress_service.dart'; // Progress persistence and row unlock service
+import '../utils/tactile_feedback.dart'; // Tactile haptic and audio click feedback
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -16,25 +16,27 @@ class AppColors {
   static const Color sage = Color(0xFFB7C9B2);
 
   // Validation Colors
-  static const Color correctBg = Color(
-    0xFFB4CDB4,
-  ); // Soft pastel green[cite: 12]
+  static const Color correctBg = Color(0xFFB4CDB4); // Soft pastel green
   static const Color correctIcon = Color(0xFF5CA95C);
-  static const Color incorrectBg = Color(
-    0xFFD88A82,
-  ); // Soft pastel red[cite: 12]
+  static const Color incorrectBg = Color(0xFFD88A82); // Soft pastel red
   static const Color incorrectIcon = Color(0xFFC95B50);
+
+  // Difficulty Selector Colors (matching Flashcard SRS palette)
+  static const Color ratingAgain = Color(0xFFD88A82); // Soft red
+  static const Color ratingHard = Color(0xFFE29E57); // Warm orange
+  static const Color ratingGood = Color(0xFF9FB89A); // Soft green
+  static const Color ratingEasy = Color(0xFFA5C4E5); // Soft blue
 }
 
-// The 4 distinct types of questions in the quiz[cite: 12]
+// The 4 distinct types of questions in the quiz
 enum QuizType {
-  seeKanaPickRomaji, // Visual: Kana -> Romaji[cite: 12]
-  seeRomajiPickKana, // Visual: Romaji -> Kana[cite: 12]
-  listenPickRomaji, // Audio: Sound -> Romaji[cite: 12]
-  listenPickKana, // Audio: Sound -> Kana[cite: 12]
+  seeKanaPickRomaji, // Visual: Kana -> Romaji
+  seeRomajiPickKana, // Visual: Romaji -> Kana
+  listenPickRomaji, // Audio: Sound -> Romaji
+  listenPickKana, // Audio: Sound -> Kana
 }
 
-// Button states for feedback rendering[cite: 12]
+// Button states for feedback rendering
 enum ButtonState { idle, correct, incorrect, revealedCorrect }
 
 class QuizQuestion {
@@ -51,16 +53,31 @@ class QuizQuestion {
   });
 }
 
+/// Interactive Kana Quiz Screen.
+///
+/// Usage & Scenarios:
+/// 1. **Learn tab**: Do NOT pass [enableDifficultySelector] (defaults to `false`).
+///    - Removes the tune/sliders icon entirely[cite: 12].
+///    - Displays only the clean row title (e.g., "Ka row" without " • All")[cite: 12].
+///    - Tests all row characters directly without difficulty filtering.
+/// 2. **Practice Hub**: Pass `enableDifficultySelector: true` to display the
+///    difficulty label and tune controls.
 class QuizScreen extends StatefulWidget {
   final String rowTitle;
-  final String writingSystem; // e.g., "Hiragana" or "Katakana"[cite: 12]
+  final String writingSystem; // e.g., "Hiragana" or "Katakana"
   final List<Map<String, String>> characters;
+  final String difficulty; // Initial difficulty setting (defaults to 'All')
+  final bool
+  enableDifficultySelector; // true ONLY when launched from Practice Hub quiz
 
   const QuizScreen({
     super.key,
     required this.rowTitle,
     required this.writingSystem,
     required this.characters,
+    this.difficulty = 'All',
+    this.enableDifficultySelector =
+        false, // Defaults to false for Learn lessons
   });
 
   @override
@@ -68,19 +85,25 @@ class QuizScreen extends StatefulWidget {
 }
 
 class _QuizScreenState extends State<QuizScreen> {
-  late List<QuizQuestion> _questions;
+  // Pre-initialized to empty list to avoid LateInitializationError during async init
+  List<QuizQuestion> _questions = [];
   int _currentQuestionIndex = 0;
   final Random _random = Random();
 
-  // Answer validation states[cite: 12]
+  // Answer validation states
   bool _hasAnswered = false;
   String? _selectedOption;
   bool _isQuizComplete = false;
 
-  // Native text-to-speech engine instance[cite: 12]
+  // Difficulty filter state: initialized with default fallback to avoid late initialization errors
+  String _selectedDifficulty = 'All';
+  bool _showDifficultySelector = false;
+  Map<String, String> _difficultyRatingMap = {};
+
+  // Native text-to-speech engine instance
   final FlutterTts _flutterTts = FlutterTts();
 
-  // Score tracking per category[cite: 12]
+  // Score tracking per category
   final Map<QuizType, int> _scores = {
     QuizType.seeKanaPickRomaji: 0,
     QuizType.seeRomajiPickKana: 0,
@@ -91,9 +114,20 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   void initState() {
     super.initState();
-    _initTts();
-    _generateQuestions();
-    // Automatically trigger audio if the first question is a listening question[cite: 12]
+    _selectedDifficulty = widget.difficulty;
+    _initQuiz();
+  }
+
+  /// Concurrently initializes audio, loads stored SRS difficulty ratings, and generates questions
+  Future<void> _initQuiz() async {
+    await Future.wait([_initTts(), _loadDifficultyRatings()]);
+
+    if (!mounted) return;
+    setState(() {
+      _generateQuestions();
+    });
+
+    // Automatically trigger audio if the first question is an audio listening question
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _speakCurrentQuestion();
     });
@@ -105,7 +139,7 @@ class _QuizScreenState extends State<QuizScreen> {
     super.dispose();
   }
 
-  /// Configures the native TTS engine synchronized with user audio preferences
+  /// Configures native TTS engine synchronized with user audio preferences
   Future<void> _initTts() async {
     final prefs = await SharedPreferences.getInstance();
     final double rate = prefs.getDouble('settings_speech_rate') ?? 0.5;
@@ -117,9 +151,31 @@ class _QuizScreenState extends State<QuizScreen> {
     await _flutterTts.setPitch(1.0);
   }
 
-  /// Speaks the target kana aloud if the current question requires audio[cite: 12]
+  /// Loads individual Kana SRS difficulty history from persistent storage
+  Future<void> _loadDifficultyRatings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final Map<String, String> ratings = {};
+
+    for (final char in widget.characters) {
+      final kana = char['kana'];
+      if (kana != null && kana.isNotEmpty) {
+        final rating = prefs.getString('kana_difficulty_$kana');
+        if (rating != null) {
+          ratings[kana] = rating;
+        }
+      }
+    }
+    _difficultyRatingMap = ratings;
+  }
+
+  /// Speaks the target kana aloud if the current question requires audio
   Future<void> _speakCurrentQuestion() async {
-    if (_questions.isEmpty || _isQuizComplete) return;
+    if (_questions.isEmpty ||
+        _isQuizComplete ||
+        _showDifficultySelector ||
+        _currentQuestionIndex >= _questions.length) {
+      return;
+    }
     final currentQ = _questions[_currentQuestionIndex];
     if (currentQ.type == QuizType.listenPickRomaji ||
         currentQ.type == QuizType.listenPickKana) {
@@ -128,32 +184,68 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
-  /// Generates exactly 5 questions for each of the 4 quiz types (20 total).[cite: 12]
+  /// Generates questions. When opened from Learn (enableDifficultySelector == false),
+  /// all row characters are tested directly without filtering by SRS difficulty.
   void _generateQuestions() {
     _questions = [];
     final validChars = widget.characters
-        .where((c) => c['kana']!.isNotEmpty)
+        .where((c) => c['kana'] != null && c['kana']!.trim().isNotEmpty)
         .toList();
 
     if (validChars.isEmpty) return;
 
+    final ps = ProgressService.instance;
+    List<Map<String, String>> targetPool = [];
+
+    // Filter characters according to selected difficulty only if difficulty mode is enabled
+    if (!widget.enableDifficultySelector || _selectedDifficulty == 'All') {
+      targetPool = List.from(validChars);
+    } else {
+      // 1. Direct match: Kana tagged explicitly with this difficulty during Flashcards
+      targetPool = validChars.where((c) {
+        final kana = c['kana']!;
+        return _difficultyRatingMap[kana] == _selectedDifficulty;
+      }).toList();
+
+      // 2. Secondary heuristic fallback if no cards have been tagged with this difficulty yet
+      if (targetPool.isEmpty) {
+        if (_selectedDifficulty == 'Easy' || _selectedDifficulty == 'Good') {
+          targetPool = validChars
+              .where((c) => ps.isKanaMastered(c['kana']!))
+              .toList();
+        } else if (_selectedDifficulty == 'Hard' ||
+            _selectedDifficulty == 'Again') {
+          targetPool = validChars
+              .where((c) => !ps.isKanaMastered(c['kana']!))
+              .toList();
+        }
+      }
+    }
+
+    // Graceful fallback to all available characters if the filtered pool is empty
+    if (targetPool.isEmpty) {
+      targetPool = List.from(validChars);
+    }
+
+    // Build exactly 5 questions per QuizType (20 questions total)
     for (var type in QuizType.values) {
       for (int i = 0; i < 5; i++) {
-        final targetChar = validChars[_random.nextInt(validChars.length)];
-        List<String> options = [];
+        final targetChar = targetPool[_random.nextInt(targetPool.length)];
+        final List<String> options = [];
 
-        bool isRomajiOptions =
+        final bool isRomajiOptions =
             (type == QuizType.seeKanaPickRomaji ||
             type == QuizType.listenPickRomaji);
 
-        String correctOption = isRomajiOptions
+        final String correctOption = isRomajiOptions
             ? targetChar['romaji']!
             : targetChar['kana']!;
         options.add(correctOption);
 
-        List<Map<String, String>> availableDistractors = List.from(validChars)
-          ..removeWhere((c) => c['kana'] == targetChar['kana']);
-
+        // Filter and pick distractors without cloning the entire array multiple times
+        final availableDistractors = validChars
+            .where((c) => c['kana'] != targetChar['kana'])
+            .toList();
         availableDistractors.shuffle(_random);
 
         for (int j = 0; j < min(3, availableDistractors.length); j++) {
@@ -164,6 +256,7 @@ class _QuizScreenState extends State<QuizScreen> {
           );
         }
 
+        // Pad up to 4 options if the dataset has fewer than 4 distinct characters
         while (options.length < 4) {
           options.add("");
         }
@@ -184,70 +277,80 @@ class _QuizScreenState extends State<QuizScreen> {
     _questions.shuffle(_random);
   }
 
-  /// Saves the current question checkpoint to local storage when exiting.[cite: 12]
-  /// For example, exiting on question 5 saves 5/20 so the Home tab and Progress[cite: 12]
-  /// service immediately reflect 5/20 progress.[cite: 12]
+  /// Saves the current question checkpoint to local storage when exiting
   void _exitAndSaveProgress() {
-    int progressCount = _isQuizComplete
-        ? _questions.length
-        : (_currentQuestionIndex + 1);
+    final int totalQuestions = _questions.isEmpty ? 20 : _questions.length;
+    final int progressCount = _isQuizComplete
+        ? totalQuestions
+        : min(_currentQuestionIndex + 1, totalQuestions);
 
     ProgressService.instance.saveRowProgress(
       writingSystem: widget.writingSystem,
       rowTitle: widget.rowTitle,
       currentQuestion: progressCount,
-      totalQuestions: _questions.length,
+      totalQuestions: totalQuestions,
     );
 
     Navigator.pop(context);
   }
 
-  /// Processes the user's answer, logs mastery in local storage, shows validation, and advances.[cite: 12]
+  /// Processes user answer, logs mastery in ProgressService, updates ratings, and advances
   void _handleAnswer(String selectedOption) async {
-    if (_hasAnswered) return; // Prevent double-clicking[cite: 12]
+    if (_hasAnswered || _questions.isEmpty) return; // Prevent double-clicking
 
     final currentQ = _questions[_currentQuestionIndex];
-    bool isRomajiOptions =
+    final bool isRomajiOptions =
         (currentQ.type == QuizType.seeKanaPickRomaji ||
         currentQ.type == QuizType.listenPickRomaji);
-    String correctAnswer = isRomajiOptions
+    final String correctAnswer = isRomajiOptions
         ? currentQ.targetRomaji
         : currentQ.targetKana;
+
+    final bool isCorrect = (selectedOption == correctAnswer);
 
     setState(() {
       _hasAnswered = true;
       _selectedOption = selectedOption;
 
-      // Update score and persist character mastery when answer is correct[cite: 12]
-      if (selectedOption == correctAnswer) {
+      if (isCorrect) {
         _scores[currentQ.type] = _scores[currentQ.type]! + 1;
 
-        // Persists the mastered kana to SharedPreferences in real time.[cite: 12]
+        // Persist character mastery in real time
         ProgressService.instance.markKanaMastered(currentQ.targetKana);
-
-        // Tactile confirmation: Plays a positive haptic and audio click
         TactileFeedback.success();
       } else {
-        // Tactile error: Triggers a distinctive error bump
         TactileFeedback.error();
       }
     });
 
-    // Wait for 1.5 seconds to let the user see the correct/incorrect colors[cite: 12]
+    // Update SRS difficulty rating in local storage if difficulty mode is enabled
+    if (widget.enableDifficultySelector) {
+      final prefs = await SharedPreferences.getInstance();
+      final currentRating = _difficultyRatingMap[currentQ.targetKana];
+      final String newRating = isCorrect ? (currentRating ?? 'Good') : 'Again';
+      if (newRating != currentRating) {
+        await prefs.setString(
+          'kana_difficulty_${currentQ.targetKana}',
+          newRating,
+        );
+        _difficultyRatingMap[currentQ.targetKana] = newRating;
+      }
+    }
+
+    // Display validation visual feedback for 1.5 seconds
     await Future.delayed(const Duration(milliseconds: 1500));
 
-    // Proceed to next question or complete quiz[cite: 12]
     if (!mounted) return;
     setState(() {
       if (_currentQuestionIndex < _questions.length - 1) {
         _currentQuestionIndex++;
         _hasAnswered = false;
         _selectedOption = null;
-        _speakCurrentQuestion(); // Speak if next question is listening type[cite: 12]
+        _speakCurrentQuestion(); // Audio trigger for upcoming listening questions
       } else {
         _isQuizComplete = true;
 
-        // Mark full row completion (e.g., 20/20) and unlock the prerequisite for the next row[cite: 12]
+        // Save full row completion checkpoint (e.g., 20/20)
         ProgressService.instance.saveRowProgress(
           writingSystem: widget.writingSystem,
           rowTitle: widget.rowTitle,
@@ -260,10 +363,13 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_questions.isEmpty) {
+    // Gracefully shows loading indicator until async question generation completes
+    if (_questions.isEmpty && !_showDifficultySelector) {
       return const Scaffold(
         backgroundColor: AppColors.beige,
-        body: Center(child: Text("No quiz data.")),
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.textDark),
+        ),
       );
     }
 
@@ -271,220 +377,412 @@ class _QuizScreenState extends State<QuizScreen> {
       return _buildSummaryScreen();
     }
 
-    final currentQ = _questions[_currentQuestionIndex];
-
     return Scaffold(
       backgroundColor: AppColors.beige,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Top Header (Frame 135: Close 'X', Writing System, and '${rowTitle} learn')[cite: 12]
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: const BoxDecoration(
-                color: AppColors.sand,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(16),
-                ),
-                border: Border(
-                  bottom: BorderSide(color: AppColors.textDark, width: 2),
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      color: AppColors.textDark,
-                      size: 28,
-                    ),
-                    onPressed: () {
-                      TactileFeedback.toggle();
-                      _exitAndSaveProgress();
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+            _buildTopHeader(),
+
+            // Show Difficulty Type selection ONLY if enabled by Practice Hub
+            if (_showDifficultySelector && widget.enableDifficultySelector)
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 20,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.writingSystem,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.cream,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.textDark, width: 2),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppColors.textDark,
+                          offset: Offset(0, 4),
+                          blurRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: _buildDifficultySelectionView(),
+                  ),
+                ),
+              )
+            else ...[
+              // 1. Progress Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 20,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
                             color: AppColors.textDark,
+                            width: 1.5,
                           ),
                         ),
-                        Center(
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: _questions.isEmpty
+                              ? 0.0
+                              : (_currentQuestionIndex + 1) / _questions.length,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.taupe,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${_currentQuestionIndex + 1}/${_questions.length} question',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 2. Main Question Area
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.cream,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.textDark, width: 2),
+                    ),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.beige,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.textDark,
+                              width: 1.5,
+                            ),
+                          ),
                           child: Text(
-                            '${widget.rowTitle} learn',
+                            _getInstructionText(
+                              _questions[_currentQuestionIndex].type,
+                            ),
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textDark,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Center(
+                            child: _buildQuestionContent(
+                              _questions[_currentQuestionIndex],
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // 2. Progress Bar[cite: 12]
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: AppColors.cream,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: AppColors.textDark,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor:
-                            (_currentQuestionIndex + 1) / _questions.length,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.taupe,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '${_currentQuestionIndex + 1}/${_questions.length} question',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // 3. Main Question Area[cite: 12]
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.cream,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.textDark, width: 2),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.beige,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.textDark,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          _getInstructionText(currentQ.type),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Center(child: _buildQuestionContent(currentQ)),
-                      ),
-                    ],
-                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // 4. Answer Grid (2x2)[cite: 12]
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildChoiceButton(
-                          currentQ,
-                          currentQ.options[0],
+              // 3. Answer Grid (2x2)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 20,
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildChoiceButton(
+                            _questions[_currentQuestionIndex],
+                            _questions[_currentQuestionIndex].options[0],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildChoiceButton(
-                          currentQ,
-                          currentQ.options[1],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildChoiceButton(
+                            _questions[_currentQuestionIndex],
+                            _questions[_currentQuestionIndex].options[1],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildChoiceButton(
-                          currentQ,
-                          currentQ.options[2],
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildChoiceButton(
+                            _questions[_currentQuestionIndex],
+                            _questions[_currentQuestionIndex].options[2],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildChoiceButton(
-                          currentQ,
-                          currentQ.options[3],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildChoiceButton(
+                            _questions[_currentQuestionIndex],
+                            _questions[_currentQuestionIndex].options[3],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  /// Evaluates the state of a button based on the user's answer to display the correct colors/icons.[cite: 12]
+  // ===========================================================================
+  // TOP HEADER BAR (CLEANED: NO DIFFICULTY TUNE ICON FOR LEARN TAB)
+  // ===========================================================================
+  Widget _buildTopHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: const BoxDecoration(
+        color: AppColors.sand,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+        border: Border(bottom: BorderSide(color: AppColors.textDark, width: 2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.close, color: AppColors.textDark, size: 28),
+            onPressed: () {
+              TactileFeedback.toggle();
+              _exitAndSaveProgress();
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.writingSystem,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                // Only displays '• Difficulty' if launched from Practice Hub
+                Text(
+                  widget.enableDifficultySelector
+                      ? '${widget.rowTitle} • $_selectedDifficulty'
+                      : widget.rowTitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Sliders / Tune Icon Button: Rendered ONLY in Practice Hub quiz
+          if (widget.enableDifficultySelector)
+            GestureDetector(
+              onTap: () {
+                TactileFeedback.toggle();
+                setState(() {
+                  _showDifficultySelector = !_showDifficultySelector;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _showDifficultySelector
+                      ? AppColors.taupe
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.tune_rounded,
+                  color: AppColors.textDark,
+                  size: 24,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // DIFFICULTY TYPE SELECTOR (FOR PRACTICE HUB QUIZ ONLY)
+  // ===========================================================================
+  Widget _buildDifficultySelectionView() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Difficulty type',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.beige.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.textDark, width: 1.8),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildCircularDifficultyButton(
+                      'Easy',
+                      AppColors.ratingEasy,
+                    ),
+                    _buildCircularDifficultyButton(
+                      'Hard',
+                      AppColors.ratingHard,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildCircularDifficultyButton(
+                      'Good',
+                      AppColors.ratingGood,
+                    ),
+                    _buildCircularDifficultyButton(
+                      'Again',
+                      AppColors.ratingAgain,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: _buildCircularDifficultyButton('All', AppColors.sand),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: TextButton(
+              onPressed: () {
+                TactileFeedback.toggle();
+                setState(() => _showDifficultySelector = false);
+              },
+              child: const Text(
+                'Back to options',
+                style: TextStyle(
+                  color: AppColors.textDark,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCircularDifficultyButton(String label, Color color) {
+    final bool isSelected = _selectedDifficulty == label;
+    return GestureDetector(
+      onTap: () {
+        TactileFeedback.press();
+        setState(() {
+          _selectedDifficulty = label;
+          _showDifficultySelector = false;
+          _currentQuestionIndex = 0;
+          _hasAnswered = false;
+          _selectedOption = null;
+          _isQuizComplete = false;
+          _scores.updateAll((key, value) => 0);
+          _generateQuestions();
+        });
+        _speakCurrentQuestion();
+      },
+      child: Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: AppColors.textDark,
+            width: isSelected ? 3.5 : 2.0,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.textDark,
+              offset: Offset(0, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+            color: AppColors.textDark,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildChoiceButton(QuizQuestion currentQ, String option) {
     if (option.isEmpty) return const SizedBox();
 
     ButtonState state = ButtonState.idle;
 
     if (_hasAnswered) {
-      bool isRomajiOptions =
+      final bool isRomajiOptions =
           (currentQ.type == QuizType.seeKanaPickRomaji ||
           currentQ.type == QuizType.listenPickRomaji);
-      String correctAnswer = isRomajiOptions
+      final String correctAnswer = isRomajiOptions
           ? currentQ.targetRomaji
           : currentQ.targetKana;
 
@@ -504,9 +802,8 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  /// The final score summary screen shown at the end of the quiz[cite: 12]
   Widget _buildSummaryScreen() {
-    int totalCorrect = _scores.values.fold(0, (sum, val) => sum + val);
+    final int totalCorrect = _scores.values.fold(0, (sum, val) => sum + val);
 
     return Scaffold(
       backgroundColor: AppColors.beige,
@@ -514,7 +811,6 @@ class _QuizScreenState extends State<QuizScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Top Header[cite: 12]
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               decoration: const BoxDecoration(
@@ -552,9 +848,11 @@ class _QuizScreenState extends State<QuizScreen> {
                         ),
                       ),
                       Text(
-                        '${widget.rowTitle} learn',
+                        widget.enableDifficultySelector
+                            ? '${widget.rowTitle} • $_selectedDifficulty'
+                            : widget.rowTitle,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textDark,
                         ),
@@ -567,7 +865,6 @@ class _QuizScreenState extends State<QuizScreen> {
 
             const SizedBox(height: 32),
 
-            // Summary Card[cite: 12]
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -600,7 +897,6 @@ class _QuizScreenState extends State<QuizScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Breakdown Rows[cite: 12]
                       _buildScoreRow(
                         "Pick the romaji",
                         QuizType.seeKanaPickRomaji,
@@ -623,7 +919,6 @@ class _QuizScreenState extends State<QuizScreen> {
 
                       const Spacer(),
 
-                      // Continue Button to exit quiz and record full progress[cite: 12]
                       GestureDetector(
                         onTap: () {
                           TactileFeedback.press();
@@ -672,8 +967,8 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Widget _buildScoreRow(String label, QuizType type) {
-    int totalForType = _questions.where((q) => q.type == type).length;
-    int scoreForType = _scores[type] ?? 0;
+    final int totalForType = _questions.where((q) => q.type == type).length;
+    final int scoreForType = _scores[type] ?? 0;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -735,7 +1030,7 @@ class _QuizScreenState extends State<QuizScreen> {
         ],
       );
     } else {
-      bool isKana = q.type == QuizType.seeKanaPickRomaji;
+      final bool isKana = q.type == QuizType.seeKanaPickRomaji;
       return Text(
         isKana ? q.targetKana : q.targetRomaji,
         style: TextStyle(
@@ -753,7 +1048,7 @@ class _QuizScreenState extends State<QuizScreen> {
 // INTERACTIVE 3D BUTTON COMPONENTS WITH TACTILE CLICKS & HAPTICS
 // -----------------------------------------------------------------------------
 
-/// The animated 2x2 grid choice buttons with validation colors and tactile feedback.
+/// The animated 2x2 grid choice buttons with validation colors and tactile feedback
 class Interactive3DChoiceButton extends StatefulWidget {
   final String label;
   final ButtonState state;
@@ -794,7 +1089,6 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
     return GestureDetector(
       onTapDown: (_) {
         if (widget.state == ButtonState.idle) {
-          // Triggers immediate crisp mechanical click and subtle vibration
           TactileFeedback.press();
           setState(() => _isPressed = true);
         }
@@ -831,7 +1125,6 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
                 style: const TextStyle(fontSize: 40, color: AppColors.textDark),
               ),
             ),
-            // Result Validation Icons[cite: 12]
             if (widget.state == ButtonState.correct ||
                 widget.state == ButtonState.revealedCorrect)
               const Positioned(
@@ -860,7 +1153,7 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
   }
 }
 
-/// The animated large speaker button for audio questions with tactile feedback.
+/// The animated large speaker button for audio questions with tactile feedback
 class Interactive3DSpeakerButton extends StatefulWidget {
   final VoidCallback onTap;
 
@@ -879,7 +1172,6 @@ class _Interactive3DSpeakerButtonState
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) {
-        // Triggers physical mechanical press down feedback
         TactileFeedback.press();
         setState(() => _isPressed = true);
       },

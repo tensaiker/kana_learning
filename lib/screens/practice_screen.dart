@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Reads card difficulty ratings saved from Flashcards[cite: 13]
 import 'dart:math';
 import 'quiz_screen.dart';
 import 'flashcard_screen.dart';
@@ -17,20 +18,24 @@ class AppColors {
   static const Color textDark = Color(0xFF5D534A);
   static const Color textLight = Color(0xFF8B8076);
 
-  // Hiragana Colors (Green)
+  // Hiragana Colors (Green)[cite: 13]
   static const Color sage = Color(0xFFB7C9B2);
   static const Color lightSage = Color(0xFFE4EFE7);
   static const Color greenButton = Color(0xFF6EAA78);
 
-  // Katakana Colors (Blue)
+  // Katakana Colors (Blue)[cite: 13]
   static const Color skyBlue = Color(0xFFA5C4E5);
   static const Color lightSkyBlue = Color(0xFFEBF0F5);
 
-  // Difficulty & Feedback Colors
-  static const Color ratingAgain = Color(0xFFD88A82);
-  static const Color ratingHard = Color(0xFFE29E57);
-  static const Color ratingGood = Color(0xFF9FB89A);
-  static const Color ratingEasy = Color(0xFFA5C4E5);
+  // Difficulty & Feedback Colors (Matching Updated Quiz UI)[cite: 13]
+  static const Color ratingAgain = Color(
+    0xFFD88A82,
+  ); // Soft red/coral[cite: 13]
+  static const Color ratingHard = Color(
+    0xFFE29E57,
+  ); // Warm amber/orange[cite: 13]
+  static const Color ratingGood = Color(0xFF9FB89A); // Sage green[cite: 13]
+  static const Color ratingEasy = Color(0xFFA5C4E5); // Soft blue[cite: 13]
   static const Color flameOrange = Color(0xFFE06229);
 }
 
@@ -40,6 +45,17 @@ enum WordBuilderQuestionType { kanaToRomaji, romajiToKana }
 
 enum WordLength { short, medium, long }
 
+/// Main Practice Hub & Sub-mode Configuration Screen.
+///
+/// Features & Guidelines:
+/// 1. Dynamic Vocabulary Unlocking:
+///    - Word Builder pulls only words formed exclusively of unlocked kana characters.
+///    - Vocabulary Library visually distinguishes unlocked words from locked ones, displaying
+///      missing prerequisite row requirements and showing an informative locked modal when tapped.
+/// 2. Flashcard & Quiz Progression:
+///    - Flashcard row selection enforces lesson row unlocks from the Learn tab[cite: 13].
+///    - Practice Hub Quiz passes `enableDifficultySelector: true` to QuizScreen,
+///      keeping difficulty filtering exclusively inside the Practice Hub.
 class PracticeScreen extends StatefulWidget {
   const PracticeScreen({super.key});
 
@@ -49,13 +65,24 @@ class PracticeScreen extends StatefulWidget {
 
 class _PracticeScreenState extends State<PracticeScreen> {
   bool _isHiragana = true;
-  String? _activeSubScreen;
+  String?
+  _activeSubScreen; // 'flashcard', 'word_builder', 'vocab_library', 'quiz_difficulty'
 
   FlashcardQuestionType _selectedQuestionType =
       FlashcardQuestionType.kanaToRomaji;
-  String _selectedDifficulty = 'All';
-  bool _showDifficultyFilter = false;
   bool _isRowsExpanded = false;
+
+  // Selected difficulty for the Quiz flow[cite: 13]
+  String _selectedQuizDifficulty = 'All';
+
+  // Live character counts for the new Quiz difficulty UI[cite: 13]
+  Map<String, int> _difficultyCounts = {
+    'Easy': 0,
+    'Good': 0,
+    'Hard': 0,
+    'Again': 0,
+    'All': 0,
+  };
 
   WordBuilderQuestionType _wbQuestionType =
       WordBuilderQuestionType.romajiToKana;
@@ -65,6 +92,19 @@ class _PracticeScreenState extends State<PracticeScreen> {
   String _vocabSearchQuery = '';
   late Set<String> _selectedRowIds;
   final FlutterTts _flutterTts = FlutterTts();
+
+  static const List<String> _basicRowOrder = [
+    'A row',
+    'Ka row',
+    'Sa row',
+    'Ta row',
+    'Na row',
+    'Ha row',
+    'Ma row',
+    'Ya row',
+    'Ra row',
+    'Wa / N row',
+  ];
 
   final List<Map<String, dynamic>> _basicRows = [
     {
@@ -260,12 +300,33 @@ class _PracticeScreenState extends State<PracticeScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedRowIds = {
-      ..._basicRows.map((r) => r['id'] as String),
-      ..._dakuonRows.map((r) => r['id'] as String),
-      ..._yoonRows.map((r) => r['id'] as String),
-    };
+    _selectedRowIds = {};
+    _initSelectedRows();
+    _loadDifficultyCounts();
     _initTts();
+  }
+
+  void _initSelectedRows() {
+    for (final r in [..._basicRows, ..._dakuonRows, ..._yoonRows]) {
+      if (_isRowUnlocked(r)) {
+        _selectedRowIds.add(r['id'] as String);
+      }
+    }
+    if (_selectedRowIds.isEmpty) {
+      _selectedRowIds.add('a');
+    }
+  }
+
+  void _cleanLockedSelections() {
+    final allRows = [..._basicRows, ..._dakuonRows, ..._yoonRows];
+    _selectedRowIds.removeWhere((id) {
+      final row = allRows.firstWhere((r) => r['id'] == id, orElse: () => {});
+      if (row.isEmpty) return true;
+      return !_isRowUnlocked(row);
+    });
+    if (_selectedRowIds.isEmpty && _isRowUnlocked(_basicRows.first)) {
+      _selectedRowIds.add('a');
+    }
   }
 
   Future<void> _initTts() async {
@@ -285,11 +346,203 @@ class _PracticeScreenState extends State<PracticeScreen> {
     super.dispose();
   }
 
+  /// Checks if a row is unlocked in lesson progression via ProgressService[cite: 13].
+  bool _isRowUnlocked(Map<String, dynamic> row) {
+    final ps = ProgressService.instance;
+    final systemName = _isHiragana ? 'Hiragana' : 'Katakana';
+    final String title = row['title'] as String;
+    return ps.isRowUnlocked(writingSystem: systemName, rowTitle: title);
+  }
+
+  String _getPrerequisiteTitle(Map<String, dynamic> row) {
+    final String title = row['title'] as String;
+    final index = _basicRowOrder.indexOf(title);
+    if (index > 0) return _basicRowOrder[index - 1];
+    if (_dakuonRows.any((r) => r['title'] == title)) return 'Wa / N row';
+    if (_yoonRows.any((r) => r['title'] == title)) return 'Pa row';
+    return 'previous lesson';
+  }
+
+  /// Collects all valid characters belonging to currently unlocked rows[cite: 13].
+  List<Map<String, String>> _getAvailableQuizCharacters() {
+    final List<Map<String, String>> chars = [];
+    void collectFrom(List<Map<String, dynamic>> rows) {
+      for (var row in rows) {
+        if (_isRowUnlocked(row)) {
+          final kList = _isHiragana
+              ? (row['h'] as List<String>)
+              : (row['k'] as List<String>);
+          final rList = row['r'] as List<String>;
+          for (int i = 0; i < kList.length; i++) {
+            if (kList[i].isNotEmpty) {
+              chars.add({'kana': kList[i], 'romaji': rList[i]});
+            }
+          }
+        }
+      }
+    }
+
+    collectFrom(_basicRows);
+    collectFrom(_dakuonRows);
+    collectFrom(_yoonRows);
+    return chars;
+  }
+
+  /// Loads individual Kana ratings from SharedPreferences and counts them[cite: 13].
+  Future<void> _loadDifficultyCounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final availableChars = _getAvailableQuizCharacters();
+
+    int easy = 0;
+    int good = 0;
+    int hard = 0;
+    int again = 0;
+
+    for (final char in availableChars) {
+      final kana = char['kana'];
+      if (kana != null && kana.isNotEmpty) {
+        final rating = prefs.getString('kana_difficulty_$kana');
+        if (rating == 'Easy') {
+          easy++;
+        } else if (rating == 'Good') {
+          good++;
+        } else if (rating == 'Hard') {
+          hard++;
+        } else if (rating == 'Again') {
+          again++;
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _difficultyCounts = {
+          'Easy': easy,
+          'Good': good,
+          'Hard': hard,
+          'Again': again,
+          'All': availableChars.length,
+        };
+      });
+    }
+  }
+
+  void _showLockedRowDialog(Map<String, dynamic> row) {
+    TactileFeedback.error();
+    final prereq = _getPrerequisiteTitle(row);
+    final rowTitle = row['title'] as String;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cream,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.textDark, width: 2),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.lock_rounded, color: AppColors.textDark, size: 26),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '$rowTitle is Locked',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Complete the "$prereq" lesson in the Learn tab to unlock these characters.',
+          style: const TextStyle(
+            color: AppColors.textDark,
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Got it',
+              style: TextStyle(
+                color: AppColors.textDark,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Displays an informative modal when tapping a locked word in the Vocabulary Library.
+  void _showLockedWordDialog(WordBuilderQuestion word) {
+    TactileFeedback.error();
+    final missingRows = VocabularyService.instance.getMissingPrerequisiteRows(
+      word,
+    );
+    final missingRowText = missingRows.isNotEmpty
+        ? missingRows.join(', ')
+        : 'previous lesson rows';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cream,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.textDark, width: 2),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.lock_rounded, color: AppColors.textDark, size: 26),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Word Locked',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'To unlock "${word.plainKana}" (${word.romaji}), finish the following lesson(s) in the Learn tab:\n\n• $missingRowText',
+          style: const TextStyle(
+            color: AppColors.textDark,
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Got it',
+              style: TextStyle(
+                color: AppColors.textDark,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   int get _totalSelectedCharactersCount {
     int count = 0;
     void addCount(List<Map<String, dynamic>> rows) {
       for (var row in rows) {
-        if (_selectedRowIds.contains(row['id'])) {
+        if (_selectedRowIds.contains(row['id']) && _isRowUnlocked(row)) {
           final list = _isHiragana ? (row['h'] as List) : (row['k'] as List);
           count += list.where((c) => (c as String).isNotEmpty).length;
         }
@@ -303,34 +556,57 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   int _selectedCountIn(List<Map<String, dynamic>> rows) {
-    return rows.where((r) => _selectedRowIds.contains(r['id'])).length;
+    return rows
+        .where((r) => _selectedRowIds.contains(r['id']) && _isRowUnlocked(r))
+        .length;
   }
 
   void _toggleAllIn(List<Map<String, dynamic>> rows) {
     TactileFeedback.toggle();
-    final ids = rows.map((r) => r['id'] as String).toSet();
-    final bool allSelected = ids.every((id) => _selectedRowIds.contains(id));
+    final availableIds = rows
+        .where((r) => _isRowUnlocked(r))
+        .map((r) => r['id'] as String)
+        .toSet();
+
+    if (availableIds.isEmpty) {
+      TactileFeedback.error();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Finish earlier lessons to unlock these rows.'),
+        ),
+      );
+      return;
+    }
+
+    final bool allSelected = availableIds.every(
+      (id) => _selectedRowIds.contains(id),
+    );
     setState(() {
       if (allSelected) {
-        _selectedRowIds.removeAll(ids);
+        _selectedRowIds.removeAll(availableIds);
       } else {
-        _selectedRowIds.addAll(ids);
+        _selectedRowIds.addAll(availableIds);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.beige,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopHeader(),
-            Expanded(child: _buildActiveScreenContent()),
-          ],
-        ),
-      ),
+    return ListenableBuilder(
+      listenable: ProgressService.instance,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: AppColors.beige,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildTopHeader(),
+                Expanded(child: _buildActiveScreenContent()),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -347,6 +623,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
       );
     } else if (_activeSubScreen == 'vocab_library') {
       return _buildVocabularyLibraryView();
+    } else if (_activeSubScreen == 'quiz_difficulty') {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: _buildQuizDifficultySelectionCard(),
+      );
     }
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -397,7 +678,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
           GestureDetector(
             onTap: () {
               TactileFeedback.toggle();
-              setState(() => _isHiragana = true);
+              setState(() {
+                _isHiragana = true;
+                _cleanLockedSelections();
+                _loadDifficultyCounts();
+              });
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
@@ -424,7 +709,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
           GestureDetector(
             onTap: () {
               TactileFeedback.toggle();
-              setState(() => _isHiragana = false);
+              setState(() {
+                _isHiragana = false;
+                _cleanLockedSelections();
+                _loadDifficultyCounts();
+              });
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
@@ -475,88 +764,85 @@ class _PracticeScreenState extends State<PracticeScreen> {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            '$systemName Characters',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildActivityCard(
-            title: 'Flashcard Learning',
-            description: 'Master characters with spaced repetition',
-            bgColor: cardBgColor,
-            icon: Icons.style_outlined,
-            onTap: () => setState(() => _activeSubScreen = 'flashcard'),
-          ),
-          const SizedBox(height: 18),
-          _buildActivityCard(
-            title: 'Word Builder',
-            description: 'Assemble real vocabulary from kana',
-            bgColor: cardBgColor,
-            iconWidget: const Text(
-              'Aa',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: const BoxDecoration(
+              color: AppColors.sand,
+              border: Border(
+                bottom: BorderSide(color: AppColors.textDark, width: 2),
               ),
             ),
-            onTap: () => setState(() => _activeSubScreen = 'word_builder'),
-          ),
-          const SizedBox(height: 18),
-          _buildActivityCard(
-            title: 'Vocabulary Library',
-            description: 'Browse, listen, and review your word bank',
-            bgColor: cardBgColor,
-            icon: Icons.menu_book_rounded,
-            onTap: () => setState(() => _activeSubScreen = 'vocab_library'),
-          ),
-          const SizedBox(height: 18),
-          _buildActivityCard(
-            title: '$systemName Quiz',
-            description: 'Test your recognition and listening skills',
-            bgColor: cardBgColor,
-            iconWidget: Text(
-              _isHiragana ? 'あ' : 'ア',
+            child: Text(
+              '$systemName Practice',
               style: const TextStyle(
-                fontSize: 22,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,
               ),
             ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => QuizScreen(
-                    rowTitle: 'Full',
-                    writingSystem: systemName,
-                    characters: _isHiragana
-                        ? [
-                            {'kana': 'あ', 'romaji': 'a'},
-                            {'kana': 'い', 'romaji': 'i'},
-                            {'kana': 'う', 'romaji': 'u'},
-                            {'kana': 'え', 'romaji': 'e'},
-                            {'kana': 'お', 'romaji': 'o'},
-                          ]
-                        : [
-                            {'kana': 'ア', 'romaji': 'a'},
-                            {'kana': 'イ', 'romaji': 'i'},
-                            {'kana': 'ウ', 'romaji': 'u'},
-                            {'kana': 'エ', 'romaji': 'e'},
-                            {'kana': 'オ', 'romaji': 'o'},
-                          ],
-                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildActivityCard(
+                  title: 'Flashcard Learning',
+                  description: 'Master characters with spaced repetition',
+                  bgColor: cardBgColor,
+                  icon: Icons.style_outlined,
+                  onTap: () => setState(() => _activeSubScreen = 'flashcard'),
                 ),
-              );
-            },
+                const SizedBox(height: 18),
+                _buildActivityCard(
+                  title: 'Word Builder',
+                  description: 'Assemble real vocabulary from kana',
+                  bgColor: cardBgColor,
+                  iconWidget: const Text(
+                    'Aa',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  onTap: () =>
+                      setState(() => _activeSubScreen = 'word_builder'),
+                ),
+                const SizedBox(height: 18),
+                _buildActivityCard(
+                  title: 'Vocabulary Library',
+                  description: 'Browse, listen, and review your word bank',
+                  bgColor: cardBgColor,
+                  icon: Icons.menu_book_rounded,
+                  onTap: () =>
+                      setState(() => _activeSubScreen = 'vocab_library'),
+                ),
+                const SizedBox(height: 18),
+                _buildActivityCard(
+                  title: '$systemName Quiz',
+                  description: 'Test your recognition and listening skills',
+                  bgColor: cardBgColor,
+                  iconWidget: Text(
+                    _isHiragana ? 'あ' : 'ア',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  onTap: () {
+                    TactileFeedback.press();
+                    _loadDifficultyCounts();
+                    setState(() => _activeSubScreen = 'quiz_difficulty');
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -677,185 +963,166 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     ],
                   ),
                 ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () {
-                    TactileFeedback.toggle();
-                    setState(
-                      () => _showDifficultyFilter = !_showDifficultyFilter,
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: _showDifficultyFilter
-                          ? AppColors.taupe
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.tune_rounded,
-                      color: AppColors.textDark,
-                      size: 22,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.all(20),
-            child: _showDifficultyFilter
-                ? _buildDifficultySelectionView()
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Kana',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildAccordionSelector(systemName),
-                      const SizedBox(height: 22),
-                      const Text(
-                        'Question type',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFlashcardQuestionTypeGrid(),
-                      const SizedBox(height: 24),
-                      _buildStartButton(onTap: () => _startFlashcards()),
-                    ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Kana',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
                   ),
+                ),
+                const SizedBox(height: 10),
+                _buildAccordionSelector(systemName),
+                const SizedBox(height: 22),
+                const Text(
+                  'Question type',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildFlashcardQuestionTypeGrid(),
+                const SizedBox(height: 24),
+                _buildStartButton(onTap: () => _startFlashcards()),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDifficultySelectionView() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Difficulty type',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+  // ===========================================================================
+  // 4. QUIZ DIFFICULTY SELECTION CARD[cite: 13]
+  // ===========================================================================
+  Widget _buildQuizDifficultySelectionCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cream,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.textDark, width: 2),
+        boxShadow: const [
+          BoxShadow(
             color: AppColors.textDark,
+            offset: Offset(0, 4),
+            blurRadius: 0,
           ),
-        ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-          decoration: BoxDecoration(
-            color: AppColors.beige.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.textDark, width: 1.8),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildCircularDifficultyButton('Easy', AppColors.ratingEasy),
-                  _buildCircularDifficultyButton('Hard', AppColors.ratingHard),
-                ],
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: const BoxDecoration(
+              color: AppColors.sand,
+              border: Border(
+                bottom: BorderSide(color: AppColors.textDark, width: 2),
               ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildCircularDifficultyButton('Good', AppColors.ratingGood),
-                  _buildCircularDifficultyButton(
-                    'Again',
-                    AppColors.ratingAgain,
+            ),
+            child: Row(
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    TactileFeedback.toggle();
+                    setState(() => _activeSubScreen = null);
+                  },
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.arrow_back_ios_new,
+                        color: AppColors.textDark,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Quiz',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Center(
-                child: _buildCircularDifficultyButton('All', AppColors.sand),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        Center(
-          child: TextButton(
-            onPressed: () {
-              TactileFeedback.toggle();
-              setState(() => _showDifficultyFilter = false);
-            },
-            child: const Text(
-              'Back to options',
-              style: TextStyle(
-                color: AppColors.textDark,
-                fontWeight: FontWeight.bold,
-              ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCircularDifficultyButton(String label, Color color) {
-    final bool isSelected = _selectedDifficulty == label;
-    return GestureDetector(
-      onTap: () {
-        TactileFeedback.press();
-        setState(() {
-          _selectedDifficulty = label;
-          _showDifficultyFilter = false;
-        });
-      },
-      child: Container(
-        width: 100,
-        height: 100,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.textDark,
-            width: isSelected ? 3 : 2,
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.textDark,
-              offset: Offset(0, 4),
-              blurRadius: 0,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              children: [
+                _buildQuizDifficultyButton(
+                  label: 'Easy',
+                  count: _difficultyCounts['Easy'] ?? 0,
+                  color: AppColors.ratingEasy,
+                ),
+                const SizedBox(height: 14),
+                _buildQuizDifficultyButton(
+                  label: 'Good',
+                  count: _difficultyCounts['Good'] ?? 0,
+                  color: AppColors.ratingGood,
+                ),
+                const SizedBox(height: 14),
+                _buildQuizDifficultyButton(
+                  label: 'Hard',
+                  count: _difficultyCounts['Hard'] ?? 0,
+                  color: AppColors.ratingHard,
+                ),
+                const SizedBox(height: 14),
+                _buildQuizDifficultyButton(
+                  label: 'Again',
+                  count: _difficultyCounts['Again'] ?? 0,
+                  color: AppColors.ratingAgain,
+                ),
+                const SizedBox(height: 14),
+                _buildQuizDifficultyButton(
+                  label: 'All',
+                  count: _difficultyCounts['All'] ?? 0,
+                  color: AppColors.sand,
+                ),
+              ],
             ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-            color: AppColors.textDark,
           ),
-        ),
+        ],
       ),
     );
   }
 
+  Widget _buildQuizDifficultyButton({
+    required String label,
+    required int count,
+    required Color color,
+  }) {
+    return _Interactive3DQuizDifficultyButton(
+      label: label,
+      count: count,
+      color: color,
+      onTap: () {
+        setState(() => _selectedQuizDifficulty = label);
+        _startQuizWithDifficulty(label);
+      },
+    );
+  }
+
   // ===========================================================================
-  // 4. WORD BUILDER SETUP CARD
+  // 5. WORD BUILDER SETUP CARD
   // ===========================================================================
   Widget _buildWordBuilderSetupCard() {
-    final systemName = _isHiragana ? 'Hiragana' : 'Katakana';
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cream,
@@ -912,24 +1179,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
               ],
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Kana',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _buildAccordionSelector(systemName),
-                const SizedBox(height: 22),
-
                 const Text(
                   'Question type',
                   style: TextStyle(
@@ -1109,7 +1363,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
                 _buildStartButton(onTap: () => _startWordBuilder()),
               ],
             ),
@@ -1174,13 +1427,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   // ===========================================================================
-  // 5. VOCABULARY LIBRARY / WORD BANK SCREEN (OPTIMIZED FOR 1,000+ WORDS)
+  // 6. VOCABULARY LIBRARY VIEW (WITH DYNAMIC UNLOCK & LOCK MODAL SUPPORT)
   // ===========================================================================
   Widget _buildVocabularyLibraryView() {
     final systemName = _isHiragana ? 'Hiragana' : 'Katakana';
+    final vocabService = VocabularyService.instance;
 
-    final pool = VocabularyService.instance.allWords.isNotEmpty
-        ? VocabularyService.instance.allWords
+    final pool = vocabService.allWords.isNotEmpty
+        ? vocabService.allWords
         : allVocabulary;
 
     final filteredWords = pool.where((w) => w.isHiragana == _isHiragana).where((
@@ -1188,7 +1442,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
     ) {
       if (_vocabSearchQuery.isEmpty) return true;
       final q = _vocabSearchQuery.toLowerCase();
-      return w.kana.contains(q) ||
+      return w.plainKana.contains(q) ||
+          w.kana.contains(q) ||
           w.romaji.toLowerCase().contains(q) ||
           w.english.toLowerCase().contains(q);
     }).toList();
@@ -1330,74 +1585,132 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
   Widget _buildVocabularyCard(WordBuilderQuestion word) {
     final bool isMastered = ProgressService.instance.isWordMastered(word.kana);
+    final bool isUnlocked = VocabularyService.instance.isWordUnlocked(word);
+    final missingRows = !isUnlocked
+        ? VocabularyService.instance.getMissingPrerequisiteRows(word)
+        : <String>[];
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: isMastered ? AppColors.lightSage : AppColors.beige,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textDark, width: 2.0),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.textDark,
-            offset: Offset(0, 3),
-            blurRadius: 0,
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  word.kana.split('').join(' '),
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  word.romaji,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  word.english,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textDark,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+    Color cardBg;
+    if (!isUnlocked) {
+      cardBg = AppColors.beige.withOpacity(0.45);
+    } else if (isMastered) {
+      cardBg = AppColors.lightSage;
+    } else {
+      cardBg = AppColors.beige;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (!isUnlocked) {
+          _showLockedWordDialog(word);
+        } else {
+          _speakWord(word.kana);
+        }
+      },
+      child: Opacity(
+        opacity: isUnlocked ? 1.0 : 0.65,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isUnlocked ? AppColors.textDark : AppColors.textLight,
+              width: 2.0,
             ),
-          ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: () => _speakWord(word.kana),
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              color: Colors.transparent,
-              child: const Icon(
-                Icons.volume_up_rounded,
+            boxShadow: [
+              BoxShadow(
                 color: AppColors.textDark,
-                size: 34,
+                offset: Offset(0, isUnlocked ? 3 : 1),
+                blurRadius: 0,
               ),
-            ),
+            ],
           ),
-        ],
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          word.kana.split('').join(' '),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                        if (!isUnlocked) ...[
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.lock_outline,
+                            size: 16,
+                            color: AppColors.textDark,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      word.romaji,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      word.english,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textDark,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (!isUnlocked && missingRows.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Requires: ${missingRows.join(', ')}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.ratingHard,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (isUnlocked)
+                GestureDetector(
+                  onTap: () => _speakWord(word.kana),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    color: Colors.transparent,
+                    child: const Icon(
+                      Icons.volume_up_rounded,
+                      color: AppColors.textDark,
+                      size: 34,
+                    ),
+                  ),
+                )
+              else
+                const Icon(
+                  Icons.lock_rounded,
+                  color: AppColors.textDark,
+                  size: 24,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1603,7 +1916,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     required List<Map<String, dynamic>> rows,
     required VoidCallback onHeaderTap,
   }) {
-    final bool allSelected = currentCount == totalCount;
+    final bool allSelected = currentCount == totalCount && totalCount > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1657,13 +1970,19 @@ class _PracticeScreenState extends State<PracticeScreen> {
               ? (row['h'] as List<String>)
               : (row['k'] as List<String>);
           final bool isSelected = _selectedRowIds.contains(id);
+          final bool isUnlocked = _isRowUnlocked(row);
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 8.0),
             child: _buildRowItem(
               chars: chars,
               isSelected: isSelected,
+              isLocked: !isUnlocked,
               onToggle: () {
+                if (!isUnlocked) {
+                  _showLockedRowDialog(row);
+                  return;
+                }
                 TactileFeedback.toggle();
                 setState(() {
                   if (isSelected) {
@@ -1683,68 +2002,79 @@ class _PracticeScreenState extends State<PracticeScreen> {
   Widget _buildRowItem({
     required List<String> chars,
     required bool isSelected,
+    required bool isLocked,
     required VoidCallback onToggle,
   }) {
     return GestureDetector(
       onTap: onToggle,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.sand.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.textDark, width: 1.5),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Row(
-                children: List.generate(5, (index) {
-                  final text = index < chars.length ? chars[index] : '';
-                  return Container(
-                    width: 32,
-                    height: 32,
-                    margin: const EdgeInsets.only(right: 6),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: text.isNotEmpty
-                          ? AppColors.cream
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                      border: text.isNotEmpty
-                          ? Border.all(
-                              color: AppColors.textDark.withOpacity(0.5),
-                              width: 1,
-                            )
-                          : null,
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        text,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
+      child: Opacity(
+        opacity: isLocked ? 0.45 : 1.0,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.sand.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.textDark, width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: List.generate(5, (index) {
+                    final text = index < chars.length ? chars[index] : '';
+                    return Container(
+                      width: 32,
+                      height: 32,
+                      margin: const EdgeInsets.only(right: 6),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: text.isNotEmpty
+                            ? AppColors.cream
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: text.isNotEmpty
+                            ? Border.all(
+                                color: AppColors.textDark.withOpacity(0.5),
+                                width: 1,
+                              )
+                            : null,
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          text,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+                ),
               ),
-            ),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.textDark : AppColors.cream,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.textDark, width: 1.5),
-              ),
-              child: isSelected
-                  ? const Icon(Icons.check, size: 16, color: Colors.white)
-                  : null,
-            ),
-          ],
+              if (isLocked)
+                const Icon(
+                  Icons.lock_outline,
+                  size: 20,
+                  color: AppColors.textDark,
+                )
+              else
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.textDark : AppColors.cream,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.textDark, width: 1.5),
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                      : null,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1759,7 +2089,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     );
   }
 
-  void _startFlashcards() {
+  void _startFlashcards() async {
     TactileFeedback.press();
     if (_selectedRowIds.isEmpty) {
       TactileFeedback.error();
@@ -1771,7 +2101,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     final List<Map<String, String>> activeCards = [];
     void collectFrom(List<Map<String, dynamic>> rows) {
       for (var row in rows) {
-        if (_selectedRowIds.contains(row['id'])) {
+        if (_selectedRowIds.contains(row['id']) && _isRowUnlocked(row)) {
           final chars = _isHiragana
               ? (row['h'] as List<String>)
               : (row['k'] as List<String>);
@@ -1788,9 +2118,20 @@ class _PracticeScreenState extends State<PracticeScreen> {
     collectFrom(_basicRows);
     collectFrom(_dakuonRows);
     collectFrom(_yoonRows);
+
+    if (activeCards.isEmpty) {
+      TactileFeedback.error();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selected rows are locked. Practice earlier lessons.'),
+        ),
+      );
+      return;
+    }
+
     activeCards.shuffle();
 
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => FlashcardScreen(
@@ -1800,31 +2141,102 @@ class _PracticeScreenState extends State<PracticeScreen> {
         ),
       ),
     );
+
+    // Refresh live counts when user returns from rating cards[cite: 13]
+    _loadDifficultyCounts();
+  }
+
+  void _startQuizWithDifficulty(String difficulty) async {
+    final systemName = _isHiragana ? 'Hiragana' : 'Katakana';
+    final availableChars = _getAvailableQuizCharacters();
+
+    if (availableChars.isEmpty) {
+      TactileFeedback.error();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please unlock at least one row in Learn first.'),
+        ),
+      );
+      return;
+    }
+
+    final count = _difficultyCounts[difficulty] ?? 0;
+    if (difficulty != 'All' && count == 0) {
+      TactileFeedback.error();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No characters rated "$difficulty" yet. Rate cards in Flashcards first!',
+          ),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QuizScreen(
+          rowTitle: 'Full',
+          writingSystem: systemName,
+          characters: availableChars,
+          difficulty: difficulty,
+          enableDifficultySelector:
+              true, // Only Practice Hub enables difficulty controls
+        ),
+      ),
+    );
+
+    // Refresh character ratings upon returning from Quiz[cite: 13]
+    _loadDifficultyCounts();
   }
 
   void _startWordBuilder() {
     TactileFeedback.press();
 
-    final pool = VocabularyService.instance.allWords.isNotEmpty
-        ? VocabularyService.instance.allWords
-        : allVocabulary;
-
-    var filtered = pool.where((w) => w.isHiragana == _isHiragana).toList();
-
+    // Pull strictly UNLOCKED words based on user's current progress
+    int minLen = 0;
+    int maxLen = 99;
     if (_wbLength == WordLength.short) {
-      filtered = filtered.where((w) => w.length <= 3).toList();
+      minLen = 2;
+      maxLen = 3;
     } else if (_wbLength == WordLength.medium) {
-      filtered = filtered.where((w) => w.length >= 4 && w.length <= 5).toList();
+      minLen = 4;
+      maxLen = 5;
     } else if (_wbLength == WordLength.long) {
-      filtered = filtered.where((w) => w.length >= 6).toList();
+      minLen = 6;
+      maxLen = 99;
     }
 
-    if (filtered.isEmpty) {
-      filtered = pool.where((w) => w.isHiragana == _isHiragana).toList();
+    var available = VocabularyService.instance.getWordsForGame(
+      isHiragana: _isHiragana,
+      minLength: minLen,
+      maxLength: maxLen,
+      onlyUnlocked: true,
+    );
+
+    // Fallback if no words match the chosen length bucket among unlocked words
+    if (available.isEmpty) {
+      available = VocabularyService.instance.getWordsForGame(
+        isHiragana: _isHiragana,
+        onlyUnlocked: true,
+      );
     }
 
-    filtered.shuffle();
-    final selectedSet = filtered.take(_wbWordsPerRound).toList();
+    if (available.isEmpty) {
+      TactileFeedback.error();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No words unlocked yet! Finish more lessons in the Learn tab.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    available.shuffle();
+    final selectedSet = available.take(_wbWordsPerRound).toList();
 
     Navigator.push(
       context,
@@ -1841,7 +2253,108 @@ class _PracticeScreenState extends State<PracticeScreen> {
 }
 
 // =============================================================================
-// 6. WORD BUILDER GAMEPLAY SCREEN (PERFORMANCE & ZERO-JANK OPTIMIZED)
+// NEW 3D QUIZ DIFFICULTY BUTTON (MATCHING UPDATED UI SPECIFICATION)[cite: 13]
+// =============================================================================
+
+class _Interactive3DQuizDifficultyButton extends StatefulWidget {
+  final String label;
+  final int count;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _Interactive3DQuizDifficultyButton({
+    required this.label,
+    required this.count,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  State<_Interactive3DQuizDifficultyButton> createState() =>
+      _Interactive3DQuizDifficultyButtonState();
+}
+
+class _Interactive3DQuizDifficultyButtonState
+    extends State<_Interactive3DQuizDifficultyButton> {
+  bool _isPressed = false;
+
+  String _formatCount(int count) {
+    if (count == 0 || count == 1) {
+      return '$count character';
+    }
+    return '$count characters';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) {
+        TactileFeedback.press();
+        setState(() => _isPressed = true);
+      },
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        transform: Matrix4.translationValues(0, _isPressed ? 4.0 : 0.0, 0),
+        decoration: BoxDecoration(
+          color: widget.color,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.textDark, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.textDark,
+              offset: Offset(0, _isPressed ? 0 : 4.0),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.label,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _formatCount(widget.count),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+            Icon(
+              Icons.play_arrow_rounded,
+              color: AppColors.textDark.withOpacity(0.35),
+              size: 42,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// WORD BUILDER GAMEPLAY SCREEN (PERFORMANCE & ZERO-JANK OPTIMIZED)[cite: 13]
 // =============================================================================
 
 class WordBuilderGameScreen extends StatefulWidget {
@@ -1876,7 +2389,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
   late List<String> _currentChoices;
   late List<bool> _choiceUsed;
 
-  // Cached set of lowercase answer syllables for zero-allocation O(1) hint checks
   late Set<String> _targetLowerSet;
 
   bool _isHintActive = false;
@@ -1890,11 +2402,9 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
     _initTts();
     _questions = List.from(widget.words);
     if (_questions.isEmpty) {
-      final pool = VocabularyService.instance.allWords.isNotEmpty
-          ? VocabularyService.instance.allWords
-          : allVocabulary;
-      _questions = List.from(
-        pool.where((w) => w.isHiragana == widget.isHiragana),
+      _questions = VocabularyService.instance.getWordsForGame(
+        isHiragana: widget.isHiragana,
+        onlyUnlocked: true,
       );
     }
     _questions.shuffle();
@@ -1922,16 +2432,13 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
     _userSlots = List.filled(targetSyllables.length, null);
     _slotChoiceIndices = List.filled(targetSyllables.length, null);
 
-    // Precompute lowercase set for instant O(1) lookup during UI builds
     _targetLowerSet = targetSyllables.map((s) => s.toLowerCase()).toSet();
 
-    // Preserve all target syllables (including duplicates)
     final List<String> choicesList = List<String>.from(targetSyllables);
     final Set<String> targetSet = Set.from(targetSyllables);
     final Set<String> addedDistractors = Set.from(targetSet);
     final List<String> availableDistractors = [];
 
-    // O(1) distractor collection
     for (var q in _questions) {
       final syllables = isRomajiChoices ? q.syllables : q.kanaSyllables;
       for (var s in syllables) {
@@ -2152,7 +2659,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
           children: [
             Column(
               children: [
-                // Top Header Bar
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   decoration: const BoxDecoration(
@@ -2189,8 +2695,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                     ],
                   ),
                 ),
-
-                // Main Gameplay Card
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
@@ -2233,8 +2737,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                             borderRadius: BorderRadius.circular(3),
                           ),
                           const SizedBox(height: 16),
-
-                          // Prompt Box
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -2291,8 +2793,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 18),
-
-                                // High-Performance Auto-Adjusting Slots
                                 LayoutBuilder(
                                   builder: (context, constraints) {
                                     final int totalSlots =
@@ -2387,10 +2887,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                               ],
                             ),
                           ),
-
                           const SizedBox(height: 24),
-
-                          // Optimized 2x4 Choice Grid (Direct Container rendering)
                           GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -2406,7 +2903,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                               final text = _currentChoices[i];
                               final isUsed = _choiceUsed[i];
 
-                              // O(1) hash set lookup instead of O(N) linear map & search
                               final bool highlightHint =
                                   _isHintActive &&
                                   !isUsed &&
@@ -2457,10 +2953,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                               );
                             },
                           ),
-
                           const SizedBox(height: 32),
-
-                          // Hint & Check buttons
                           Row(
                             children: [
                               Expanded(
@@ -2471,9 +2964,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                   bgColor: AppColors.sand,
                                   onTap: () {
                                     TactileFeedback.toggle();
-                                    setState(() {
-                                      _isHintActive = true;
-                                    });
+                                    setState(() => _isHintActive = true);
                                   },
                                 ),
                               ),
@@ -2497,7 +2988,6 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                 ),
               ],
             ),
-
             if (_hasChecked)
               Positioned(
                 bottom: 0,
@@ -2610,7 +3100,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 }
 
 // =============================================================================
-// 7. WORD BUILDER RESULTS SCREEN & STATS SUMMARY (OVERFLOW PROOF)
+// RESULTS SCREEN & STATS SUMMARY[cite: 13]
 // =============================================================================
 
 class WordBuilderResultScreen extends StatelessWidget {
@@ -2701,7 +3191,6 @@ class WordBuilderResultScreen extends StatelessWidget {
                 ],
               ),
             ),
-
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -2824,7 +3313,6 @@ class WordBuilderResultScreen extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 20),
-
                                 Row(
                                   children: [
                                     Expanded(
@@ -2862,10 +3350,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
-                    // Words Breakdown Card
                     Container(
                       decoration: BoxDecoration(
                         color: AppColors.cream,
@@ -3015,9 +3500,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
                     Row(
                       children: [
                         Expanded(
