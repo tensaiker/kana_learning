@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 
+      Required for hardware vibration and haptic motors across Android devices.
+      Enables HapticFeedback.vibrate(), heavyImpact(), and custom tactile patterns.
+    -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:label="kana_learning"
         android:name="${applicationName}"
@@ -31,6 +38,7 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.

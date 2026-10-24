@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
-import '../features/writing/data/kana_data.dart'; // Imports the structured kana data[cite: 19, 20]
-import '../features/writing/screens/writing_lesson_screen.dart'; // Imports the lesson screen[cite: 19, 22]
+import '../features/writing/data/kana_data.dart';
+import '../features/writing/screens/writing_lesson_screen.dart';
 
-/// A lightweight compatibility bridge so LearnScreen can continue calling `WriteScreen`[cite: 18, 23]
-/// without requiring rewrites of its navigation handlers[cite: 18].
+/// A lightweight compatibility bridge that connects the navigation in `LearnScreen`
+/// with the interactive handwriting canvas in `WritingLessonScreen`.
+///
+/// Responsibilities:
+/// 1. Filters out empty placeholder slots (e.g., the blank spots in Ya and Wa rows).
+/// 2. Performs O(1) lookups in `initialKanaData` to retrieve stroke coordinates.
+/// 3. Provides a reliable fallback model if a character does not yet have vector paths.
 class WriteScreen extends StatelessWidget {
   final String rowTitle;
   final List<Map<String, String>> characters;
@@ -16,28 +21,44 @@ class WriteScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Map incoming character dictionaries to our verified KanaCharacter stroke models[cite: 20]
-    final List<KanaCharacter> lessonCharacters = characters.map((map) {
-      final symbol = map['kana'] ?? '';
-      final romaji = map['romaji'] ?? '';
+    // Determine whether the active lesson is Katakana based on row title metadata
+    final bool isKatakanaLesson = rowTitle.toLowerCase().contains('katakana');
 
-      // Look up verified character data from kana_data.dart[cite: 20]
-      final found = initialKanaData.findByKana(symbol);
-      if (found != null) {
-        return found;
-      }
+    // 1. Filter out empty slots and resolve stroke models
+    final List<KanaCharacter> lessonCharacters = characters
+        .where((map) {
+          final symbol = map['kana']?.trim() ?? '';
+          return symbol.isNotEmpty; // Discard blank row fillers
+        })
+        .map((map) {
+          final symbol = map['kana']!.trim();
+          final romaji = (map['romaji'] ?? '').trim();
 
-      // Fallback placeholder if character is not yet mapped in initialKanaData[cite: 20]
-      return KanaCharacter(
-        id: 'fallback_$symbol',
-        kana: symbol,
-        romaji: romaji,
-        type: 'hiragana',
-        strokes: const [],
-      );
-    }).toList();
+          // 2. High-speed O(1) hash table lookup from kana_data.dart
+          final found = initialKanaData.findByKana(symbol);
+          if (found != null) {
+            return found;
+          }
 
-    // 2. Delegate directly to the comprehensive WritingLessonScreen[cite: 22]
+          // 3. Fallback script detection (via title or Katakana Unicode range U+30A0..U+30FF)
+          final bool isKatakana =
+              isKatakanaLesson ||
+              (symbol.isNotEmpty &&
+                  symbol.codeUnitAt(0) >= 0x30A0 &&
+                  symbol.codeUnitAt(0) <= 0x30FF);
+
+          // Graceful fallback if stroke coordinates are not yet mapped
+          return KanaCharacter(
+            id: 'fallback_${isKatakana ? 'k' : 'h'}_$symbol',
+            kana: symbol,
+            romaji: romaji,
+            type: isKatakana ? 'katakana' : 'hiragana',
+            strokes: const [],
+          );
+        })
+        .toList(growable: false);
+
+    // 4. Hand off verified stroke data directly to WritingLessonScreen
     return WritingLessonScreen(lessonCharacters: lessonCharacters);
   }
 }

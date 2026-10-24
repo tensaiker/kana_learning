@@ -1,5 +1,5 @@
 name: kana_learning
-description: "A new Flutter project."
+description: "A Flutter application for learning and practicing Kana handwriting."
 publish_to: "none"
 
 version: 1.0.0+1
@@ -7,26 +7,31 @@ version: 1.0.0+1
 environment:
   sdk: ^3.11.4
 
-# --- DEPENDENCIES ---
+# --- RUNTIME DEPENDENCIES ---
 dependencies:
   flutter:
     sdk: flutter
 
-  # Text-to-Speech package for native Japanese character pronunciation
+  # Integrated on-device speech synthesis for dynamic kana pronunciation (no mp3 assets needed)
   flutter_tts: ^4.2.2
 
+  # Local persistence for lesson completion, study streaks, and mastery metrics
   shared_preferences: ^2.2.2
 
-  # Standard Cupertino and Material icons/fonts
+  # UI fonts and iconography
   cupertino_icons: ^1.0.8
   google_fonts: ^8.2.1
 
+# --- DEVELOPMENT DEPENDENCIES ---
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
 
+# --- FLUTTER CONFIGURATION ---
 flutter:
   uses-material-design: true
+
+  # Static asset definitions
   assets:
     - assets/data/

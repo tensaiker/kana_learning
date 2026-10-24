@@ -1,7 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import '../data/kana_data.dart'; // Imports your kana definitions
-import '../widgets/writing_canvases.dart'; // Imports the updated painters
+import '../../../services/audio_service.dart'; // Audio pronunciation controller using native TTS
+import '../../../utils/tactile_feedback.dart'; // Physical haptic feedback controller
+import '../data/kana_data.dart'; // Kana stroke data and models
+import '../widgets/writing_canvases.dart'; // Specialized canvas painters
 
+/// Interactive kana handwriting lesson screen with 4 instructional stages:
+/// - Stage 0: Watch stroke animation
+/// - Stage 1: Learn stroke order & direction
+/// - Stage 2: Guided tracing over faint outline
+/// - Stage 3: Write from memory with real-time stroke validation & character reveal
 class WritingLessonScreen extends StatefulWidget {
   final List<KanaCharacter> lessonCharacters;
 
@@ -18,8 +26,23 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
   // 0: Watch Animation, 1: Learn Direction, 2: Guided Tracing, 3: Write From Memory
   int _currentStage = 0;
 
+  // Full point history for rendering on the canvas (separated by nulls between strokes)
   final List<Offset?> _userStrokes = [];
-  bool _showExampleInMemoryMode = false; // Toggle for peek hint in memory mode
+
+  // Points of the active stroke currently being drawn by the user
+  final List<Offset> _activeStrokePoints = [];
+
+  // Tracks the index of the next expected stroke from the user
+  int _completedStrokeIndex = 0;
+
+  // True when all strokes of the current character have passed validation
+  bool _isCharacterCompleted = false;
+
+  // Toggle for peek hint in memory mode
+  bool _showExampleInMemoryMode = false;
+
+  // Managed timer for seamless auto-advance after completion
+  Timer? _autoAdvanceTimer;
 
   late AnimationController _animController;
   late Animation<double> _strokeAnimation;
@@ -39,26 +62,55 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
 
   @override
   void dispose() {
+    _cancelAutoAdvance();
     _animController.dispose();
     super.dispose();
   }
 
+  /// Cancels any scheduled auto-advance to prevent race conditions or duplicate transitions
+  void _cancelAutoAdvance() {
+    _autoAdvanceTimer?.cancel();
+    _autoAdvanceTimer = null;
+  }
+
+  /// Resets stroke tracing state when switching characters or stages
+  void _resetWritingState() {
+    _cancelAutoAdvance();
+    _userStrokes.clear();
+    _activeStrokePoints.clear();
+    _completedStrokeIndex = 0;
+    _isCharacterCompleted = false;
+    _showExampleInMemoryMode = false;
+  }
+
+  /// Speaks the active character using integrated on-device Japanese TTS
+  void _playCurrentPronunciation() {
+    if (widget.lessonCharacters.isNotEmpty) {
+      final currentChar = widget.lessonCharacters[_currentCharIndex];
+      // Pass the literal kana glyph (e.g. 'あ', 'カ') so the TTS engine pronounces it accurately
+      AudioService.speakKana(currentChar.kana);
+    }
+  }
+
   void _nextStage() {
+    _cancelAutoAdvance();
+    TactileFeedback.press();
+
     if (_currentStage < 3) {
       setState(() {
         _currentStage++;
-        _userStrokes.clear();
-        _showExampleInMemoryMode = false;
-        if (_currentStage == 0 || _currentStage == 1) _replayAnimation();
+        _resetWritingState();
+        if (_currentStage == 0 || _currentStage == 1) {
+          _replayAnimation();
+        }
       });
     } else {
-      // Advance to next character or show completion
+      // Advance to next character or show completion dialog
       if (_currentCharIndex < widget.lessonCharacters.length - 1) {
         setState(() {
           _currentCharIndex++;
           _currentStage = 0;
-          _userStrokes.clear();
-          _showExampleInMemoryMode = false;
+          _resetWritingState();
           _replayAnimation();
         });
       } else {
@@ -68,29 +120,174 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
   }
 
   void _prevStage() {
+    _cancelAutoAdvance();
+    TactileFeedback.press();
+
     setState(() {
       if (_currentStage > 0) {
         _currentStage--;
-        _userStrokes.clear();
-        if (_currentStage == 0 || _currentStage == 1) _replayAnimation();
+        _resetWritingState();
+        if (_currentStage == 0 || _currentStage == 1) {
+          _replayAnimation();
+        }
       } else if (_currentCharIndex > 0) {
         _currentCharIndex--;
         _currentStage = 3; // Go to last step of previous character
-        _userStrokes.clear();
+        _resetWritingState();
       }
     });
   }
 
   void _replayAnimation() {
+    _cancelAutoAdvance();
+    TactileFeedback.press();
     _animController.reset();
     _animController.forward();
   }
 
   void _clearCanvas() {
-    setState(() => _userStrokes.clear());
+    _cancelAutoAdvance();
+    TactileFeedback.press();
+    setState(() {
+      _userStrokes.clear();
+      _activeStrokePoints.clear();
+      _completedStrokeIndex = 0;
+      _isCharacterCompleted = false;
+    });
+  }
+
+  /// Validates a drawn stroke against the target stroke definition
+  /// Optimized with squared distances and dot product to remove expensive sqrt() calculations
+  bool _validateStroke(
+    List<Offset> rawPoints,
+    KanaStroke targetStroke,
+    Size canvasSize,
+  ) {
+    if (rawPoints.length < 2 ||
+        canvasSize.width <= 0 ||
+        canvasSize.height <= 0) {
+      return false;
+    }
+
+    final double invW = 1.0 / canvasSize.width;
+    final double invH = 1.0 / canvasSize.height;
+
+    // 1. Convert physical touch pixels to normalized 0.0 - 1.0 coordinates
+    final Offset userStartNorm = Offset(
+      (rawPoints.first.dx * invW).clamp(0.0, 1.0),
+      (rawPoints.first.dy * invH).clamp(0.0, 1.0),
+    );
+    final Offset userEndNorm = Offset(
+      (rawPoints.last.dx * invW).clamp(0.0, 1.0),
+      (rawPoints.last.dy * invH).clamp(0.0, 1.0),
+    );
+
+    // 2. Tolerance radius check for start and end positions using squared distance
+    const double tolerance = 0.28;
+    const double toleranceSq = tolerance * tolerance;
+
+    final Offset startDelta = userStartNorm - targetStroke.startPoint;
+    final double startDistSq =
+        startDelta.dx * startDelta.dx + startDelta.dy * startDelta.dy;
+
+    final Offset endDelta = userEndNorm - targetStroke.endPoint;
+    final double endDistSq =
+        endDelta.dx * endDelta.dx + endDelta.dy * endDelta.dy;
+
+    if (startDistSq > toleranceSq || endDistSq > toleranceSq) {
+      return false;
+    }
+
+    // 3. Direction vector alignment check (prevents drawing strokes in reverse)
+    final Offset targetVec = targetStroke.endPoint - targetStroke.startPoint;
+    final Offset userVec = userEndNorm - userStartNorm;
+
+    final double targetDistSq =
+        targetVec.dx * targetVec.dx + targetVec.dy * targetVec.dy;
+    final double userDistSq = userVec.dx * userVec.dx + userVec.dy * userVec.dy;
+
+    // Only enforce angle check if both strokes have non-negligible length
+    if (targetDistSq > 0.0144 && userDistSq > 0.0064) {
+      final double dot = targetVec.dx * userVec.dx + targetVec.dy * userVec.dy;
+      // Negative dot product indicates the user drew backwards (angle > 90 degrees)
+      if (dot < 0.0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /// Handles touch release: evaluates the stroke, triggers audio/haptics, and auto-advances
+  void _onStrokeCompleted(KanaCharacter character, Size canvasSize) {
+    if (_activeStrokePoints.isEmpty || _isCharacterCompleted) return;
+
+    // Fallback: if character has no stroke metadata, accept any drawn stroke
+    if (character.strokes.isEmpty) {
+      setState(() {
+        _userStrokes.clear();
+        _activeStrokePoints.clear();
+        _isCharacterCompleted = true;
+      });
+      TactileFeedback.success();
+      _playCurrentPronunciation();
+      _scheduleAutoAdvance();
+      return;
+    }
+
+    final KanaStroke currentTarget = character.strokes[_completedStrokeIndex];
+    final bool isValid = _validateStroke(
+      _activeStrokePoints,
+      currentTarget,
+      canvasSize,
+    );
+
+    if (isValid) {
+      setState(() {
+        _userStrokes.add(null); // Delimit finished stroke for UserStrokePainter
+        _activeStrokePoints.clear();
+        _completedStrokeIndex++;
+
+        // When character is complete, clear user strokes so only clean font displays
+        if (_completedStrokeIndex >= character.strokeCount) {
+          _isCharacterCompleted = true;
+          _userStrokes.clear(); // Clears user lines to reveal clean glyph
+        }
+      });
+      TactileFeedback.success();
+
+      // Trigger native audio pronunciation and scheduled transition
+      if (_isCharacterCompleted) {
+        _playCurrentPronunciation();
+        _scheduleAutoAdvance();
+      }
+    } else {
+      // Stroke failed validation: trigger error haptic and discard scribble
+      TactileFeedback.error();
+      setState(() {
+        if (_userStrokes.length >= _activeStrokePoints.length) {
+          _userStrokes.removeRange(
+            _userStrokes.length - _activeStrokePoints.length,
+            _userStrokes.length,
+          );
+        }
+        _activeStrokePoints.clear();
+      });
+    }
+  }
+
+  /// Schedules a 750 ms delay before auto-advancing, giving time to view the completed glyph
+  void _scheduleAutoAdvance() {
+    _cancelAutoAdvance();
+    _autoAdvanceTimer = Timer(const Duration(milliseconds: 750), () {
+      if (mounted && _isCharacterCompleted) {
+        _nextStage();
+      }
+    });
   }
 
   void _showCompletionDialog() {
+    TactileFeedback.success();
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -114,6 +311,7 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
         actions: [
           GestureDetector(
             onTap: () {
+              TactileFeedback.press();
               Navigator.pop(context); // Close dialog
               Navigator.pop(context); // Return to previous screen
             },
@@ -145,9 +343,13 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
       case 1:
         return 'Learn stroke order and direction';
       case 2:
-        return 'Trace the character';
+        return _isCharacterCompleted
+            ? 'Great job! Character completed.'
+            : 'Trace the character';
       case 3:
-        return 'Write from memory';
+        return _isCharacterCompleted
+            ? 'Awesome! Drawn from memory.'
+            : 'Write from memory';
       default:
         return '';
     }
@@ -194,7 +396,10 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                       color: AppColors.textDark,
                       size: 28,
                     ),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      TactileFeedback.press();
+                      Navigator.pop(context);
+                    },
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -212,6 +417,20 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                       fontSize: 20,
                       color: AppColors.textDark,
                     ),
+                  ),
+                  const SizedBox(width: 4),
+                  // Audio pronunciation replay button
+                  IconButton(
+                    icon: const Icon(
+                      Icons.volume_up_rounded,
+                      color: AppColors.textDark,
+                      size: 24,
+                    ),
+                    tooltip: 'Hear Pronunciation',
+                    onPressed: () {
+                      TactileFeedback.press();
+                      _playCurrentPronunciation();
+                    },
                   ),
                   const Spacer(),
                   Text(
@@ -285,143 +504,180 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                         ),
                       ],
                     ),
-                    // Clip ensures strokes never draw outside the inner rounded box
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(18),
-                      child: Stack(
-                        children: [
-                          // Background Guidelines
-                          Positioned.fill(
-                            child: CustomPaint(painter: GridPainter()),
-                          ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final canvasSize = Size(
+                            constraints.maxWidth,
+                            constraints.maxHeight,
+                          );
 
-                          // STAGE 0: Animated Character Reveal
-                          if (_currentStage == 0)
-                            Positioned.fill(
-                              child: AnimatedBuilder(
-                                animation: _strokeAnimation,
-                                builder: (context, child) {
-                                  return CustomPaint(
-                                    painter: AuthenticFontRevealPainter(
+                          return Stack(
+                            children: [
+                              // Background Guidelines
+                              Positioned.fill(
+                                child: CustomPaint(painter: GridPainter()),
+                              ),
+
+                              // STAGE 0: Animated Character Reveal
+                              if (_currentStage == 0)
+                                Positioned.fill(
+                                  child: AnimatedBuilder(
+                                    animation: _strokeAnimation,
+                                    builder: (context, child) {
+                                      return CustomPaint(
+                                        painter: AuthenticFontRevealPainter(
+                                          character: currentChar,
+                                          progress: _strokeAnimation.value,
+                                          textColor: AppColors.textDark,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+
+                              // STAGE 1: Static Stroke With Direction Markers
+                              if (_currentStage == 1) ...[
+                                Positioned.fill(
+                                  child: AnimatedBuilder(
+                                    animation: _strokeAnimation,
+                                    builder: (context, child) {
+                                      return CustomPaint(
+                                        painter: AuthenticFontRevealPainter(
+                                          character: currentChar,
+                                          progress: _strokeAnimation.value,
+                                          textColor: AppColors.textDark,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                Positioned.fill(
+                                  child: CustomPaint(
+                                    painter: DirectionMarkerPainter(
                                       character: currentChar,
-                                      progress: _strokeAnimation.value,
-                                      textColor: AppColors.textDark,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-
-                          // STAGE 1: Static / Animated Stroke With Direction Markers
-                          if (_currentStage == 1) ...[
-                            Positioned.fill(
-                              child: AnimatedBuilder(
-                                animation: _strokeAnimation,
-                                builder: (context, child) {
-                                  return CustomPaint(
-                                    painter: AuthenticFontRevealPainter(
-                                      character: currentChar,
-                                      progress: _strokeAnimation.value,
-                                      textColor: AppColors.textDark,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: DirectionMarkerPainter(
-                                  character: currentChar,
-                                ),
-                              ),
-                            ),
-                          ],
-
-                          // STAGE 2: Guided Tracing (Faint Character Guide in Background)
-                          if (_currentStage == 2)
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: StaticFontPainter(
-                                  character: currentChar,
-                                  textColor: AppColors.textLight.withOpacity(
-                                    0.22,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                          // STAGE 3: Memory Mode Peek Hint (Optional Guide)
-                          if (_currentStage == 3 && _showExampleInMemoryMode)
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: StaticFontPainter(
-                                  character: currentChar,
-                                  textColor: AppColors.textLight.withOpacity(
-                                    0.25,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                          // STAGE 2 & STAGE 3: Interactive Freehand Drawing Layer
-                          if (_currentStage >= 2)
-                            Positioned.fill(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onPanStart: (details) => setState(
-                                  () => _userStrokes.add(details.localPosition),
-                                ),
-                                onPanUpdate: (details) => setState(
-                                  () => _userStrokes.add(details.localPosition),
-                                ),
-                                onPanEnd: (details) =>
-                                    setState(() => _userStrokes.add(null)),
-                                child: CustomPaint(
-                                  painter: UserStrokePainter(
-                                    points: _userStrokes,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                          // Upper-Right Canvas Action Controls
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_currentStage ==
-                                    3) // Show example hint toggle in memory stage
-                                  IconButton(
-                                    icon: Icon(
-                                      _showExampleInMemoryMode
-                                          ? Icons.visibility
-                                          : Icons.visibility_off,
-                                      color: AppColors.textDark,
-                                      size: 22,
-                                    ),
-                                    onPressed: () => setState(
-                                      () => _showExampleInMemoryMode =
-                                          !_showExampleInMemoryMode,
                                     ),
                                   ),
-                                IconButton(
-                                  icon: Icon(
-                                    _currentStage < 2
-                                        ? Icons.replay
-                                        : Icons.refresh,
-                                    color: AppColors.textDark,
-                                    size: 22,
-                                  ),
-                                  onPressed: _currentStage < 2
-                                      ? _replayAnimation
-                                      : _clearCanvas,
                                 ),
                               ],
-                            ),
-                          ),
-                        ],
+
+                              // STAGE 2: Guided Tracing (Faint Character Guide)
+                              if (_currentStage == 2 && !_isCharacterCompleted)
+                                Positioned.fill(
+                                  child: CustomPaint(
+                                    painter: StaticFontPainter(
+                                      character: currentChar,
+                                      textColor: AppColors.textLight
+                                          .withOpacity(0.22),
+                                    ),
+                                  ),
+                                ),
+
+                              // STAGE 3: Memory Mode Peek Hint
+                              if (_currentStage == 3 &&
+                                  _showExampleInMemoryMode &&
+                                  !_isCharacterCompleted)
+                                Positioned.fill(
+                                  child: CustomPaint(
+                                    painter: StaticFontPainter(
+                                      character: currentChar,
+                                      textColor: AppColors.textLight
+                                          .withOpacity(0.25),
+                                    ),
+                                  ),
+                                ),
+
+                              // STAGE 2 & STAGE 3: Completed Character Full Calligraphic Display
+                              if (_isCharacterCompleted)
+                                Positioned.fill(
+                                  child: CustomPaint(
+                                    painter: StaticFontPainter(
+                                      character: currentChar,
+                                      textColor: AppColors.textDark,
+                                    ),
+                                  ),
+                                ),
+
+                              // STAGE 2 & STAGE 3: Interactive Touch & Live Drawing Layer
+                              // Hidden when character is completed so green lines vanish
+                              if (_currentStage >= 2 && !_isCharacterCompleted)
+                                Positioned.fill(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onPanStart: (details) {
+                                      setState(() {
+                                        _userStrokes.add(details.localPosition);
+                                        _activeStrokePoints.add(
+                                          details.localPosition,
+                                        );
+                                      });
+                                    },
+                                    onPanUpdate: (details) {
+                                      setState(() {
+                                        _userStrokes.add(details.localPosition);
+                                        _activeStrokePoints.add(
+                                          details.localPosition,
+                                        );
+                                      });
+                                    },
+                                    onPanEnd: (_) {
+                                      _onStrokeCompleted(
+                                        currentChar,
+                                        canvasSize,
+                                      );
+                                    },
+                                    child: CustomPaint(
+                                      painter: UserStrokePainter(
+                                        points: _userStrokes,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              // Upper-Right Canvas Action Controls
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_currentStage == 3 &&
+                                        !_isCharacterCompleted)
+                                      IconButton(
+                                        icon: Icon(
+                                          _showExampleInMemoryMode
+                                              ? Icons.visibility
+                                              : Icons.visibility_off,
+                                          color: AppColors.textDark,
+                                          size: 22,
+                                        ),
+                                        onPressed: () {
+                                          TactileFeedback.toggle();
+                                          setState(() {
+                                            _showExampleInMemoryMode =
+                                                !_showExampleInMemoryMode;
+                                          });
+                                        },
+                                      ),
+                                    IconButton(
+                                      icon: Icon(
+                                        _currentStage < 2
+                                            ? Icons.replay
+                                            : Icons.refresh,
+                                        color: AppColors.textDark,
+                                        size: 22,
+                                      ),
+                                      onPressed: _currentStage < 2
+                                          ? _replayAnimation
+                                          : _clearCanvas,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -429,7 +685,7 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
               ),
             ),
 
-            // 4. Bottom Navigation Buttons (Cozy 3D Style)
+            // 4. Bottom Navigation Buttons
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Row(
@@ -445,7 +701,14 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                         ),
                       ),
                     ),
-                  Expanded(child: _buildBottomButton('Continue >', _nextStage)),
+                  Expanded(
+                    child: _buildBottomButton(
+                      'Continue >',
+                      _nextStage,
+                      isHighlighted: _isCharacterCompleted || _currentStage < 2,
+                      isPulsing: _isCharacterCompleted,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -459,30 +722,45 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
     String text,
     VoidCallback onTap, {
     bool isSecondary = false,
+    bool isHighlighted = false,
+    bool isPulsing = false,
   }) {
+    final Color buttonColor = isSecondary
+        ? AppColors.cream
+        : (isHighlighted ? AppColors.sand : AppColors.taupe);
+
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: isSecondary ? AppColors.cream : AppColors.taupe,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.textDark, width: 2),
-          boxShadow: const [
-            BoxShadow(
+      child: AnimatedScale(
+        scale: isPulsing ? 1.04 : 1.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: buttonColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
               color: AppColors.textDark,
-              offset: Offset(0, 3),
-              blurRadius: 0,
+              width: isPulsing ? 2.5 : 2.0,
             ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.textDark,
+                offset: Offset(0, isPulsing ? 4 : 3),
+                blurRadius: isPulsing ? 2 : 0,
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
             ),
           ),
         ),
