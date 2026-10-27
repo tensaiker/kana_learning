@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Persists individual Kana difficulty ratings
+import 'package:shared_preferences/shared_preferences.dart'; // Persists individual Kana difficulty ratings and audio settings
 import 'dart:math' as math;
-import 'practice_screen.dart'; // Imports FlashcardQuestionType enum[cite: 13]
+import 'practice_screen.dart'; // Imports FlashcardQuestionType enum
 import '../services/progress_service.dart'; // Persistence service for kana mastery and review counts
-import '../utils/tactile_feedback.dart'; // Tactile haptics and mechanical sound feedback[cite: 15]
+import '../utils/tactile_feedback.dart'; // Tactile haptics and mechanical sound feedback
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -15,30 +15,26 @@ class AppColors {
   static const Color textDark = Color(0xFF5D534A);
   static const Color textLight = Color(0xFF8B8076);
 
-  // 3D Rating button colors matching the stationery palette[cite: 13]
-  static const Color ratingAgain = Color(
-    0xFFE8A0A0,
-  ); // Soft pastel red[cite: 13]
-  static const Color ratingHard = Color(
-    0xFFE8C396,
-  ); // Soft pastel orange[cite: 13]
-  static const Color ratingGood = Color(0xFFB7C9B2); // Sage green[cite: 13]
-  static const Color ratingEasy = Color(
-    0xFFA5C4E5,
-  ); // Soft pastel blue[cite: 13]
+  // 3D Rating button colors matching the stationery palette
+  static const Color ratingAgain = Color(0xFFE8A0A0); // Soft pastel red
+  static const Color ratingHard = Color(0xFFE8C396); // Soft pastel orange
+  static const Color ratingGood = Color(0xFFB7C9B2); // Sage green
+  static const Color ratingEasy = Color(0xFFA5C4E5); // Soft pastel blue
 }
 
-/// Interactive 3D Flashcard Screen.
+/// Interactive 3D Flashcard Screen with Audio & Pronunciation Consistency.
 ///
 /// Features & Guidance:
-/// 1. Flips between question and answer with authentic 3D perspective depth[cite: 15].
-/// 2. Displays 4 SRS rating buttons: [Again], [Hard], [Good], and [Easy][cite: 13].
-/// 3. Rating a card (e.g., clicking "Easy" on "あ") persists that character's rating
-///    as 'Easy' in SharedPreferences (`kana_difficulty_あ = Easy`). This tags the
-///    character for the Quiz difficulty filter later on, without interrupting the
-///    flashcard session.
-/// 4. Does NOT navigate to Quiz mode. The deck remains in the flashcard view and
-///    smoothly advances to the next card until the session finishes.
+/// 1. Synchronized Audio Playback:
+///    - Reads `settings_speech_rate`, `settings_speech_volume`, and master sound toggles
+///      (`settings_sound_enabled`, `settings_master_sound`, or `settings_sound_fx`) from
+///      SharedPreferences, maintaining exact pronunciation consistency with Quiz and Profile settings.
+///    - All audio triggers strictly route through [_speakKana] to honor mute preferences and volume limits.
+/// 2. 3D Perspective Flip:
+///    - Flips seamlessly between question and answer with depth perspective.
+/// 3. Spaced Repetition Tags:
+///    - Rating a card persists `kana_difficulty_<kana>` (Again, Hard, Good, Easy) for Practice Hub Quiz filtering
+///      without interrupting or leaving the flashcard deck.
 class FlashcardScreen extends StatefulWidget {
   final String title;
   final List<Map<String, String>> cards;
@@ -70,8 +66,13 @@ class _FlashcardScreenState extends State<FlashcardScreen>
   late AnimationController _flipController;
   late Animation<double> _flipAnimation;
 
-  // Integrated native speech engine[cite: 13, 15]
+  // Integrated native speech engine
   final FlutterTts _flutterTts = FlutterTts();
+
+  // Persistent audio configuration matching Profile/Settings
+  double _speechRate = 0.5;
+  double _speechVolume = 1.0;
+  bool _isSoundEnabled = true;
 
   // Cached SharedPreferences reference for fast O(1) rating saves
   SharedPreferences? _prefs;
@@ -95,7 +96,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
       CurvedAnimation(parent: _flipController, curve: Curves.easeInOut),
     );
 
-    // If initial question mode is audio-only, speak immediately[cite: 13, 15]
+    // If initial question mode is audio-only, speak immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndPlayCurrentCardAudio(isInitial: true);
     });
@@ -108,21 +109,29 @@ class _FlashcardScreenState extends State<FlashcardScreen>
     super.dispose();
   }
 
-  /// Initializes TTS audio preferences and pre-caches SharedPreferences[cite: 15]
+  /// Initializes TTS audio preferences and pre-caches SharedPreferences
   Future<void> _initTtsAndStorage() async {
     _prefs = await SharedPreferences.getInstance();
-    final rate = _prefs?.getDouble('settings_speech_rate') ?? 0.5;
-    final volume = _prefs?.getDouble('settings_speech_volume') ?? 1.0;
+    _speechRate = _prefs?.getDouble('settings_speech_rate') ?? 0.5;
+    _speechVolume = _prefs?.getDouble('settings_speech_volume') ?? 1.0;
+    _isSoundEnabled =
+        _prefs?.getBool('settings_sound_enabled') ??
+        _prefs?.getBool('settings_master_sound') ??
+        _prefs?.getBool('settings_sound_fx') ??
+        true;
 
     await _flutterTts.setLanguage("ja-JP");
-    await _flutterTts.setSpeechRate(rate);
-    await _flutterTts.setVolume(volume);
+    await _flutterTts.setSpeechRate(_speechRate);
+    await _flutterTts.setVolume(_isSoundEnabled ? _speechVolume : 0.0);
     await _flutterTts.setPitch(1.0);
   }
 
+  /// Speaks the target kana character using persistent speech settings.
   Future<void> _speakKana(String kana) async {
-    if (kana.isEmpty) return;
+    if (!_isSoundEnabled || _speechVolume <= 0.0 || kana.isEmpty) return;
     await _flutterTts.stop();
+    await _flutterTts.setSpeechRate(_speechRate);
+    await _flutterTts.setVolume(_speechVolume);
     await _flutterTts.speak(kana);
   }
 
@@ -133,7 +142,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
     }
   }
 
-  /// Determines question type (handles mix mode dynamically per card index)[cite: 13, 15]
+  /// Determines question type (handles mix mode dynamically per card index)
   FlashcardQuestionType _resolveQuestionTypeForCurrentCard() {
     if (widget.questionType == FlashcardQuestionType.mix) {
       const modes = [
@@ -149,13 +158,13 @@ class _FlashcardScreenState extends State<FlashcardScreen>
   void _toggleFlip() {
     if (_flipController.isAnimating) return;
 
-    // Tactile tick when flipping card[cite: 15]
+    // Tactile tick when flipping card
     TactileFeedback.toggle();
 
     setState(() => _isFlipped = !_isFlipped);
     if (_isFlipped) {
       _flipController.forward();
-      // Speak audio when card flips to reveal answer[cite: 13, 15]
+      // Speak audio when card flips to reveal answer
       _speakKana(_flashcards[_currentIndex]['kana'] ?? '');
     } else {
       _flipController.reverse();
@@ -165,7 +174,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
   /// Rates memory recall, logs activity in ProgressService, saves difficulty tag
   /// for the Quiz filter, and advances directly to the next card (NO quiz navigation).
   Future<void> _rateCard(String rating) async {
-    // 1. Record reviewed card count in persistent storage[cite: 15]
+    // 1. Record reviewed card count in persistent storage
     ProgressService.instance.recordFlashcardReviewed();
 
     final currentCard = _flashcards[_currentIndex];
@@ -279,7 +288,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // Top Bar[cite: 13, 15]
+            // Top Bar
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               decoration: const BoxDecoration(
@@ -330,7 +339,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
 
             const Spacer(flex: 1),
 
-            // Flippable 3D Flashcard[cite: 13, 15]
+            // Flippable 3D Flashcard
             GestureDetector(
               onTap: _toggleFlip,
               child: AnimatedBuilder(
@@ -341,11 +350,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
 
                   return Transform(
                     transform: Matrix4.identity()
-                      ..setEntry(
-                        3,
-                        2,
-                        0.001,
-                      ) // 3D perspective depth[cite: 13, 15]
+                      ..setEntry(3, 2, 0.001) // 3D perspective depth
                       ..rotateY(angle),
                     alignment: Alignment.center,
                     child: isFrontVisible
@@ -365,7 +370,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
 
             const Spacer(flex: 1),
 
-            // Bottom Area: Instruction prompt vs 3D Rating buttons[cite: 13, 15]
+            // Bottom Area: Instruction prompt vs 3D Rating buttons
             AnimatedCrossFade(
               duration: const Duration(milliseconds: 250),
               crossFadeState: _isFlipped
@@ -434,7 +439,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
     );
   }
 
-  /// Builds Front or Back card view depending on current active question type[cite: 13, 15]
+  /// Builds Front or Back card view depending on current active question type
   Widget _buildCardSide({
     required bool isFront,
     required FlashcardQuestionType type,
@@ -446,7 +451,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
     Widget content;
 
     if (isFront) {
-      // Front View[cite: 13, 15]
+      // Front View
       switch (type) {
         case FlashcardQuestionType.kanaToRomaji:
           content = Text(
@@ -502,7 +507,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
           break;
       }
     } else {
-      // Back View: Shows full character, romaji translation, and audio replay[cite: 13, 15]
+      // Back View: Shows full character, romaji translation, and audio replay
       content = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -571,7 +576,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
     );
   }
 
-  /// 3D tactile button for spaced repetition ratings[cite: 13, 15]
+  /// 3D tactile button for spaced repetition ratings
   Widget _build3DRatingButton(String label, Color color, IconData icon) {
     return _Interactive3DRatingButton(
       label: label,

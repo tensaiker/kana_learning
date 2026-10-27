@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart'; // Native text-to-speech engine
-import 'package:shared_preferences/shared_preferences.dart'; // Local storage for speech settings and SRS ratings
+import 'package:flutter_tts/flutter_tts.dart'; // Native text-to-speech engine[cite: 13]
+import 'package:shared_preferences/shared_preferences.dart'; // Persistent storage for audio settings and SRS ratings[cite: 13]
 import 'dart:math';
-import '../services/progress_service.dart'; // Progress persistence and row unlock service
-import '../utils/tactile_feedback.dart'; // Tactile haptic and audio click feedback
+import '../services/progress_service.dart'; // Progress persistence and row unlock service[cite: 13]
+import '../utils/tactile_feedback.dart'; // Tactile haptic and audio click feedback[cite: 13]
 
 // --- COLOR PALETTE ---
 class AppColors {
@@ -15,28 +15,32 @@ class AppColors {
   static const Color textLight = Color(0xFF8B8076);
   static const Color sage = Color(0xFFB7C9B2);
 
-  // Validation Colors
-  static const Color correctBg = Color(0xFFB4CDB4); // Soft pastel green
+  // Validation Colors[cite: 13]
+  static const Color correctBg = Color(
+    0xFFB4CDB4,
+  ); // Soft pastel green[cite: 13]
   static const Color correctIcon = Color(0xFF5CA95C);
-  static const Color incorrectBg = Color(0xFFD88A82); // Soft pastel red
+  static const Color incorrectBg = Color(
+    0xFFD88A82,
+  ); // Soft pastel red[cite: 13]
   static const Color incorrectIcon = Color(0xFFC95B50);
 
-  // Difficulty Selector Colors (matching Flashcard SRS palette)
-  static const Color ratingAgain = Color(0xFFD88A82); // Soft red
-  static const Color ratingHard = Color(0xFFE29E57); // Warm orange
-  static const Color ratingGood = Color(0xFF9FB89A); // Soft green
-  static const Color ratingEasy = Color(0xFFA5C4E5); // Soft blue
+  // Difficulty Selector Colors (matching Flashcard SRS palette)[cite: 13]
+  static const Color ratingAgain = Color(0xFFD88A82); // Soft red[cite: 13]
+  static const Color ratingHard = Color(0xFFE29E57); // Warm orange[cite: 13]
+  static const Color ratingGood = Color(0xFF9FB89A); // Soft green[cite: 13]
+  static const Color ratingEasy = Color(0xFFA5C4E5); // Soft blue[cite: 13]
 }
 
-// The 4 distinct types of questions in the quiz
+// The 4 distinct types of questions in the quiz[cite: 13]
 enum QuizType {
-  seeKanaPickRomaji, // Visual: Kana -> Romaji
-  seeRomajiPickKana, // Visual: Romaji -> Kana
-  listenPickRomaji, // Audio: Sound -> Romaji
-  listenPickKana, // Audio: Sound -> Kana
+  seeKanaPickRomaji, // Visual: Kana -> Romaji[cite: 13]
+  seeRomajiPickKana, // Visual: Romaji -> Kana[cite: 13]
+  listenPickRomaji, // Audio: Sound -> Romaji[cite: 13]
+  listenPickKana, // Audio: Sound -> Kana[cite: 13]
 }
 
-// Button states for feedback rendering
+// Button states for feedback rendering[cite: 13]
 enum ButtonState { idle, correct, incorrect, revealedCorrect }
 
 class QuizQuestion {
@@ -53,22 +57,26 @@ class QuizQuestion {
   });
 }
 
-/// Interactive Kana Quiz Screen.
+/// Interactive Kana Quiz Screen with Persistent Audio & Pronunciation Consistency.
 ///
-/// Usage & Scenarios:
-/// 1. **Learn tab**: Do NOT pass [enableDifficultySelector] (defaults to `false`).
-///    - Removes the tune/sliders icon entirely[cite: 12].
-///    - Displays only the clean row title (e.g., "Ka row" without " • All")[cite: 12].
-///    - Tests all row characters directly without difficulty filtering.
-/// 2. **Practice Hub**: Pass `enableDifficultySelector: true` to display the
-///    difficulty label and tune controls.
+/// Features & Guidelines:
+/// 1. **Audio & Pronunciation Consistency**:
+///    - Synchronizes directly with user preferences saved in Settings/Profile:
+///      `settings_speech_rate` (default: 0.5), `settings_speech_volume` (default: 1.0),
+///      and master sound toggles (`settings_sound_enabled`, `settings_master_sound`, or `settings_sound_fx`).
+///    - Re-applies rate and volume parameters prior to any pronunciation to ensure consistent playback.
+///    - Centralizes TTS calls through [_speakKana] to prevent overlapping speech queues and honor mute toggles.
+/// 2. **Difficulty Selector Isolation**:
+///    - [enableDifficultySelector] defaults to `false` for Learn lessons (clean header, no sliders icon)[cite: 13].
+///    - Set to `true` exclusively when launched from Practice Hub to show the difficulty selector and tune button[cite: 13].
 class QuizScreen extends StatefulWidget {
   final String rowTitle;
-  final String writingSystem; // e.g., "Hiragana" or "Katakana"
+  final String writingSystem; // e.g., "Hiragana" or "Katakana"[cite: 13]
   final List<Map<String, String>> characters;
-  final String difficulty; // Initial difficulty setting (defaults to 'All')
+  final String
+  difficulty; // Initial difficulty setting (defaults to 'All')[cite: 13]
   final bool
-  enableDifficultySelector; // true ONLY when launched from Practice Hub quiz
+  enableDifficultySelector; // True ONLY when launched from Practice Hub quiz[cite: 13]
 
   const QuizScreen({
     super.key,
@@ -77,7 +85,7 @@ class QuizScreen extends StatefulWidget {
     required this.characters,
     this.difficulty = 'All',
     this.enableDifficultySelector =
-        false, // Defaults to false for Learn lessons
+        false, // Defaults to false for Learn lessons[cite: 13]
   });
 
   @override
@@ -85,25 +93,28 @@ class QuizScreen extends StatefulWidget {
 }
 
 class _QuizScreenState extends State<QuizScreen> {
-  // Pre-initialized to empty list to avoid LateInitializationError during async init
+  // Pre-initialized to empty list to avoid LateInitializationError during async init[cite: 13]
   List<QuizQuestion> _questions = [];
   int _currentQuestionIndex = 0;
   final Random _random = Random();
 
-  // Answer validation states
+  // Answer validation states[cite: 13]
   bool _hasAnswered = false;
   String? _selectedOption;
   bool _isQuizComplete = false;
 
-  // Difficulty filter state: initialized with default fallback to avoid late initialization errors
+  // Difficulty filter state[cite: 13]
   String _selectedDifficulty = 'All';
   bool _showDifficultySelector = false;
   Map<String, String> _difficultyRatingMap = {};
 
-  // Native text-to-speech engine instance
+  // Native text-to-speech engine instance and persistent audio settings[cite: 13]
   final FlutterTts _flutterTts = FlutterTts();
+  double _speechRate = 0.5;
+  double _speechVolume = 1.0;
+  bool _isSoundEnabled = true;
 
-  // Score tracking per category
+  // Score tracking per category[cite: 13]
   final Map<QuizType, int> _scores = {
     QuizType.seeKanaPickRomaji: 0,
     QuizType.seeRomajiPickKana: 0,
@@ -118,7 +129,7 @@ class _QuizScreenState extends State<QuizScreen> {
     _initQuiz();
   }
 
-  /// Concurrently initializes audio, loads stored SRS difficulty ratings, and generates questions
+  /// Concurrently initializes audio settings, loads stored SRS difficulty ratings, and generates questions[cite: 13]
   Future<void> _initQuiz() async {
     await Future.wait([_initTts(), _loadDifficultyRatings()]);
 
@@ -127,7 +138,7 @@ class _QuizScreenState extends State<QuizScreen> {
       _generateQuestions();
     });
 
-    // Automatically trigger audio if the first question is an audio listening question
+    // Automatically trigger audio if the first question is an audio listening question[cite: 13]
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _speakCurrentQuestion();
     });
@@ -139,19 +150,33 @@ class _QuizScreenState extends State<QuizScreen> {
     super.dispose();
   }
 
-  /// Configures native TTS engine synchronized with user audio preferences
+  /// Configures native TTS engine synchronized with user audio preferences from SharedPreferences
   Future<void> _initTts() async {
     final prefs = await SharedPreferences.getInstance();
-    final double rate = prefs.getDouble('settings_speech_rate') ?? 0.5;
-    final double volume = prefs.getDouble('settings_speech_volume') ?? 1.0;
+    _speechRate = prefs.getDouble('settings_speech_rate') ?? 0.5;
+    _speechVolume = prefs.getDouble('settings_speech_volume') ?? 1.0;
+    _isSoundEnabled =
+        prefs.getBool('settings_sound_enabled') ??
+        prefs.getBool('settings_master_sound') ??
+        prefs.getBool('settings_sound_fx') ??
+        true;
 
     await _flutterTts.setLanguage("ja-JP");
-    await _flutterTts.setSpeechRate(rate);
-    await _flutterTts.setVolume(volume);
+    await _flutterTts.setSpeechRate(_speechRate);
+    await _flutterTts.setVolume(_isSoundEnabled ? _speechVolume : 0.0);
     await _flutterTts.setPitch(1.0);
   }
 
-  /// Loads individual Kana SRS difficulty history from persistent storage
+  /// Speaks the target kana aloud using synchronized speech rate, volume, and master sound settings.
+  Future<void> _speakKana(String kana) async {
+    if (!_isSoundEnabled || _speechVolume <= 0.0 || kana.isEmpty) return;
+    await _flutterTts.stop();
+    await _flutterTts.setSpeechRate(_speechRate);
+    await _flutterTts.setVolume(_speechVolume);
+    await _flutterTts.speak(kana);
+  }
+
+  /// Loads individual Kana SRS difficulty history from persistent storage[cite: 13]
   Future<void> _loadDifficultyRatings() async {
     final prefs = await SharedPreferences.getInstance();
     final Map<String, String> ratings = {};
@@ -168,7 +193,7 @@ class _QuizScreenState extends State<QuizScreen> {
     _difficultyRatingMap = ratings;
   }
 
-  /// Speaks the target kana aloud if the current question requires audio
+  /// Speaks the target kana aloud if the current question requires audio[cite: 13]
   Future<void> _speakCurrentQuestion() async {
     if (_questions.isEmpty ||
         _isQuizComplete ||
@@ -179,13 +204,12 @@ class _QuizScreenState extends State<QuizScreen> {
     final currentQ = _questions[_currentQuestionIndex];
     if (currentQ.type == QuizType.listenPickRomaji ||
         currentQ.type == QuizType.listenPickKana) {
-      await _flutterTts.stop();
-      await _flutterTts.speak(currentQ.targetKana);
+      await _speakKana(currentQ.targetKana);
     }
   }
 
   /// Generates questions. When opened from Learn (enableDifficultySelector == false),
-  /// all row characters are tested directly without filtering by SRS difficulty.
+  /// all row characters are tested directly without filtering by SRS difficulty[cite: 13].
   void _generateQuestions() {
     _questions = [];
     final validChars = widget.characters
@@ -197,17 +221,17 @@ class _QuizScreenState extends State<QuizScreen> {
     final ps = ProgressService.instance;
     List<Map<String, String>> targetPool = [];
 
-    // Filter characters according to selected difficulty only if difficulty mode is enabled
+    // Filter characters according to selected difficulty only if difficulty mode is enabled[cite: 13]
     if (!widget.enableDifficultySelector || _selectedDifficulty == 'All') {
       targetPool = List.from(validChars);
     } else {
-      // 1. Direct match: Kana tagged explicitly with this difficulty during Flashcards
+      // 1. Direct match: Kana tagged explicitly with this difficulty during Flashcards[cite: 13]
       targetPool = validChars.where((c) {
         final kana = c['kana']!;
         return _difficultyRatingMap[kana] == _selectedDifficulty;
       }).toList();
 
-      // 2. Secondary heuristic fallback if no cards have been tagged with this difficulty yet
+      // 2. Secondary heuristic fallback if no cards have been tagged with this difficulty yet[cite: 13]
       if (targetPool.isEmpty) {
         if (_selectedDifficulty == 'Easy' || _selectedDifficulty == 'Good') {
           targetPool = validChars
@@ -222,12 +246,12 @@ class _QuizScreenState extends State<QuizScreen> {
       }
     }
 
-    // Graceful fallback to all available characters if the filtered pool is empty
+    // Graceful fallback to all available characters if the filtered pool is empty[cite: 13]
     if (targetPool.isEmpty) {
       targetPool = List.from(validChars);
     }
 
-    // Build exactly 5 questions per QuizType (20 questions total)
+    // Build exactly 5 questions per QuizType (20 questions total)[cite: 13]
     for (var type in QuizType.values) {
       for (int i = 0; i < 5; i++) {
         final targetChar = targetPool[_random.nextInt(targetPool.length)];
@@ -242,7 +266,7 @@ class _QuizScreenState extends State<QuizScreen> {
             : targetChar['kana']!;
         options.add(correctOption);
 
-        // Filter and pick distractors without cloning the entire array multiple times
+        // Filter and pick distractors without cloning the entire array multiple times[cite: 13]
         final availableDistractors = validChars
             .where((c) => c['kana'] != targetChar['kana'])
             .toList();
@@ -256,7 +280,7 @@ class _QuizScreenState extends State<QuizScreen> {
           );
         }
 
-        // Pad up to 4 options if the dataset has fewer than 4 distinct characters
+        // Pad up to 4 options if the dataset has fewer than 4 distinct characters[cite: 13]
         while (options.length < 4) {
           options.add("");
         }
@@ -277,7 +301,7 @@ class _QuizScreenState extends State<QuizScreen> {
     _questions.shuffle(_random);
   }
 
-  /// Saves the current question checkpoint to local storage when exiting
+  /// Saves the current question checkpoint to local storage when exiting[cite: 13]
   void _exitAndSaveProgress() {
     final int totalQuestions = _questions.isEmpty ? 20 : _questions.length;
     final int progressCount = _isQuizComplete
@@ -294,9 +318,10 @@ class _QuizScreenState extends State<QuizScreen> {
     Navigator.pop(context);
   }
 
-  /// Processes user answer, logs mastery in ProgressService, updates ratings, and advances
+  /// Processes user answer, logs mastery in ProgressService, updates ratings, and advances[cite: 13]
   void _handleAnswer(String selectedOption) async {
-    if (_hasAnswered || _questions.isEmpty) return; // Prevent double-clicking
+    if (_hasAnswered || _questions.isEmpty)
+      return; // Prevent double-clicking[cite: 13]
 
     final currentQ = _questions[_currentQuestionIndex];
     final bool isRomajiOptions =
@@ -315,7 +340,7 @@ class _QuizScreenState extends State<QuizScreen> {
       if (isCorrect) {
         _scores[currentQ.type] = _scores[currentQ.type]! + 1;
 
-        // Persist character mastery in real time
+        // Persist character mastery in real time[cite: 13]
         ProgressService.instance.markKanaMastered(currentQ.targetKana);
         TactileFeedback.success();
       } else {
@@ -323,7 +348,7 @@ class _QuizScreenState extends State<QuizScreen> {
       }
     });
 
-    // Update SRS difficulty rating in local storage if difficulty mode is enabled
+    // Update SRS difficulty rating in local storage if difficulty mode is enabled[cite: 13]
     if (widget.enableDifficultySelector) {
       final prefs = await SharedPreferences.getInstance();
       final currentRating = _difficultyRatingMap[currentQ.targetKana];
@@ -337,7 +362,7 @@ class _QuizScreenState extends State<QuizScreen> {
       }
     }
 
-    // Display validation visual feedback for 1.5 seconds
+    // Display validation visual feedback for 1.5 seconds[cite: 13]
     await Future.delayed(const Duration(milliseconds: 1500));
 
     if (!mounted) return;
@@ -346,11 +371,11 @@ class _QuizScreenState extends State<QuizScreen> {
         _currentQuestionIndex++;
         _hasAnswered = false;
         _selectedOption = null;
-        _speakCurrentQuestion(); // Audio trigger for upcoming listening questions
+        _speakCurrentQuestion(); // Audio trigger for upcoming listening questions[cite: 13]
       } else {
         _isQuizComplete = true;
 
-        // Save full row completion checkpoint (e.g., 20/20)
+        // Save full row completion checkpoint (e.g., 20/20)[cite: 13]
         ProgressService.instance.saveRowProgress(
           writingSystem: widget.writingSystem,
           rowTitle: widget.rowTitle,
@@ -363,7 +388,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Gracefully shows loading indicator until async question generation completes
+    // Gracefully shows loading indicator until async question generation completes[cite: 13]
     if (_questions.isEmpty && !_showDifficultySelector) {
       return const Scaffold(
         backgroundColor: AppColors.beige,
@@ -385,7 +410,7 @@ class _QuizScreenState extends State<QuizScreen> {
           children: [
             _buildTopHeader(),
 
-            // Show Difficulty Type selection ONLY if enabled by Practice Hub
+            // Show Difficulty Type selection ONLY if enabled by Practice Hub[cite: 13]
             if (_showDifficultySelector && widget.enableDifficultySelector)
               Expanded(
                 child: SingleChildScrollView(
@@ -411,7 +436,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 ),
               )
             else ...[
-              // 1. Progress Bar
+              // 1. Progress Bar[cite: 13]
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -457,7 +482,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 ),
               ),
 
-              // 2. Main Question Area
+              // 2. Main Question Area[cite: 13]
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -509,7 +534,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
               const SizedBox(height: 20),
 
-              // 3. Answer Grid (2x2)
+              // 3. Answer Grid (2x2)[cite: 13]
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -563,7 +588,7 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   // ===========================================================================
-  // TOP HEADER BAR (CLEANED: NO DIFFICULTY TUNE ICON FOR LEARN TAB)
+  // TOP HEADER BAR (CLEANED: NO DIFFICULTY TUNE ICON FOR LEARN TAB)[cite: 13]
   // ===========================================================================
   Widget _buildTopHeader() {
     return Container(
@@ -599,7 +624,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     color: AppColors.textDark,
                   ),
                 ),
-                // Only displays '• Difficulty' if launched from Practice Hub
+                // Only displays '• Difficulty' if launched from Practice Hub[cite: 13]
                 Text(
                   widget.enableDifficultySelector
                       ? '${widget.rowTitle} • $_selectedDifficulty'
@@ -613,7 +638,7 @@ class _QuizScreenState extends State<QuizScreen> {
               ],
             ),
           ),
-          // Sliders / Tune Icon Button: Rendered ONLY in Practice Hub quiz
+          // Sliders / Tune Icon Button: Rendered ONLY in Practice Hub quiz[cite: 13]
           if (widget.enableDifficultySelector)
             GestureDetector(
               onTap: () {
@@ -643,7 +668,7 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   // ===========================================================================
-  // DIFFICULTY TYPE SELECTOR (FOR PRACTICE HUB QUIZ ONLY)
+  // DIFFICULTY TYPE SELECTOR (FOR PRACTICE HUB QUIZ ONLY)[cite: 13]
   // ===========================================================================
   Widget _buildDifficultySelectionView() {
     return Padding(
@@ -1016,12 +1041,7 @@ class _QuizScreenState extends State<QuizScreen> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Interactive3DSpeakerButton(
-            onTap: () async {
-              await _flutterTts.stop();
-              await _flutterTts.speak(q.targetKana);
-            },
-          ),
+          Interactive3DSpeakerButton(onTap: () => _speakKana(q.targetKana)),
           const SizedBox(height: 16),
           const Text(
             "Tap to hear it again",
@@ -1045,10 +1065,10 @@ class _QuizScreenState extends State<QuizScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// INTERACTIVE 3D BUTTON COMPONENTS WITH TACTILE CLICKS & HAPTICS
+// INTERACTIVE 3D BUTTON COMPONENTS WITH TACTILE CLICKS & HAPTICS[cite: 13]
 // -----------------------------------------------------------------------------
 
-/// The animated 2x2 grid choice buttons with validation colors and tactile feedback
+/// The animated 2x2 grid choice buttons with validation colors and tactile feedback[cite: 13]
 class Interactive3DChoiceButton extends StatefulWidget {
   final String label;
   final ButtonState state;
@@ -1153,7 +1173,7 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
   }
 }
 
-/// The animated large speaker button for audio questions with tactile feedback
+/// The animated large speaker button for audio questions with tactile feedback[cite: 13]
 class Interactive3DSpeakerButton extends StatefulWidget {
   final VoidCallback onTap;
 

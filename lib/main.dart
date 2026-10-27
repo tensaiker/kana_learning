@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math' as math;
 import 'screens/learn_screen.dart';
 import 'screens/practice_screen.dart';
 import 'screens/progress_screen.dart';
@@ -9,16 +10,16 @@ import 'services/vocabulary_service.dart'; // Imports offline JSON vocabulary da
 import 'utils/tactile_feedback.dart'; // Imports tactile sound & haptic utility
 
 void main() async {
-  // Ensure Flutter engine bindings are initialized before calling SharedPreferences
+  // Ensure Flutter engine bindings are initialized before calling SharedPreferences[cite: 13]
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Loads saved tactile click sound effects and vibration preferences into memory at startup
+  // Loads saved tactile click sound effects and vibration preferences into memory at startup[cite: 13]
   await TactileFeedback.init();
 
-  // Initializes user progress, streaks, and row checkpoints
+  // Initializes user progress, streaks, and row checkpoints[cite: 13]
   await ProgressService.instance.init();
 
-  // Preloads offline vocabulary JSON on app startup
+  // Preloads offline vocabulary JSON on app startup[cite: 13]
   await VocabularyService.instance.init();
 
   runApp(const KanaLearningApp());
@@ -40,10 +41,10 @@ class AppColors {
   static const Color flameCardBgActive = Color(0xFFFFD4BE);
 }
 
-/// Helper model defining sequential rows, titles, and characters for the Recent Learning panel
+/// Helper model defining sequential rows, titles, and characters for the Recent Learning panel[cite: 13]
 class _RowInfo {
   final String
-  key; // Matches rowTitle in ProgressService (e.g. 'A row', 'Ka row')
+  key; // Matches rowTitle in ProgressService (e.g. 'A row', 'Ka row')[cite: 13]
   final String displayName;
   final String hiraganaChars;
   final String katakanaChars;
@@ -87,18 +88,18 @@ class MainNavigator extends StatefulWidget {
 
 class MainNavigatorState extends State<MainNavigator> {
   int _currentIndex = 0;
-  // Key to trigger instant profile re-sync on HomeScreen when switching back to tab 0
+  // Key to trigger instant profile re-sync on HomeScreen when switching back to tab 0[cite: 13]
   final GlobalKey<_HomeScreenState> _homeKey = GlobalKey<_HomeScreenState>();
 
   /// Switches the active tab. When targeting Learn (tab 1), it sets
-  /// the active writing system (Hiragana vs Katakana) in ProgressService.
+  /// the active writing system (Hiragana vs Katakana) in ProgressService[cite: 13].
   void switchTab(int index, {bool isHiragana = true}) {
     if (index == 1) {
       ProgressService.instance.setLearnScript(isHiragana: isHiragana);
     }
     setState(() => _currentIndex = index);
 
-    // Synchronize username & avatar whenever navigating to Home
+    // Synchronize username & avatar whenever navigating to Home[cite: 13]
     if (index == 0) {
       _homeKey.currentState?.syncProfileData();
     }
@@ -173,6 +174,17 @@ class MainNavigatorState extends State<MainNavigator> {
   }
 }
 
+/// Home Dashboard Screen with live reactivity bound to [ProgressService].
+///
+/// Features & Guidelines:
+/// 1. Reactivity via ListenableBuilder:
+///    The entire dashboard listens to [ProgressService.instance]. Any completed row,
+///    mastered kana, streak increment, or dev reset immediately triggers a frame update.
+/// 2. Live Widgets:
+///    - Overall Progress Donut Chart & Character Counter[cite: 13]
+///    - Hiragana & Katakana Mastery Ratio Bars[cite: 13]
+///    - Recent Learning Active Row Cards & Progress Bars[cite: 13]
+///    - Streak Flame Badge & Weekly Dot Calendar (with current day highlight)[cite: 13]
 class HomeScreen extends StatefulWidget {
   final void Function({required bool isHiragana})? onNavigateToLearn;
   final VoidCallback? onNavigateToProfile;
@@ -188,9 +200,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  bool _isStreakActive = false;
+  bool _isStreakManualGlow = false;
 
-  // Profile fields synchronized with Profile tab storage
+  // Profile fields synchronized with Profile tab storage[cite: 13]
   String _userName = 'Kerby';
   int _selectedAvatarIndex = 0;
 
@@ -285,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Synchronizes user display name and avatar badge from SharedPreferences.
+  /// Synchronizes user display name and avatar badge from SharedPreferences[cite: 13].
   Future<void> syncProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
@@ -298,53 +310,50 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  /// Finds the first incomplete row for the given writing system[cite: 11].
+  /// Finds the currently active (first incomplete) row for the writing system.
+  /// If all rows are completed, defaults to the final row with full 20/20 progress[cite: 13].
   _RowInfo _getActiveRow(ProgressService ps, String writingSystem) {
     for (final row in _basicRowProgression) {
       final isCompleted = ps.isRowCompleted(
         writingSystem: writingSystem,
         rowTitle: row.key,
       );
-      final prog = ps.getRowProgress(
-        writingSystem: writingSystem,
-        rowTitle: row.key,
-      );
-
-      if (!isCompleted && prog.current < prog.total) {
+      if (!isCompleted) {
         return row;
       }
     }
-    return _basicRowProgression.first;
+    return _basicRowProgression.last;
   }
 
   @override
   Widget build(BuildContext context) {
+    // ListenableBuilder wraps the dashboard content to react to any ProgressService state updates
     return Scaffold(
       backgroundColor: AppColors.beige,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopHeader(),
-            Expanded(
-              child: ListenableBuilder(
-                listenable: ProgressService.instance,
-                builder: (context, _) {
-                  final ps = ProgressService.instance;
-                  return ListView(
+        child: ListenableBuilder(
+          listenable: ProgressService.instance,
+          builder: (context, _) {
+            final ps = ProgressService.instance;
+            return Column(
+              children: [
+                _buildTopHeader(),
+                Expanded(
+                  child: ListView(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 20,
                     ),
                     children: [
-                      // 1. Revised Overall Progress Graph matching design specs
+                      // 1. Overall Progress Graph & Ratio Bars
                       _buildOverallProgressCard(ps),
                       const SizedBox(height: 24),
 
-                      // 2. Renamed & Redesigned "Recent Learning" section
+                      // 2. Recent Learning Active Row Cards
                       _buildRecentLearningCard(ps),
                       const SizedBox(height: 24),
 
-                      // 3. Interactive Streak Card
+                      // 3. Reactive Streak Card & Weekly Dot Calendar
                       _buildInteractiveStreakCard(ps),
                       const SizedBox(height: 24),
 
@@ -352,11 +361,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       _buildQuotesCard(),
                       const SizedBox(height: 30),
                     ],
-                  );
-                },
-              ),
-            ),
-          ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -422,10 +431,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ===========================================================================
-  // 1. REVISED GRAPH DESIGN: AUTHENTIC PROGRESS DONUT & METRICS
+  // 1. OVERALL PROGRESS GRAPH & REACTIVE METRICS
   // ===========================================================================
   Widget _buildOverallProgressCard(ProgressService ps) {
-    const int totalKana = 208; // 104 Hiragana + 104 Katakana
+    const int totalKana = 208; // 104 Hiragana + 104 Katakana[cite: 13]
     final double overallPercent = (ps.totalMastered / totalKana).clamp(
       0.0,
       1.0,
@@ -446,7 +455,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           const SizedBox(height: 10),
 
-          // Custom-drawn circular progress ring with dark borders and sand fill
+          // Custom-drawn circular progress ring with dark borders and sand fill[cite: 13]
           SizedBox(
             width: 154,
             height: 154,
@@ -579,11 +588,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ===========================================================================
-  // 2. RECENT LEARNING SECTION (FORMERLY CONTINUE LEARNING)
+  // 2. RECENT LEARNING SECTION (REACTIVE ROW PROGRESSION)
   // ===========================================================================
   Widget _buildRecentLearningCard(ProgressService ps) {
     final hRow = _getActiveRow(ps, 'Hiragana');
     final kRow = _getActiveRow(ps, 'Katakana');
+
+    final bool isHCompleted = ps.isRowCompleted(
+      writingSystem: 'Hiragana',
+      rowTitle: hRow.key,
+    );
+    final bool isKCompleted = ps.isRowCompleted(
+      writingSystem: 'Katakana',
+      rowTitle: kRow.key,
+    );
 
     final hProg = ps.getRowProgress(
       writingSystem: 'Hiragana',
@@ -594,13 +612,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       rowTitle: kRow.key,
     );
 
-    // Default to at least 5/20 if no checkpoint is recorded yet
-    final int hCurrent = hProg.current > 0 ? hProg.current : 5;
+    // Accurately reflects row checkpoint from 0 to total questions
     final int hTotal = hProg.total > 0 ? hProg.total : 20;
+    final int hCurrent = isHCompleted ? hTotal : hProg.current;
     final double hFraction = (hCurrent / hTotal).clamp(0.0, 1.0);
 
-    final int kCurrent = kProg.current > 0 ? kProg.current : 5;
     final int kTotal = kProg.total > 0 ? kProg.total : 20;
+    final int kCurrent = isKCompleted ? kTotal : kProg.current;
     final double kFraction = (kCurrent / kTotal).clamp(0.0, 1.0);
 
     return _buildCardBase(
@@ -762,37 +780,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ===========================================================================
-  // 3. STREAK CARD
+  // 3. REACTIVE STREAK CARD & WEEKLY CALENDAR DOTS
   // ===========================================================================
   Widget _buildInteractiveStreakCard(ProgressService ps) {
     const days = ['Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun'];
+
+    // Automatically activates flame glow when user has an active streak of 1+ days
+    final bool isFlameActive = ps.streakDays > 0 || _isStreakManualGlow;
+    final int todayIndex = DateTime.now().weekday - 1; // 0 for Mon, 6 for Sun
 
     return _buildCardBase(
       headerText: 'Current Streak',
       headerIcon: Icons.calendar_month_outlined,
       child: GestureDetector(
-        onTap: () => setState(() => _isStreakActive = !_isStreakActive),
-        onLongPress: () => setState(() => _isStreakActive = !_isStreakActive),
+        onTap: () {
+          TactileFeedback.press();
+          setState(() => _isStreakManualGlow = !_isStreakManualGlow);
+        },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
-            color: _isStreakActive
+            color: isFlameActive
                 ? AppColors.flameCardBgActive
                 : AppColors.cream,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _isStreakActive
-                  ? AppColors.flameOrange
-                  : AppColors.textDark,
-              width: _isStreakActive ? 2.2 : 1.8,
+              color: isFlameActive ? AppColors.flameOrange : AppColors.textDark,
+              width: isFlameActive ? 2.2 : 1.8,
             ),
             boxShadow: [
               BoxShadow(
-                color: _isStreakActive
-                    ? AppColors.flameOrange.withOpacity(0.3)
+                color: isFlameActive
+                    ? AppColors.flameOrange.withOpacity(0.35)
                     : AppColors.textDark,
-                offset: Offset(0, _isStreakActive ? 1.5 : 4.0),
+                offset: Offset(0, isFlameActive ? 2.0 : 4.0),
                 blurRadius: 0,
               ),
             ],
@@ -802,9 +824,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             children: [
               Row(
                 children: [
-                  const Icon(
-                    Icons.local_fire_department,
-                    color: AppColors.flameOrange,
+                  Icon(
+                    Icons.local_fire_department_rounded,
+                    color: isFlameActive
+                        ? AppColors.flameOrange
+                        : AppColors.taupe,
                     size: 54,
                   ),
                   const SizedBox(width: 16),
@@ -812,7 +836,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${ps.streakDays} day/s',
+                        '${ps.streakDays} ${ps.streakDays == 1 ? "day" : "days"}',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
@@ -820,10 +844,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
-                        'keep it up!',
-                        style: TextStyle(
-                          fontSize: 13,
+                      Text(
+                        isFlameActive
+                            ? 'Keep the flame burning!'
+                            : 'Study today to start your streak!',
+                        style: const TextStyle(
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textDark,
                         ),
@@ -832,35 +858,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
+
+              // Weekly calendar dots showing real-time study activity
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: List.generate(7, (index) {
                   final isActive = ps.activeDaysThisWeek[index];
+                  final isToday = (index == todayIndex);
+
                   return Column(
                     children: [
                       Text(
                         days[index],
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
+                          fontWeight: isToday
+                              ? FontWeight.w900
+                              : FontWeight.bold,
+                          color: isToday
+                              ? AppColors.flameOrange
+                              : AppColors.textDark,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Container(
-                        width: 16,
-                        height: 16,
+                        width: 18,
+                        height: 18,
                         decoration: BoxDecoration(
                           color: isActive
                               ? AppColors.greenButton
                               : AppColors.beige,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppColors.textDark,
-                            width: 1.5,
+                            color: isToday
+                                ? AppColors.flameOrange
+                                : AppColors.textDark,
+                            width: isToday ? 2.0 : 1.5,
                           ),
                         ),
+                        child: isActive
+                            ? const Icon(
+                                Icons.check,
+                                size: 12,
+                                color: Colors.white,
+                              )
+                            : null,
                       ),
                     ],
                   );
@@ -982,24 +1025,24 @@ class _StationeryDonutPainter extends CustomPainter {
     const double strokeWidth = 20.0;
     final double radius = (size.width - strokeWidth) / 2;
 
-    // 1. Draw track arc (dark brown)
+    // 1. Draw track arc (dark brown)[cite: 13]
     final trackPaint = Paint()
       ..color = trackColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
+      ..strokeWidth = strokeWidth
+      ..isAntiAlias = true;
     canvas.drawCircle(center, radius, trackPaint);
 
-    // 2. Draw progress arc (sand)
+    // 2. Draw progress arc (sand)[cite: 13]
     if (progress > 0) {
       final progressPaint = Paint()
         ..color = fillColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth;
+        ..strokeWidth = strokeWidth
+        ..isAntiAlias = true;
 
-      const double startAngle =
-          -3.141592653589793 / 2; // -pi / 2 (starts from top)
-      final double sweepAngle =
-          2 * 3.141592653589793 * progress.clamp(0.0, 1.0);
+      const double startAngle = -math.pi / 2; // Starts from top
+      final double sweepAngle = 2 * math.pi * progress.clamp(0.0, 1.0);
 
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
@@ -1010,11 +1053,12 @@ class _StationeryDonutPainter extends CustomPainter {
       );
     }
 
-    // 3. Draw outer and inner outline borders
+    // 3. Draw outer and inner outline borders[cite: 13]
     final borderPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 2.0
+      ..isAntiAlias = true;
 
     final double outerRadius = radius + (strokeWidth / 2);
     final double innerRadius = radius - (strokeWidth / 2);
