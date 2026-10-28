@@ -3,8 +3,9 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/progress_service.dart';
 import '../utils/tactile_feedback.dart';
+import 'welcome_screen.dart'; // Routes to Welcome onboarding after full data reset
 
-// --- COLOR PALETTE ---
+// --- COLOR PALETTE (Cozy Pastel Stationery Theme) ---
 class AppColors {
   static const Color cream = Color(0xFFFDF8F3);
   static const Color beige = Color(0xFFEADFD1);
@@ -21,22 +22,22 @@ class AppColors {
   static const Color dangerRed = Color(0xFFD88A82);
   static const Color flameOrange = Color(0xFFE06229);
   static const Color flameBadgeBg = Color(0xFFFFD2BA);
-  static const Color devPurple = Color(0xFFB8A5C6); // Developer accent tint
+  static const Color devPurple = Color(0xFFB8A5C6);
 }
 
 /// Profile & Settings Screen with Integrated Developer & Debug Tools.
 ///
-/// Features & Guidance:
-/// 1. Learner Profile & Badges: Displays username, avatar, and live streak / mastery stats.
-/// 2. Audio & Speech Settings: Configures TTS rate, volume, and tactile stationery sound/vibrations.
-/// 3. Developer / Debug Tools Card:
-///    - **Unlock All Rows Live Toggle**: Instantly toggles [ProgressService.unlockAllRows] across
-///      the entire app so you can preview all rows without completing lessons.
-///    - **Lock to 'A row' Only**: Resets all row question checkpoints and completion flags back to
-///      the initial state (only 'A row' unlocked) while preserving your streak, username, and avatar.
-///    - **Simulate Flashcard Ratings**: Injects sample SRS ratings ('Easy', 'Good', 'Hard', 'Again')
-///      into SharedPreferences so you can test the new stacked Practice Quiz difficulty UI immediately.
-///    - **Clear Flashcard Ratings**: Removes all `kana_difficulty_*` ratings without affecting lesson progress.
+/// Features & Guidelines:
+/// 1. Learner Profile & Badges:
+///    - Synchronizes username and avatar indices with SharedPreferences and HomeScreen.
+/// 2. Audio & Haptics Preferences:
+///    - Manages TTS rate, volume, and tactile sound effects / haptic vibrations.
+/// 3. Data Management & Destructive Resets:
+///    - Reset Kana Progress: Resets mastered characters while preserving streaks and profile.
+///    - Reset All Data & Streaks: Wipes SharedPreferences entirely (including onboarding flags)
+///      and returns the user to [WelcomeScreen].
+/// 4. Developer / Debug Tools:
+///    - Unlock all rows, restore initial row locks, simulate SRS ratings, and clear flashcard tags.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -83,8 +84,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// Loads profile settings and mirrors shared keys for seamless HomeScreen synchronization.
   Future<void> _loadSettings() async {
     _prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
     setState(() {
-      // Synchronize with both profile-specific keys and general user keys read by HomeScreen
       _userName =
           _prefs.getString('profile_username') ??
           _prefs.getString('user_name') ??
@@ -112,13 +114,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (value is String) {
       await _prefs.setString(key, value);
       if (key == 'profile_username') {
-        // Dual-write so HomeScreen picks up the exact same key immediately
         await _prefs.setString('user_name', value);
       }
     } else if (value is int) {
       await _prefs.setInt(key, value);
       if (key == 'profile_avatar_idx') {
-        // Map index to name string for screens reading string-based avatar keys
         await _prefs.setString('user_avatar', 'avatar_$value');
       }
     } else if (value is double) {
@@ -128,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _testPronunciation() async {
+  Future<void> _testPronunciation() async {
     TactileFeedback.press();
     await _flutterTts.stop();
     await _flutterTts.setSpeechRate(_speechRate);
@@ -141,7 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final controller = TextEditingController(text: _userName);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
@@ -186,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextButton(
             onPressed: () {
               TactileFeedback.toggle();
-              Navigator.pop(context);
+              Navigator.pop(dialogCtx);
             },
             child: const Text(
               'Cancel',
@@ -201,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 setState(() => _userName = newName);
                 _savePreference('profile_username', newName);
               }
-              Navigator.pop(context);
+              Navigator.pop(dialogCtx);
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -232,7 +232,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Container(
+      builder: (bottomSheetCtx) => Container(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -256,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     TactileFeedback.press();
                     setState(() => _selectedAvatarIndex = idx);
                     _savePreference('profile_avatar_idx', idx);
-                    Navigator.pop(context);
+                    Navigator.pop(bottomSheetCtx);
                   },
                   child: Container(
                     width: 56,
@@ -575,7 +575,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Container(
+      builder: (bottomSheetCtx) => Container(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -612,10 +612,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
             _buildActionButton(
-              label: 'Reset Mastered Kana',
+              label: 'Reset Mastered Kana Only',
               color: AppColors.taupe,
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(bottomSheetCtx);
                 _showResetConfirmDialog(resetAll: false);
               },
             ),
@@ -625,7 +625,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: AppColors.dangerRed,
               isDestructive: true,
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(bottomSheetCtx);
                 _showResetConfirmDialog(resetAll: true);
               },
             ),
@@ -640,7 +640,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TactileFeedback.error();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
@@ -666,15 +666,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         content: Text(
           resetAll
-              ? 'This will erase all mastered characters, row checkpoints, and your study streak. This cannot be undone.'
-              : 'This will reset your mastered characters count. Your study streak will be preserved.',
+              ? 'This will erase all progress, streak history, profile name, and return to the Welcome onboarding screen. This cannot be undone.'
+              : 'This will reset your mastered characters count. Your study streak and profile will be preserved.',
           style: const TextStyle(color: AppColors.textDark, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () {
               TactileFeedback.toggle();
-              Navigator.pop(context);
+              Navigator.pop(dialogCtx);
             },
             child: const Text(
               'Cancel',
@@ -684,37 +684,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
           GestureDetector(
             onTap: () async {
               TactileFeedback.press();
-              Navigator.pop(context);
-              if (resetAll) {
-                // Clear user profile overrides while retaining essential keys if needed
-                await ProgressService.instance.resetAllProgress();
-                _loadSettings();
-              } else {
-                await ProgressService.instance.resetMasteredKana();
-              }
+              Navigator.pop(dialogCtx);
 
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: AppColors.cream,
-                    content: Text(
-                      resetAll
-                          ? 'All progress has been reset.'
-                          : 'Mastered kana reset.',
-                      style: const TextStyle(
-                        color: AppColors.textDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: const BorderSide(
-                        color: AppColors.textDark,
-                        width: 1.5,
-                      ),
-                    ),
+              if (resetAll) {
+                // Completely erase SharedPreferences (including 'has_completed_onboarding')
+                await _prefs.clear();
+
+                // Re-initialize in-memory service models
+                await ProgressService.instance.init();
+
+                if (!mounted) return;
+
+                // Route directly to WelcomeScreen, removing all navigation stacks
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (_, __, ___) => const WelcomeScreen(),
+                    transitionsBuilder: (_, animation, __, child) =>
+                        FadeTransition(opacity: animation, child: child),
                   ),
+                  (route) => false,
                 );
+              } else {
+                // Reset mastered kana counts only
+                await ProgressService.instance.resetMasteredKana();
+                await _loadSettings();
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: AppColors.cream,
+                      content: const Text(
+                        'Mastered kana reset.',
+                        style: TextStyle(
+                          color: AppColors.textDark,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: const BorderSide(
+                          color: AppColors.textDark,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  );
+                }
               }
             },
             child: Container(

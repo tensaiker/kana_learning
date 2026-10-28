@@ -12,13 +12,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Integrated on-device speech synthesis for dynamic kana pronunciation (no mp3 assets needed)
+  # Dynamic Japanese pronunciation via on-device TTS engine
   flutter_tts: ^4.2.2
 
-  # Local persistence for lesson completion, study streaks, and mastery metrics
+  # Local persistence for lesson progress, streaks, settings, and onboarding status
   shared_preferences: ^2.2.2
 
-  # UI fonts and iconography
+  # UI iconography and custom typography
   cupertino_icons: ^1.0.8
   google_fonts: ^8.2.1
 
@@ -28,10 +28,56 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
 
+  # Generates adaptive home screen app icons for Android, iOS, and Web
+  flutter_launcher_icons: ^0.13.1
+
+  # Generates native OS boot splash drawables (fixes black screen & squircle artifacts)
+  flutter_native_splash: ^2.4.1
+
 # --- FLUTTER CONFIGURATION ---
 flutter:
   uses-material-design: true
 
   # Static asset definitions
   assets:
-    - assets/data/
+    - assets/data/ # Preloaded vocabulary JSON files
+    - assets/image/ # UI assets (cozy_kana_logo.png, Welcome_Bg.jpeg)
+
+# --- LAUNCHER ICON CONFIGURATION (flutter_launcher_icons) ---
+# NOTE ON LOGO SIZING:
+# Android Adaptive Icons crop the outer ~30% of the canvas.
+# Ensure 'assets/image/cozy_kana_logo.png' has 20-25% transparent padding
+# around the badge so the corners do not touch the launcher squircle edges.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  # Fallback asset for legacy Android versions (API < 26) and iOS
+  image_path: "assets/image/cozy_kana_logo.png"
+  min_sdk_android: 21
+
+  # Android 8.0+ / 12+ Adaptive Icon configuration
+  adaptive_icon_background: "#EADFD1" # Seamlessly blends with app canvas
+  adaptive_icon_foreground: "assets/image/cozy_kana_logo.png"
+
+  # Web favicon and manifest generation
+  web:
+    generate: true
+    image_path: "assets/image/cozy_kana_logo.png"
+
+# --- NATIVE SPLASH SCREEN CONFIGURATION (flutter_native_splash) ---
+# Replaces the default black OS window while the Flutter engine initializes.
+flutter_native_splash:
+  color: "#EADFD1"
+  color_dark: "#EADFD1" # Prevents system Dark Mode from reverting background to black
+  image: "assets/image/cozy_kana_logo.png"
+  android_gravity: center
+  ios_content_mode: center
+  web_image_mode: center
+
+  # Android 12+ System Splash Screen API
+  android_12:
+    color: "#EADFD1"
+    color_dark: "#EADFD1"
+    image: "assets/image/cozy_kana_logo.png"
+    icon_background_color: "#EADFD1"
+    icon_background_color_dark: "#EADFD1"

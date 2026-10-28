@@ -4,28 +4,45 @@ import 'dart:math' as math;
 import 'screens/learn_screen.dart';
 import 'screens/practice_screen.dart';
 import 'screens/progress_screen.dart';
-import 'screens/profile_screen.dart'; // Imports the Profile & Settings tab
+import 'screens/profile_screen.dart';
+import 'screens/welcome_screen.dart'; // Direct route for first-time or cleared users
 import 'services/progress_service.dart';
-import 'services/vocabulary_service.dart'; // Imports offline JSON vocabulary database service
-import 'utils/tactile_feedback.dart'; // Imports tactile sound & haptic utility
+import 'services/vocabulary_service.dart';
+import 'utils/tactile_feedback.dart';
 
 void main() async {
-  // Ensure Flutter engine bindings are initialized before calling SharedPreferences[cite: 13]
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Loads saved tactile click sound effects and vibration preferences into memory at startup[cite: 13]
-  await TactileFeedback.init();
+  // Initialize independent services concurrently to minimize cold-boot latency
+  final results = await Future.wait([
+    TactileFeedback.init(),
+    ProgressService.instance.init(),
+    VocabularyService.instance.init(),
+    SharedPreferences.getInstance(),
+  ]);
 
-  // Initializes user progress, streaks, and row checkpoints[cite: 13]
-  await ProgressService.instance.init();
+  final prefs = results[3] as SharedPreferences;
 
-  // Preloads offline vocabulary JSON on app startup[cite: 13]
-  await VocabularyService.instance.init();
+  // Onboarding verification:
+  // Requires both 'has_completed_onboarding' to be true AND a non-empty name.
+  final bool hasOnboarded = prefs.getBool('has_completed_onboarding') ?? false;
+  final String? userName =
+      prefs.getString('user_name') ?? prefs.getString('profile_username');
 
-  runApp(const KanaLearningApp());
+  // Evaluates to true if user has never finished onboarding or previously cleared data
+  final bool needsOnboarding =
+      !hasOnboarded || userName == null || userName.trim().isEmpty;
+
+  runApp(
+    KanaLearningApp(
+      initialScreen: needsOnboarding
+          ? const WelcomeScreen()
+          : const MainNavigator(),
+    ),
+  );
 }
 
-// --- COLOR PALETTE ---
+// --- COLOR PALETTE (Cozy Pastel Stationery Theme) ---
 class AppColors {
   static const Color cream = Color(0xFFFDF8F3);
   static const Color beige = Color(0xFFEADFD1);
@@ -41,10 +58,10 @@ class AppColors {
   static const Color flameCardBgActive = Color(0xFFFFD4BE);
 }
 
-/// Helper model defining sequential rows, titles, and characters for the Recent Learning panel[cite: 13]
+/// Helper model defining sequential rows, titles, and characters for the Recent Learning panel.
 class _RowInfo {
   final String
-  key; // Matches rowTitle in ProgressService (e.g. 'A row', 'Ka row')[cite: 13]
+  key; // Matches rowTitle in ProgressService (e.g., 'A row', 'Ka row')
   final String displayName;
   final String hiraganaChars;
   final String katakanaChars;
@@ -58,7 +75,9 @@ class _RowInfo {
 }
 
 class KanaLearningApp extends StatelessWidget {
-  const KanaLearningApp({super.key});
+  final Widget initialScreen;
+
+  const KanaLearningApp({super.key, required this.initialScreen});
 
   @override
   Widget build(BuildContext context) {
@@ -74,32 +93,41 @@ class KanaLearningApp extends StatelessWidget {
           bodyMedium: TextStyle(color: AppColors.textDark),
         ),
       ),
-      home: const MainNavigator(),
+      home: initialScreen,
     );
   }
 }
 
+/// 5-tab persistent bottom navigation shell managing global state and active views.
 class MainNavigator extends StatefulWidget {
-  const MainNavigator({super.key});
+  final int initialIndex;
+
+  const MainNavigator({super.key, this.initialIndex = 0});
 
   @override
   State<MainNavigator> createState() => MainNavigatorState();
 }
 
 class MainNavigatorState extends State<MainNavigator> {
-  int _currentIndex = 0;
-  // Key to trigger instant profile re-sync on HomeScreen when switching back to tab 0[cite: 13]
+  late int _currentIndex;
+  // Key to trigger instant profile re-sync on HomeScreen when switching back to tab 0
   final GlobalKey<_HomeScreenState> _homeKey = GlobalKey<_HomeScreenState>();
 
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
+
   /// Switches the active tab. When targeting Learn (tab 1), it sets
-  /// the active writing system (Hiragana vs Katakana) in ProgressService[cite: 13].
+  /// the active writing system (Hiragana vs Katakana) in ProgressService.
   void switchTab(int index, {bool isHiragana = true}) {
     if (index == 1) {
       ProgressService.instance.setLearnScript(isHiragana: isHiragana);
     }
     setState(() => _currentIndex = index);
 
-    // Synchronize username & avatar whenever navigating to Home[cite: 13]
+    // Synchronize username & avatar whenever navigating to Home
     if (index == 0) {
       _homeKey.currentState?.syncProfileData();
     }
@@ -175,16 +203,6 @@ class MainNavigatorState extends State<MainNavigator> {
 }
 
 /// Home Dashboard Screen with live reactivity bound to [ProgressService].
-///
-/// Features & Guidelines:
-/// 1. Reactivity via ListenableBuilder:
-///    The entire dashboard listens to [ProgressService.instance]. Any completed row,
-///    mastered kana, streak increment, or dev reset immediately triggers a frame update.
-/// 2. Live Widgets:
-///    - Overall Progress Donut Chart & Character Counter[cite: 13]
-///    - Hiragana & Katakana Mastery Ratio Bars[cite: 13]
-///    - Recent Learning Active Row Cards & Progress Bars[cite: 13]
-///    - Streak Flame Badge & Weekly Dot Calendar (with current day highlight)[cite: 13]
 class HomeScreen extends StatefulWidget {
   final void Function({required bool isHiragana})? onNavigateToLearn;
   final VoidCallback? onNavigateToProfile;
@@ -202,7 +220,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isStreakManualGlow = false;
 
-  // Profile fields synchronized with Profile tab storage[cite: 13]
+  // Profile fields synchronized with Profile tab and onboarding storage
   String _userName = 'Kerby';
   int _selectedAvatarIndex = 0;
 
@@ -297,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Synchronizes user display name and avatar badge from SharedPreferences[cite: 13].
+  /// Synchronizes user display name and avatar badge from SharedPreferences.
   Future<void> syncProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
@@ -311,7 +329,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   /// Finds the currently active (first incomplete) row for the writing system.
-  /// If all rows are completed, defaults to the final row with full 20/20 progress[cite: 13].
   _RowInfo _getActiveRow(ProgressService ps, String writingSystem) {
     for (final row in _basicRowProgression) {
       final isCompleted = ps.isRowCompleted(
@@ -327,7 +344,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // ListenableBuilder wraps the dashboard content to react to any ProgressService state updates
     return Scaffold(
       backgroundColor: AppColors.beige,
       body: SafeArea(
@@ -434,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // 1. OVERALL PROGRESS GRAPH & REACTIVE METRICS
   // ===========================================================================
   Widget _buildOverallProgressCard(ProgressService ps) {
-    const int totalKana = 208; // 104 Hiragana + 104 Katakana[cite: 13]
+    const int totalKana = 208; // 104 Hiragana + 104 Katakana
     final double overallPercent = (ps.totalMastered / totalKana).clamp(
       0.0,
       1.0,
@@ -455,7 +471,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           const SizedBox(height: 10),
 
-          // Custom-drawn circular progress ring with dark borders and sand fill[cite: 13]
+          // Circular progress ring
           SizedBox(
             width: 154,
             height: 154,
@@ -612,7 +628,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       rowTitle: kRow.key,
     );
 
-    // Accurately reflects row checkpoint from 0 to total questions
     final int hTotal = hProg.total > 0 ? hProg.total : 20;
     final int hCurrent = isHCompleted ? hTotal : hProg.current;
     final double hFraction = (hCurrent / hTotal).clamp(0.0, 1.0);
@@ -785,9 +800,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildInteractiveStreakCard(ProgressService ps) {
     const days = ['Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun'];
 
-    // Automatically activates flame glow when user has an active streak of 1+ days
     final bool isFlameActive = ps.streakDays > 0 || _isStreakManualGlow;
-    final int todayIndex = DateTime.now().weekday - 1; // 0 for Mon, 6 for Sun
+    final int todayIndex = DateTime.now().weekday - 1;
 
     return _buildCardBase(
       headerText: 'Current Streak',
@@ -860,7 +874,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 18),
 
-              // Weekly calendar dots showing real-time study activity
+              // Weekly calendar dots
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: List.generate(7, (index) {
@@ -1012,7 +1026,7 @@ class _StationeryDonutPainter extends CustomPainter {
   final Color trackColor;
   final Color borderColor;
 
-  _StationeryDonutPainter({
+  const _StationeryDonutPainter({
     required this.progress,
     required this.fillColor,
     required this.trackColor,
@@ -1025,7 +1039,7 @@ class _StationeryDonutPainter extends CustomPainter {
     const double strokeWidth = 20.0;
     final double radius = (size.width - strokeWidth) / 2;
 
-    // 1. Draw track arc (dark brown)[cite: 13]
+    // 1. Draw track arc (dark brown)
     final trackPaint = Paint()
       ..color = trackColor
       ..style = PaintingStyle.stroke
@@ -1033,7 +1047,7 @@ class _StationeryDonutPainter extends CustomPainter {
       ..isAntiAlias = true;
     canvas.drawCircle(center, radius, trackPaint);
 
-    // 2. Draw progress arc (sand)[cite: 13]
+    // 2. Draw progress arc (sand)
     if (progress > 0) {
       final progressPaint = Paint()
         ..color = fillColor
@@ -1041,7 +1055,7 @@ class _StationeryDonutPainter extends CustomPainter {
         ..strokeWidth = strokeWidth
         ..isAntiAlias = true;
 
-      const double startAngle = -math.pi / 2; // Starts from top
+      const double startAngle = -math.pi / 2;
       final double sweepAngle = 2 * math.pi * progress.clamp(0.0, 1.0);
 
       canvas.drawArc(
@@ -1053,7 +1067,7 @@ class _StationeryDonutPainter extends CustomPainter {
       );
     }
 
-    // 3. Draw outer and inner outline borders[cite: 13]
+    // 3. Draw outer and inner outline borders
     final borderPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
