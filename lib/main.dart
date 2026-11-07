@@ -1,3 +1,5 @@
+// Cozy Kana — analyzer cleanup.
+// Existing public widgets, navigation, learning logic and storage keys are preserved.
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
@@ -5,7 +7,8 @@ import 'screens/learn_screen.dart';
 import 'screens/practice_screen.dart';
 import 'screens/progress_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/welcome_screen.dart'; // Direct route for first-time or cleared users
+import 'screens/welcome_screen.dart'; // Name registration (new learners)
+import 'screens/onboarding_screen.dart'; // Three-page first-time introduction
 import 'services/progress_service.dart';
 import 'services/vocabulary_service.dart';
 import 'utils/tactile_feedback.dart';
@@ -23,21 +26,23 @@ void main() async {
 
   final prefs = results[3] as SharedPreferences;
 
-  // Onboarding verification:
-  // Requires both 'has_completed_onboarding' to be true AND a non-empty name.
-  final bool hasOnboarded = prefs.getBool('has_completed_onboarding') ?? false;
+  // Startup routing: preserve the existing completed-registration key.
+  // `has_seen_intro` tracks only the three introductory pages, independently
+  // from the required learner name. Existing registered users skip both pages.
+  final bool hasRegistered = prefs.getBool('has_completed_onboarding') ?? false;
   final String? userName =
       prefs.getString('user_name') ?? prefs.getString('profile_username');
-
-  // Evaluates to true if user has never finished onboarding or previously cleared data
-  final bool needsOnboarding =
-      !hasOnboarded || userName == null || userName.trim().isEmpty;
+  final bool isRegistered =
+      hasRegistered && userName != null && userName.trim().isNotEmpty;
+  final bool hasSeenIntro = prefs.getBool('has_seen_intro') ?? false;
 
   runApp(
     KanaLearningApp(
-      initialScreen: needsOnboarding
+      initialScreen: isRegistered
+          ? const MainNavigator()
+          : hasSeenIntro
           ? const WelcomeScreen()
-          : const MainNavigator(),
+          : const OnboardingScreen(),
     ),
   );
 }
@@ -82,7 +87,7 @@ class KanaLearningApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Kana Learning',
+      title: 'Cozy Kana',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.beige,
@@ -826,7 +831,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             boxShadow: [
               BoxShadow(
                 color: isFlameActive
-                    ? AppColors.flameOrange.withOpacity(0.35)
+                    ? AppColors.flameOrange.withValues(alpha: 0.35)
                     : AppColors.textDark,
                 offset: Offset(0, isFlameActive ? 2.0 : 4.0),
                 blurRadius: 0,

@@ -1,3 +1,5 @@
+// Cozy Kana — analyzer cleanup.
+// Existing public widgets, navigation, learning logic and storage keys are preserved.
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Reads card difficulty ratings saved from Flashcards[cite: 13]
@@ -73,7 +75,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
   bool _isRowsExpanded = false;
 
   // Selected difficulty for the Quiz flow[cite: 13]
-  String _selectedQuizDifficulty = 'All';
+  // Quiz difficulty is passed directly when the user taps a difficulty.
+  // No duplicate field is needed because _startQuizWithDifficulty owns it.
 
   // Live character counts for the new Quiz difficulty UI[cite: 13]
   Map<String, int> _difficultyCounts = {
@@ -866,7 +869,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: AppColors.sage.withOpacity(0.4),
+              color: AppColors.sage.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.textDark, width: 1.5),
             ),
@@ -1113,7 +1116,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       count: count,
       color: color,
       onTap: () {
-        setState(() => _selectedQuizDifficulty = label);
+        // Launch using the tapped difficulty without an unnecessary rebuild.
         _startQuizWithDifficulty(label);
       },
     );
@@ -1196,7 +1199,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.beige.withOpacity(0.5),
+                    color: AppColors.beige.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.textDark, width: 1.8),
                   ),
@@ -1252,7 +1255,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.beige.withOpacity(0.5),
+                    color: AppColors.beige.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.textDark, width: 1.8),
                   ),
@@ -1310,7 +1313,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.beige.withOpacity(0.5),
+                    color: AppColors.beige.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.textDark, width: 1.8),
                   ),
@@ -1531,7 +1534,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 prefixIcon: const Icon(Icons.search, color: AppColors.textDark),
                 filled: true,
-                fillColor: AppColors.beige.withOpacity(0.5),
+                fillColor: AppColors.beige.withValues(alpha: 0.5),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
@@ -1571,7 +1574,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 : ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: filteredWords.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final word = filteredWords[index];
                       return _buildVocabularyCard(word);
@@ -1592,7 +1595,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
     Color cardBg;
     if (!isUnlocked) {
-      cardBg = AppColors.beige.withOpacity(0.45);
+      cardBg = AppColors.beige.withValues(alpha: 0.45);
     } else if (isMastered) {
       cardBg = AppColors.lightSage;
     } else {
@@ -1826,7 +1829,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.beige.withOpacity(0.5),
+        color: AppColors.beige.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.textDark, width: 1.8),
       ),
@@ -2012,7 +2015,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.sand.withOpacity(0.4),
+            color: AppColors.sand.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.textDark, width: 1.5),
           ),
@@ -2034,7 +2037,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         borderRadius: BorderRadius.circular(6),
                         border: text.isNotEmpty
                             ? Border.all(
-                                color: AppColors.textDark.withOpacity(0.5),
+                                color: AppColors.textDark.withValues(
+                                  alpha: 0.5,
+                                ),
                                 width: 1,
                               )
                             : null,
@@ -2336,14 +2341,14 @@ class _Interactive3DQuizDifficultyButtonState
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textDark.withOpacity(0.8),
+                    color: AppColors.textDark.withValues(alpha: 0.8),
                   ),
                 ),
               ],
             ),
             Icon(
               Icons.play_arrow_rounded,
-              color: AppColors.textDark.withOpacity(0.35),
+              color: AppColors.textDark.withValues(alpha: 0.35),
               size: 42,
             ),
           ],
@@ -2740,7 +2745,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: AppColors.beige.withOpacity(0.6),
+                              color: AppColors.beige.withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: AppColors.textDark,
@@ -2828,7 +2833,9 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                               AppColors.textDark;
                                           Color slotBg = val != null
                                               ? AppColors.cream
-                                              : AppColors.sand.withOpacity(0.5);
+                                              : AppColors.sand.withValues(
+                                                  alpha: 0.5,
+                                                );
 
                                           if (_hasChecked) {
                                             borderColor = _isCorrect
@@ -2913,7 +2920,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: isUsed
-                                        ? AppColors.beige.withOpacity(0.3)
+                                        ? AppColors.beige.withValues(alpha: 0.3)
                                         : AppColors.cream,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
@@ -3405,7 +3412,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                             physics: const NeverScrollableScrollPhysics(),
                             padding: const EdgeInsets.all(16),
                             itemCount: summaryList.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final item = summaryList[index];
@@ -3421,7 +3428,9 @@ class WordBuilderResultScreen extends StatelessWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: isCorrect
-                                      ? AppColors.lightSage.withOpacity(0.5)
+                                      ? AppColors.lightSage.withValues(
+                                          alpha: 0.5,
+                                        )
                                       : const Color(0xFFFDE8E7),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
@@ -3545,7 +3554,7 @@ class WordBuilderResultScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: AppColors.beige.withOpacity(0.5),
+        color: AppColors.beige.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.textDark, width: 1.5),
       ),

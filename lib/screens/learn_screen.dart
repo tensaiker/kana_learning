@@ -1,3 +1,5 @@
+// Cozy Kana — analyzer cleanup.
+// Existing public widgets, navigation, learning logic and storage keys are preserved.
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine
 import 'package:shared_preferences/shared_preferences.dart'; // Imports SharedPreferences for TTS settings lookup[cite: 11]
@@ -1116,7 +1118,7 @@ class _LearnScreenState extends State<LearnScreen>
                 height: 6,
                 decoration: BoxDecoration(
                   color: (isHiragana ? AppColors.sage : AppColors.skyBlue)
-                      .withOpacity(0.5),
+                      .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 alignment: Alignment.centerLeft,
@@ -1174,7 +1176,9 @@ class _LearnScreenState extends State<LearnScreen>
             boxShadow: [
               if (isCelebrated && glowAlpha > 0.05)
                 BoxShadow(
-                  color: AppColors.unlockedGold.withOpacity(0.4 * glowAlpha),
+                  color: AppColors.unlockedGold.withValues(
+                    alpha: 0.4 * glowAlpha,
+                  ),
                   blurRadius: 12 * glowAlpha,
                   spreadRadius: 2 * glowAlpha,
                 )
@@ -1516,7 +1520,7 @@ class _Interactive3DActionButtonState extends State<Interactive3DActionButton> {
         ),
         decoration: BoxDecoration(
           color: widget.isLocked
-              ? widget.bgColor.withOpacity(0.45)
+              ? widget.bgColor.withValues(alpha: 0.45)
               : widget.bgColor,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.textDark, width: 1.5),

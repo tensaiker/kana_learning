@@ -1,33 +1,28 @@
+// lib/screens/welcome_screen.dart
+// Cozy Kana — first-time name registration.
+// This screen deliberately uses the prepared welcome_UI.png illustration as a
+// BACKGROUND. Do not add the logo or welcome heading again; both are in the PNG.
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../main.dart'; // Navigates to MainNavigator to preserve the 5-tab bottom navigation shell
-import '../utils/tactile_feedback.dart'; // Tactile sound and haptic feedback utility
 
-/// Palette constants matching the Cozy Pastel Stationery design system.
-class WelcomeColors {
-  static const Color textDark = Color(0xFF5D534A);
-  static const Color textMuted = Color(0xFF8B8076);
-  static const Color inputBg = Color(0xFFFDF8F3);
-  static const Color buttonBg = Color(0xFF986B4D); // Warm terracotta brown
-  static const Color buttonDisabled = Color(
-    0xFFC6B8A5,
-  ); // Muted taupe when name is empty
-  static const Color buttonBgPressed = Color(0xFF855B3E);
+import '../main.dart'; // MainNavigator preserves all five existing app tabs.
+import '../utils/tactile_feedback.dart';
+
+class _WelcomePalette {
+  static const cream = Color(0xFFFDF8F3);
+  static const brown = Color(0xFF79502F);
+  static const muted = Color(0xFF947963);
+  static const border = Color(0xFFDCC6A8);
+  static const danger = Color(0xFFB14F44);
 }
 
-/// Welcome Screen (Frame 178)
+/// Displays the illustrated background and asks for a learner name.
 ///
-/// Features & Guidelines:
-/// 1. Strict First-Time Name Requirement:
-///    - Learners cannot enter the app without providing a valid name (at least 2 characters).
-///    - Shows dynamic inline error alerts if whitespace or empty values are submitted.
-/// 2. Data Persistence & Synchronization:
-///    - Dual-writes to both `'user_name'` and `'profile_username'` in [SharedPreferences].
-///    - Marks `'has_completed_onboarding'` as `true` so returning users boot straight to Home.
-///    - If a user selects "Clear All Data" in Settings, this screen automatically re-triggers.
-/// 3. Navigation Integrity:
-///    - Transitions to [MainNavigator] (not a isolated screen) to guarantee the 5-tab
-///      bottom navigation bar remains active and responsive.
+/// SharedPreferences keys are unchanged to remain compatible with Home/Profile:
+///  - 'user_name' and 'profile_username': the same name in both locations.
+///  - 'has_completed_onboarding': true only AFTER a valid name was saved.
+///  - 'has_seen_intro': whether the separate introductory pages were viewed.
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -37,7 +32,6 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final TextEditingController _nameController = TextEditingController();
-  bool _isButtonPressed = false;
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -47,262 +41,229 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     super.dispose();
   }
 
-  /// Evaluates whether the entered name satisfies the minimum requirements.
-  bool get _isValidName => _nameController.text.trim().length >= 2;
-
-  /// Validates input, saves user identity to storage, and navigates to the main app.
+  /// Validate, persist the name, then replace this page with the five-tab app.
   Future<void> _handleGetStarted() async {
-    if (_isSubmitting) return;
+    if (_isSubmitting) return; // Prevent double navigation or duplicate writes.
 
-    final String enteredName = _nameController.text.trim();
-
-    // Strict validation checks
-    if (enteredName.isEmpty) {
+    final name = _nameController.text.trim();
+    if (name.length < 2) {
       TactileFeedback.error();
       setState(() {
-        _errorMessage = 'Please enter your name to get started';
-      });
-      return;
-    } else if (enteredName.length < 2) {
-      TactileFeedback.error();
-      setState(() {
-        _errorMessage = 'Name must be at least 2 characters long';
+        _errorMessage = name.isEmpty
+            ? 'Please enter your name to get started.'
+            : 'Name must have at least 2 characters.';
       });
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    FocusScope.of(context).unfocus();
     TactileFeedback.press();
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
 
-    // Persist learner identity across all app screens
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_name', enteredName);
-    await prefs.setString('profile_username', enteredName);
-    await prefs.setBool('has_completed_onboarding', true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Keep these original keys so no other screens need to change.
+      await prefs.setString('user_name', name);
+      await prefs.setString('profile_username', name);
+      await prefs.setBool('has_seen_intro', true);
+      // Set this last: a partially saved name is not completed onboarding.
+      await prefs.setBool('has_completed_onboarding', true);
 
-    if (!mounted) return;
-
-    // Route directly to MainNavigator with a gentle fade transition
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (_, __, ___) => const MainNavigator(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder<void>(
+          transitionDuration: const Duration(milliseconds: 350),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const MainNavigator(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    } catch (_) {
+      // If storage fails, keep the user here so they can retry.
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _errorMessage = 'Unable to save your name. Please try again.';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final bool canProceed = _isValidName;
+    // Keep the background full-screen even when the keyboard opens.
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
+      backgroundColor: _WelcomePalette.cream,
+      resizeToAvoidBottomInset: false,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          // 1. Illustrated Scenery Background (Mt. Fuji & Sakura)
-          Positioned.fill(
-            child: Image.asset(
-              'assets/image/Welcome_Bg.jpeg',
-              fit: BoxFit.cover,
-            ),
+          // The PNG already includes the notepad-and-cat logo, welcome title,
+          // books, mug and bottom waves. No duplicate texts/images are needed.
+          Image.asset(
+            'assets/image/welcome_UI.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            semanticLabel: 'Welcome to Cozy Kana',
           ),
-
-          // 2. Interactive Input Layer
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 28.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(height: screenSize.height * 0.04),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final availableHeight = constraints.maxHeight;
+                // Position the input in the illustration's open middle area.
+                // Move the form higher while the on-screen keyboard is open.
+                final topSpace =
+                    availableHeight * (keyboardHeight > 0 ? 0.24 : 0.40);
 
-                    // Centered Logo Badge
-                    Center(
-                      child: Image.asset(
-                        'assets/image/cozy_kana_logo.png',
-                        width: 125,
-                        height: 125,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Welcome Headline
-                    const Text(
-                      'Welcome to\nKana Learning',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: WelcomeColors.textDark,
-                        height: 1.25,
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Name Label with Required Indicator
-                    const Row(
-                      children: [
-                        Text(
-                          'Name',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: WelcomeColors.textDark,
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Text(
-                          '*',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Input Field Container
-                    Container(
-                      decoration: BoxDecoration(
-                        color: WelcomeColors.inputBg,
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: _errorMessage != null
-                              ? Colors.red.shade400
-                              : WelcomeColors.textDark,
-                          width: 1.5,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TextField(
-                        controller: _nameController,
-                        textCapitalization: TextCapitalization.words,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: WelcomeColors.textDark,
-                        ),
-                        decoration: const InputDecoration(
-                          icon: Icon(
-                            Icons.person_outline_rounded,
-                            color: WelcomeColors.textMuted,
-                            size: 22,
-                          ),
-                          hintText: 'Enter your name',
-                          hintStyle: TextStyle(
-                            color: WelcomeColors.textMuted,
-                            fontSize: 14,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onChanged: (_) {
-                          setState(() {
-                            if (_errorMessage != null) _errorMessage = null;
-                          });
-                        },
-                        onSubmitted: (_) => _handleGetStarted(),
-                      ),
-                    ),
-
-                    // Inline Error Feedback Message
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 6),
+                return SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.only(bottom: keyboardHeight + 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(height: topSpace),
                       Padding(
-                        padding: const EdgeInsets.only(left: 14),
-                        child: Text(
-                          _errorMessage!,
-                          style: TextStyle(
-                            color: Colors.red.shade700,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 20),
-
-                    // "Let's get started" Tactile Action Button
-                    GestureDetector(
-                      onTapDown: (_) {
-                        if (!_isSubmitting) {
-                          setState(() => _isButtonPressed = true);
-                        }
-                      },
-                      onTapUp: (_) {
-                        setState(() => _isButtonPressed = false);
-                        _handleGetStarted();
-                      },
-                      onTapCancel: () =>
-                          setState(() => _isButtonPressed = false),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 100),
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: !canProceed
-                              ? WelcomeColors.buttonDisabled
-                              : (_isButtonPressed
-                                    ? WelcomeColors.buttonBgPressed
-                                    : WelcomeColors.buttonBg),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: WelcomeColors.textDark,
-                            width: 1.5,
-                          ),
-                          boxShadow: canProceed
-                              ? [
-                                  BoxShadow(
-                                    color: WelcomeColors.textDark.withOpacity(
-                                      0.35,
-                                    ),
-                                    offset: Offset(0, _isButtonPressed ? 1 : 3),
-                                    blurRadius: 0,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 30),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              "Let's get started",
-                              style: TextStyle(
-                                color: canProceed
-                                    ? Colors.white
-                                    : WelcomeColors.textDark.withOpacity(0.7),
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.edit_outlined,
+                                  color: _WelcomePalette.brown,
+                                  size: 19,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Enter your name',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: _WelcomePalette.brown,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: _nameController,
+                              enabled: !_isSubmitting,
+                              textCapitalization: TextCapitalization.words,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _handleGetStarted(),
+                              onChanged: (_) {
+                                // Remove the validation message as soon as the
+                                // learner starts correcting their name.
+                                if (_errorMessage != null) {
+                                  setState(() => _errorMessage = null);
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'e.g. Kerby',
+                                hintStyle: const TextStyle(
+                                  color: _WelcomePalette.muted,
+                                  fontSize: 14,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.person_outline,
+                                  color: _WelcomePalette.muted,
+                                ),
+                                filled: true,
+                                fillColor: _WelcomePalette.cream,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(26),
+                                  borderSide: const BorderSide(
+                                    color: _WelcomePalette.border,
+                                    width: 2,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(26),
+                                  borderSide: const BorderSide(
+                                    color: _WelcomePalette.brown,
+                                    width: 2,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(26),
+                                  borderSide: const BorderSide(
+                                    color: _WelcomePalette.danger,
+                                    width: 2,
+                                  ),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(26),
+                                  borderSide: const BorderSide(
+                                    color: _WelcomePalette.danger,
+                                    width: 2,
+                                  ),
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Icon(
-                              Icons.arrow_forward_rounded,
-                              color: canProceed
-                                  ? Colors.white
-                                  : WelcomeColors.textDark.withOpacity(0.7),
-                              size: 18,
+                            if (_errorMessage != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                _errorMessage!,
+                                style: const TextStyle(
+                                  color: _WelcomePalette.danger,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: _isSubmitting
+                                  ? null
+                                  : _handleGetStarted,
+                              icon: _isSubmitting
+                                  ? const SizedBox(
+                                      height: 17,
+                                      width: 17,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.arrow_forward_rounded),
+                              label: Text(
+                                _isSubmitting ? 'Saving...' : 'Get Started',
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _WelcomePalette.brown,
+                                disabledBackgroundColor: _WelcomePalette.muted,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 54),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(28),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-
-                    SizedBox(height: screenSize.height * 0.08),
-                  ],
-                ),
-              ),
+                      // Extra space lets the form scroll above a small device's
+                      // keyboard without moving the fixed illustration.
+                      const SizedBox(height: 36),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],

@@ -1,5 +1,8 @@
+// Cozy Kana — analyzer cleanup.
+// Existing public widgets, navigation, learning logic and storage keys are preserved.
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../services/progress_service.dart'; // Writing mastery is tracked separately from quizzes.
 import '../../../services/audio_service.dart'; // Audio pronunciation controller using native TTS
 import '../../../utils/tactile_feedback.dart'; // Physical haptic feedback controller
 import '../data/kana_data.dart'; // Kana stroke data and models
@@ -231,6 +234,9 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
       });
       TactileFeedback.success();
       _playCurrentPronunciation();
+      if (_currentStage == 3) {
+        ProgressService.instance.markKanaWritten(character.kana);
+      }
       _scheduleAutoAdvance();
       return;
     }
@@ -259,6 +265,10 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
       // Trigger native audio pronunciation and scheduled transition
       if (_isCharacterCompleted) {
         _playCurrentPronunciation();
+        // Only the final memory-writing stage contributes to writing progress.
+        if (_currentStage == 3) {
+          ProgressService.instance.markKanaWritten(character.kana);
+        }
         _scheduleAutoAdvance();
       }
     } else {
@@ -568,8 +578,9 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                                   child: CustomPaint(
                                     painter: StaticFontPainter(
                                       character: currentChar,
-                                      textColor: AppColors.textLight
-                                          .withOpacity(0.22),
+                                      textColor: AppColors.textLight.withValues(
+                                        alpha: 0.22,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -582,8 +593,9 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                                   child: CustomPaint(
                                     painter: StaticFontPainter(
                                       character: currentChar,
-                                      textColor: AppColors.textLight
-                                          .withOpacity(0.25),
+                                      textColor: AppColors.textLight.withValues(
+                                        alpha: 0.25,
+                                      ),
                                     ),
                                   ),
                                 ),

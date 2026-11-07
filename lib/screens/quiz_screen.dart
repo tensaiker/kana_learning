@@ -1,3 +1,5 @@
+// Cozy Kana — analyzer cleanup.
+// Existing public widgets, navigation, learning logic and storage keys are preserved.
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart'; // Native text-to-speech engine[cite: 13]
 import 'package:shared_preferences/shared_preferences.dart'; // Persistent storage for audio settings and SRS ratings[cite: 13]
@@ -304,24 +306,30 @@ class _QuizScreenState extends State<QuizScreen> {
   /// Saves the current question checkpoint to local storage when exiting[cite: 13]
   void _exitAndSaveProgress() {
     final int totalQuestions = _questions.isEmpty ? 20 : _questions.length;
+    // Do not count the current question if the learner exits before answering.
     final int progressCount = _isQuizComplete
         ? totalQuestions
-        : min(_currentQuestionIndex + 1, totalQuestions);
+        : min(_currentQuestionIndex + (_hasAnswered ? 1 : 0), totalQuestions);
 
-    ProgressService.instance.saveRowProgress(
-      writingSystem: widget.writingSystem,
-      rowTitle: widget.rowTitle,
-      currentQuestion: progressCount,
-      totalQuestions: totalQuestions,
-    );
+    // Only Learn quizzes update lesson row checkpoints.
+    if (!widget.enableDifficultySelector) {
+      ProgressService.instance.saveRowProgress(
+        writingSystem: widget.writingSystem,
+        rowTitle: widget.rowTitle,
+        currentQuestion: progressCount,
+        totalQuestions: totalQuestions,
+      );
+    }
 
     Navigator.pop(context);
   }
 
   /// Processes user answer, logs mastery in ProgressService, updates ratings, and advances[cite: 13]
   void _handleAnswer(String selectedOption) async {
-    if (_hasAnswered || _questions.isEmpty)
-      return; // Prevent double-clicking[cite: 13]
+    // Ignore duplicate taps and answers while the question list is empty.
+    if (_hasAnswered || _questions.isEmpty) {
+      return;
+    }
 
     final currentQ = _questions[_currentQuestionIndex];
     final bool isRomajiOptions =
@@ -333,6 +341,8 @@ class _QuizScreenState extends State<QuizScreen> {
 
     final bool isCorrect = (selectedOption == correctAnswer);
 
+    // Every submitted answer counts as actual learning activity, even if wrong.
+    ProgressService.instance.recordQuizAnswer(correct: isCorrect);
     setState(() {
       _hasAnswered = true;
       _selectedOption = selectedOption;
@@ -376,12 +386,14 @@ class _QuizScreenState extends State<QuizScreen> {
         _isQuizComplete = true;
 
         // Save full row completion checkpoint (e.g., 20/20)[cite: 13]
-        ProgressService.instance.saveRowProgress(
-          writingSystem: widget.writingSystem,
-          rowTitle: widget.rowTitle,
-          currentQuestion: _questions.length,
-          totalQuestions: _questions.length,
-        );
+        if (!widget.enableDifficultySelector) {
+          ProgressService.instance.saveRowProgress(
+            writingSystem: widget.writingSystem,
+            rowTitle: widget.rowTitle,
+            currentQuestion: _questions.length,
+            totalQuestions: _questions.length,
+          );
+        }
       }
     });
   }
@@ -688,7 +700,7 @@ class _QuizScreenState extends State<QuizScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             decoration: BoxDecoration(
-              color: AppColors.beige.withOpacity(0.5),
+              color: AppColors.beige.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.textDark, width: 1.8),
             ),
@@ -1101,7 +1113,7 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
         bgColor = AppColors.incorrectBg;
         break;
       case ButtonState.idle:
-      default:
+        // All enum states are covered above; no unreachable default needed.
         bgColor = AppColors.beige;
         break;
     }

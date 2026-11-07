@@ -1,28 +1,29 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import '../services/progress_service.dart'; // Imports the local persistence service[cite: 34]
 
-// --- COLOR PALETTE ---
-class AppColors {
-  static const Color cream = Color(0xFFFDF8F3);
-  static const Color beige = Color(0xFFEADFD1);
-  static const Color sand = Color(0xFFDCC6A8);
-  static const Color taupe = Color(0xFFC6B8A5);
-  static const Color textDark = Color(0xFF5D534A);
-  static const Color textLight = Color(0xFF8B8076);
+import 'package:flutter/material.dart';
 
-  // Category Progress Bar Colors[cite: 34]
-  static const Color basicGreen = Color(0xFF526E5A);
-  static const Color dakuonBlue = Color(0xFF7BA2C7);
-  static const Color yoonBrown = Color(0xFFA67C52);
+import '../features/writing/data/vocabulary_data.dart';
+import '../services/progress_service.dart';
 
-  // Streak & Badge Colors[cite: 34]
-  static const Color flameOrange = Color(0xFFE06D39);
-  static const Color flameBadgeBg = Color(0xFFFFD2BA);
-  static const Color streakActiveGreen = Color(0xFF8FA98F);
-  static const Color streakActiveOrange = Color(0xFFFFD4BE);
+// Cozy Kana's existing stationery palette, scoped to this file.
+// A private name prevents accidental collisions with other screens' AppColors.
+class _ProgressColors {
+  static const cream = Color(0xFFFDF8F3);
+  static const beige = Color(0xFFEADFD1);
+  static const sand = Color(0xFFDCC6A8);
+  static const taupe = Color(0xFFC6B8A5);
+  static const textDark = Color(0xFF5D534A);
+  static const textLight = Color(0xFF8B8076);
+  static const basicGreen = Color(0xFF526E5A);
+  static const dakuonBlue = Color(0xFF7BA2C7);
+  static const yoonBrown = Color(0xFFA67C52);
+  static const flameOrange = Color(0xFFE06D39);
+  static const flameBadgeBg = Color(0xFFFFD2BA);
+  static const activeDay = Color(0xFF8FA98F);
 }
 
+/// The Progress tab uses only metrics already saved by ProgressService.
+/// No additional database, plugin, or service modification is required.
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
 
@@ -31,79 +32,41 @@ class ProgressScreen extends StatefulWidget {
 }
 
 class _ProgressScreenState extends State<ProgressScreen> {
-  // Master script toggle: true = Hiragana (あ), false = Katakana (ア)[cite: 34]
+  // Independent view filter: changing it does not change the Learn tab's script.
   bool _isHiragana = true;
-
-  // Streak card interaction state: false = State 1 (Cream + 3D), true = State 2 (Peach + Orange border)[cite: 34]
-  bool _isStreakActive = false;
 
   @override
   Widget build(BuildContext context) {
-    final systemName = _isHiragana ? 'Hiragana' : 'Katakana';
-
-    // ListenableBuilder ensures real-time UI updates whenever progress is saved[cite: 34]
     return ListenableBuilder(
       listenable: ProgressService.instance,
       builder: (context, _) {
-        final ps = ProgressService.instance;
+        final progress = ProgressService.instance;
+        final script = _isHiragana ? 'Hiragana' : 'Katakana';
 
-        // Total standard characters per script: 46 basic, 25 dakuon, 33 yoon (104 total)[cite: 34]
-        const int basicTotal = 46;
-        const int dakuonTotal = 25;
-        const int yoonTotal = 33;
-        const int totalCharacters =
-            basicTotal + dakuonTotal + yoonTotal; // 104[cite: 34]
-
-        // Fetch live count of mastered characters for active writing system[cite: 34]
-        final int totalLearned = _isHiragana
-            ? ps.masteredHiraganaCount
-            : ps.masteredKatakanaCount;
-
-        // Distribute learned kana across categories (Basic -> Dakuon -> Yoon)[cite: 34]
-        final int basicCurrent = math.min(totalLearned, basicTotal);
-        final int dakuonCurrent = math.min(
-          math.max(0, totalLearned - basicTotal),
-          dakuonTotal,
-        );
-        final int yoonCurrent = math.max(
-          0,
-          totalLearned - basicTotal - dakuonTotal,
-        );
-
-        final double overallPercent = (totalLearned / totalCharacters).clamp(
-          0.0,
-          1.0,
-        );
+        // IMPORTANT: Count the actual mastered characters in each category.
+        // Do not distribute the total count into Basic -> Dakuon -> Yoon;
+        // users can master these in any order through Practice activities.
+        final stats = _KanaCategoryStats.calculate(progress, _isHiragana);
 
         return Scaffold(
-          backgroundColor: AppColors.beige,
+          backgroundColor: _ProgressColors.beige,
           body: SafeArea(
             child: Column(
               children: [
-                _buildTopHeader(),
+                _buildHeader(),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 20,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
                     children: [
-                      // 1. Overview Progress with dynamic donut chart and category bars[cite: 34]
-                      _buildOverviewCard(
-                        systemName: systemName,
-                        overallPercent: overallPercent,
-                        basicCurrent: basicCurrent,
-                        basicTotal: basicTotal,
-                        dakuonCurrent: dakuonCurrent,
-                        dakuonTotal: dakuonTotal,
-                        yoonCurrent: yoonCurrent,
-                        yoonTotal: yoonTotal,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // 2. Interactive Two-State Current Streak Card connected to calendar data[cite: 34]
-                      _buildStreakCard(ps),
-                      const SizedBox(height: 20),
+                      _buildOverviewCard(script, stats),
+                      const SizedBox(height: 18),
+                      _buildLearningJourney(progress, script),
+                      const SizedBox(height: 18),
+                      _buildPracticeCard(progress),
+                      const SizedBox(height: 18),
+                      _buildSkillCard(progress),
+                      const SizedBox(height: 18),
+                      _buildStreakCard(progress),
                     ],
                   ),
                 ),
@@ -115,128 +78,112 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  // ===========================================================================
-  // TOP HEADER & TOGGLE SWITCH
-  // ===========================================================================
-  Widget _buildTopHeader() {
+  // ---------------------------------------------------------------------------
+  // Header and script switcher
+  // ---------------------------------------------------------------------------
+  Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+      padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
       decoration: const BoxDecoration(
-        color: AppColors.sand,
+        color: _ProgressColors.sand,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-        border: Border(bottom: BorderSide(color: AppColors.textDark, width: 2)),
+        border: Border(
+          bottom: BorderSide(color: _ProgressColors.textDark, width: 2),
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Kana Progress',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+          const Expanded(
+            child: Text(
+              'Kana Progress',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: _ProgressColors.textDark,
+              ),
             ),
           ),
-          _buildPillToggle(),
+          const SizedBox(width: 10),
+          _buildScriptSwitch(),
         ],
       ),
     );
   }
 
-  Widget _buildPillToggle() {
+  Widget _buildScriptSwitch() {
     return Container(
-      height: 38,
-      padding: const EdgeInsets.all(2),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.sand,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
+        color: _ProgressColors.beige,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _ProgressColors.textDark, width: 1.6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          GestureDetector(
-            onTap: () => setState(() => _isHiragana = true),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: _isHiragana ? AppColors.taupe : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: _isHiragana ? AppColors.textDark : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-              child: const Text(
-                'あ',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () => setState(() => _isHiragana = false),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: !_isHiragana ? AppColors.taupe : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: !_isHiragana ? AppColors.textDark : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-              child: const Text(
-                'ア',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
+          _buildScriptButton('あ', true, 'Show Hiragana progress'),
+          _buildScriptButton('ア', false, 'Show Katakana progress'),
         ],
       ),
     );
   }
 
-  // ===========================================================================
-  // OVERVIEW PROGRESS CARD (DONUT CHART & BREAKDOWN BARS)
-  // ===========================================================================
-  Widget _buildOverviewCard({
-    required String systemName,
-    required double overallPercent,
-    required int basicCurrent,
-    required int basicTotal,
-    required int dakuonCurrent,
-    required int dakuonTotal,
-    required int yoonCurrent,
-    required int yoonTotal,
-  }) {
-    final double basicProgress = basicTotal > 0
-        ? (basicCurrent / basicTotal)
-        : 0.0;
-    final double dakuonProgress = dakuonTotal > 0
-        ? (dakuonCurrent / dakuonTotal)
-        : 0.0;
-    final double yoonProgress = yoonTotal > 0 ? (yoonCurrent / yoonTotal) : 0.0;
+  Widget _buildScriptButton(String symbol, bool hiragana, String label) {
+    final selected = _isHiragana == hiragana;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        onTap: () {
+          if (_isHiragana != hiragana) {
+            setState(() => _isHiragana = hiragana);
+          }
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 34),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? _ProgressColors.taupe : Colors.transparent,
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: selected ? _ProgressColors.textDark : Colors.transparent,
+              width: 1.3,
+            ),
+          ),
+          child: Text(
+            symbol,
+            style: const TextStyle(
+              color: _ProgressColors.textDark,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
+  // ---------------------------------------------------------------------------
+  // Reusable stationery card
+  // ---------------------------------------------------------------------------
+  Widget _buildCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cream,
+        color: _ProgressColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
+        border: Border.all(color: _ProgressColors.textDark, width: 2),
         boxShadow: const [
           BoxShadow(
-            color: AppColors.textDark,
+            color: _ProgressColors.textDark,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -247,201 +194,169 @@ class _ProgressScreenState extends State<ProgressScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
             decoration: const BoxDecoration(
-              color: AppColors.sand,
+              color: _ProgressColors.sand,
               border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
+                bottom: BorderSide(color: _ProgressColors.textDark, width: 2),
               ),
             ),
-            child: const Text(
-              'Overview Progress',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
+            child: Row(
               children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.filter_alt_outlined,
-                      color: AppColors.textDark,
-                      size: 28,
+                Icon(icon, size: 19, color: _ProgressColors.textDark),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _ProgressColors.textDark,
                     ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Filter options coming soon!'),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                // Custom Donut Progress Chart[cite: 34]
-                SizedBox(
-                  width: 170,
-                  height: 170,
-                  child: CustomPaint(
-                    painter: _ProgressDonutPainter(
-                      basicProgress: basicProgress,
-                      dakuonProgress: dakuonProgress,
-                      yoonProgress: yoonProgress,
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${(overallPercent * 100).toInt()}%',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textDark,
-                            ),
-                          ),
-                          const Text(
-                            'mastered',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textLight,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                // Detailed Breakdown Box[cite: 34]
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.cream,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.textDark, width: 1.8),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.textDark,
-                        offset: Offset(0, 3),
-                        blurRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$systemName progress',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildLinearStatRow(
-                        label: 'Basic $systemName',
-                        countText: '$basicCurrent/$basicTotal cards',
-                        percentageText: '${(basicProgress * 100).toInt()}%',
-                        fraction: basicProgress,
-                        activeColor: AppColors.basicGreen,
-                      ),
-                      const SizedBox(height: 14),
-                      _buildLinearStatRow(
-                        label: 'Dakuon',
-                        countText: '$dakuonCurrent/$dakuonTotal cards',
-                        percentageText: '${(dakuonProgress * 100).toInt()}%',
-                        fraction: dakuonProgress,
-                        activeColor: AppColors.dakuonBlue,
-                      ),
-                      const SizedBox(height: 14),
-                      _buildLinearStatRow(
-                        label: 'Yoon',
-                        countText: '$yoonCurrent/$yoonTotal cards',
-                        percentageText: '${(yoonProgress * 100).toInt()}%',
-                        fraction: yoonProgress,
-                        activeColor: AppColors.yoonBrown,
-                      ),
-                    ],
                   ),
                 ),
               ],
             ),
+          ),
+          Padding(padding: const EdgeInsets.all(18), child: child),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Correctly calculated overall and category mastery
+  // ---------------------------------------------------------------------------
+  Widget _buildOverviewCard(String script, _KanaCategoryStats stats) {
+    return _buildCard(
+      title: 'Overview Progress',
+      icon: Icons.donut_large_outlined,
+      child: Column(
+        children: [
+          const SizedBox(height: 4),
+          SizedBox(
+            width: 168,
+            height: 168,
+            child: CustomPaint(
+              painter: _KanaDonutPainter(stats),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${(stats.fraction * 100).round()}%',
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: _ProgressColors.textDark,
+                      ),
+                    ),
+                    Text(
+                      '${stats.learned}/${stats.total} mastered',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _ProgressColors.textLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '$script mastery',
+              style: const TextStyle(
+                color: _ProgressColors.textDark,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 15),
+          _buildCategoryRow(
+            label: 'Basic',
+            category: stats.basic,
+            color: _ProgressColors.basicGreen,
+          ),
+          const SizedBox(height: 15),
+          _buildCategoryRow(
+            label: 'Dakuon',
+            category: stats.dakuon,
+            color: _ProgressColors.dakuonBlue,
+          ),
+          const SizedBox(height: 15),
+          _buildCategoryRow(
+            label: 'Yoon',
+            category: stats.yoon,
+            color: _ProgressColors.yoonBrown,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Kana mastery is recorded from correct quiz answers. '
+            'Handwriting is tracked separately. Yoon counts full combinations such as きゃ.',
+            style: TextStyle(fontSize: 11, color: _ProgressColors.textLight),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLinearStatRow({
+  Widget _buildCategoryRow({
     required String label,
-    required String countText,
-    required String percentageText,
-    required double fraction,
-    required Color activeColor,
+    required _CategoryCount category,
+    required Color color,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+            Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: _ProgressColors.textDark,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            Row(
-              children: [
-                Text(
-                  countText,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  percentageText,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
-                ),
-              ],
+            Text(
+              '${category.learned}/${category.total}  •  '
+              '${(category.fraction * 100).round()}%',
+              style: const TextStyle(
+                color: _ProgressColors.textDark,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 7),
         Container(
-          height: 12,
-          width: double.infinity,
+          height: 13,
           decoration: BoxDecoration(
-            color: AppColors.beige,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: AppColors.textDark, width: 1.2),
+            color: _ProgressColors.beige,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: _ProgressColors.textDark, width: 1),
           ),
-          alignment: Alignment.centerLeft,
-          child: FractionallySizedBox(
-            widthFactor: fraction.clamp(0.0, 1.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: activeColor,
-                borderRadius: BorderRadius.circular(5),
-              ),
+          clipBehavior: Clip.antiAlias,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: category.fraction,
+              heightFactor: 1,
+              child: ColoredBox(color: color),
             ),
           ),
         ),
@@ -449,160 +364,377 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  // ===========================================================================
-  // INTERACTIVE TWO-STATE CURRENT STREAK CARD[cite: 34]
-  // ===========================================================================
-  Widget _buildStreakCard(ProgressService ps) {
-    final days = ['Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun'];
+  // ---------------------------------------------------------------------------
+  // Lesson checkpoints already recorded by ProgressService
+  // ---------------------------------------------------------------------------
+  Widget _buildLearningJourney(ProgressService ps, String script) {
+    // Developer unlock mode is not real lesson completion.
+    if (ps.unlockAllRows) {
+      return _buildCard(
+        title: 'Learning Journey',
+        icon: Icons.menu_book_outlined,
+        child: const Text(
+          'All rows are unlocked in Developer settings. Turn that option off '
+          'to see meaningful lesson-completion counts.',
+          style: TextStyle(color: _ProgressColors.textLight, fontSize: 13),
+        ),
+      );
+    }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cream,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.textDark,
-            offset: Offset(0, 4),
-            blurRadius: 0,
+    int completedCount(List<String> rows) => rows
+        .where((row) => ps.isRowCompleted(writingSystem: script, rowTitle: row))
+        .length;
+
+    final basicDone = completedCount(ProgressService.basicRowOrder);
+    final dakuonDone = completedCount(ProgressService.dakuonRowTitles);
+    final yoonDone = completedCount(ProgressService.yoonRowTitles);
+    final done = basicDone + dakuonDone + yoonDone;
+    final allRows = [
+      ...ProgressService.basicRowOrder,
+      ...ProgressService.dakuonRowTitles,
+      ...ProgressService.yoonRowTitles,
+    ];
+    final next = allRows.where(
+      (row) => !ps.isRowCompleted(writingSystem: script, rowTitle: row),
+    );
+    final nextRow = next.isEmpty ? null : next.first;
+
+    return _buildCard(
+      title: 'Learning Journey',
+      icon: Icons.menu_book_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Lesson rows completed',
+                  style: TextStyle(
+                    color: _ProgressColors.textDark,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Text(
+                '$done/${allRows.length}',
+                style: const TextStyle(
+                  color: _ProgressColors.textDark,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          _buildJourneyRow(
+            'Basic rows',
+            basicDone,
+            ProgressService.basicRowOrder.length,
+          ),
+          const SizedBox(height: 8),
+          _buildJourneyRow(
+            'Dakuon rows',
+            dakuonDone,
+            ProgressService.dakuonRowTitles.length,
+          ),
+          const SizedBox(height: 8),
+          _buildJourneyRow(
+            'Yoon rows',
+            yoonDone,
+            ProgressService.yoonRowTitles.length,
+          ),
+          const Divider(height: 24, color: _ProgressColors.beige),
+          Text(
+            nextRow == null
+                ? 'All $script lesson rows completed!'
+                : 'Next checkpoint: $nextRow',
+            style: const TextStyle(
+              color: _ProgressColors.textDark,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (nextRow != null)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                'Go to the Learn tab to continue.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _ProgressColors.textLight,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJourneyRow(String title, int done, int total) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              color: _ProgressColors.textDark,
+            ),
+          ),
+        ),
+        Text(
+          '$done/$total',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: _ProgressColors.textDark,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Icon(
+          done == total ? Icons.check_circle : Icons.circle_outlined,
+          color: done == total
+              ? _ProgressColors.basicGreen
+              : _ProgressColors.taupe,
+          size: 17,
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Real saved practice statistics. No fabricated accuracy or study time.
+  // ---------------------------------------------------------------------------
+  Widget _buildPracticeCard(ProgressService ps) {
+    return _buildCard(
+      title: 'Practice Summary',
+      icon: Icons.style_outlined,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetric(
+                  icon: Icons.layers_outlined,
+                  value: '${ps.flashcardsReviewedCount}',
+                  label: 'Cards reviewed',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetric(
+                  icon: Icons.translate,
+                  value: '${ps.totalMasteredWords}',
+                  label: 'Unique words learned',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Successful Word Builder answers: ${ps.wordsCompletedCount}',
+            style: const TextStyle(
+              fontSize: 12,
+              color: _ProgressColors.textLight,
+            ),
           ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
+    );
+  }
+
+  Widget _buildMetric({
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 110),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
+      decoration: BoxDecoration(
+        color: _ProgressColors.beige,
+        border: Border.all(color: _ProgressColors.textDark, width: 1.2),
+        borderRadius: BorderRadius.circular(15),
+      ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Header Bar with dynamic streak badge[cite: 34]
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: AppColors.sand,
-              border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.calendar_month_outlined,
-                  color: AppColors.textDark,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Current Streak',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.flameBadgeBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.flameOrange,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.local_fire_department,
-                        color: AppColors.flameOrange,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${ps.streakDays} Days!',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                          color: AppColors.flameOrange,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          Icon(icon, size: 20, color: _ProgressColors.textDark),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.bold,
+              color: _ProgressColors.textDark,
             ),
           ),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 11,
+              color: _ProgressColors.textLight,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-          // Clickable / Holdable Weekday Dots Panel with two visual states[cite: 34]
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: GestureDetector(
-              onTap: () => setState(() => _isStreakActive = !_isStreakActive),
-              onLongPress: () =>
-                  setState(() => _isStreakActive = !_isStreakActive),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
+  // ---------------------------------------------------------------------------
+  // Independent skill history: no fabricated accuracy or writing metrics.
+  // ---------------------------------------------------------------------------
+  Widget _buildSkillCard(ProgressService ps) {
+    final written = _isHiragana
+        ? ps.writtenHiraganaCount
+        : ps.writtenKatakanaCount;
+    final accuracy = ps.quizAnswersCount == 0
+        ? 'Not measured yet'
+        : '${(ps.quizAccuracy * 100).round()}% (${ps.quizCorrectCount}/${ps.quizAnswersCount})';
+    return _buildCard(
+      title: 'Skill Progress',
+      icon: Icons.auto_graph_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Written from memory: $written / 104 Kana',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _ProgressColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 10),
+          LinearProgressIndicator(
+            value: (written / 104).clamp(0.0, 1.0),
+            backgroundColor: _ProgressColors.beige,
+            color: _ProgressColors.basicGreen,
+            minHeight: 9,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Quiz accuracy: $accuracy',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _ProgressColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Writing counts unique Kana completed in memory mode. '
+            'Accuracy measures answers recorded after this update.',
+            style: TextStyle(fontSize: 11, color: _ProgressColors.textLight),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Read-only activity calendar. No cosmetic tap toggle or fake activity.
+  // Study days are recorded by actual practice activities, not app launches.
+  // ---------------------------------------------------------------------------
+  Widget _buildStreakCard(ProgressService ps) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final activeDays = ps.activeDaysThisWeek;
+    return _buildCard(
+      title: 'Study Streak',
+      icon: Icons.calendar_month_outlined,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.local_fire_department,
+                color: _ProgressColors.flameOrange,
+                size: 24,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '${ps.streakDays} ${ps.streakDays == 1 ? 'day' : 'days'}',
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  color: _ProgressColors.textDark,
+                ),
+              ),
+              const Spacer(),
+              Container(
                 padding: const EdgeInsets.symmetric(
-                  vertical: 16,
                   horizontal: 10,
+                  vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  // State 1: Cream (#FDF8F3), State 2: Soft Peach (#FFD4BE)[cite: 34]
-                  color: _isStreakActive
-                      ? AppColors.streakActiveOrange
-                      : AppColors.cream,
-                  borderRadius: BorderRadius.circular(16),
-                  // State 1: Dark Brown Border, State 2: Vibrant Orange Border[cite: 34]
-                  border: Border.all(
-                    color: _isStreakActive
-                        ? AppColors.flameOrange
-                        : AppColors.textDark,
-                    width: _isStreakActive ? 2.2 : 1.8,
+                  color: _ProgressColors.flameBadgeBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _ProgressColors.flameOrange),
+                ),
+                child: const Text(
+                  'This week',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: _ProgressColors.flameOrange,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _isStreakActive
-                          ? AppColors.flameOrange.withOpacity(0.3)
-                          : AppColors.textDark,
-                      offset: Offset(0, _isStreakActive ? 1.5 : 3.0),
-                      blurRadius: 0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: List.generate(7, (index) {
+              final active = index < activeDays.length && activeDays[index];
+              return Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      days[index],
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: _ProgressColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: active
+                            ? _ProgressColors.activeDay
+                            : _ProgressColors.beige,
+                        border: Border.all(
+                          color: _ProgressColors.textDark,
+                          width: 1.4,
+                        ),
+                      ),
+                      child: active
+                          ? const Icon(
+                              Icons.check,
+                              size: 13,
+                              color: _ProgressColors.cream,
+                            )
+                          : null,
                     ),
                   ],
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: List.generate(7, (index) {
-                    final bool isActive = ps.activeDaysThisWeek[index];
-                    return Column(
-                      children: [
-                        Text(
-                          days[index],
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? AppColors.streakActiveGreen
-                                : AppColors.beige,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.textDark,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
-                ),
-              ),
+              );
+            }),
+          ),
+          const SizedBox(height: 16),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'A day is checked after a quiz answer, flashcard review, '
+              'Word Builder answer, or completed Kana writing.',
+              style: TextStyle(fontSize: 11, color: _ProgressColors.textLight),
             ),
           ),
         ],
@@ -611,61 +743,118 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 }
 
-// =============================================================================
-// CUSTOM DONUT PAINTER[cite: 34]
-// =============================================================================
-class _ProgressDonutPainter extends CustomPainter {
-  final double basicProgress;
-  final double dakuonProgress;
-  final double yoonProgress;
+// Simple immutable model used only for screen calculations.
+class _CategoryCount {
+  final int learned;
+  final int total;
 
-  _ProgressDonutPainter({
-    required this.basicProgress,
-    required this.dakuonProgress,
-    required this.yoonProgress,
-  });
+  const _CategoryCount(this.learned, this.total);
+
+  double get fraction => total == 0 ? 0.0 : (learned / total).clamp(0.0, 1.0);
+}
+
+class _KanaCategoryStats {
+  final _CategoryCount basic;
+  final _CategoryCount dakuon;
+  final _CategoryCount yoon;
+
+  const _KanaCategoryStats(this.basic, this.dakuon, this.yoon);
+
+  int get learned => basic.learned + dakuon.learned + yoon.learned;
+  int get total => basic.total + dakuon.total + yoon.total;
+  double get fraction => total == 0 ? 0.0 : learned / total;
+
+  /// Uses the app's canonical kana-to-row map as the single source of truth.
+  /// Its 104 entries per script include 33 two-character Yoon combinations.
+  static _KanaCategoryStats calculate(ProgressService ps, bool isHiragana) {
+    int basicTotal = 0, dakuonTotal = 0, yoonTotal = 0;
+    int basicLearned = 0, dakuonLearned = 0, yoonLearned = 0;
+
+    for (final entry in kanaToRowTitleMap.entries) {
+      final firstCodePoint = entry.key.runes.first;
+      final isEntryHiragana =
+          firstCodePoint >= 0x3040 && firstCodePoint <= 0x309F;
+      final isEntryKatakana =
+          firstCodePoint >= 0x30A0 && firstCodePoint <= 0x30FF;
+      if (isHiragana ? !isEntryHiragana : !isEntryKatakana) continue;
+
+      final mastered = ps.isKanaMastered(entry.key);
+      if (ProgressService.basicRowOrder.contains(entry.value)) {
+        basicTotal++;
+        if (mastered) basicLearned++;
+      } else if (ProgressService.dakuonRowTitles.contains(entry.value)) {
+        dakuonTotal++;
+        if (mastered) dakuonLearned++;
+      } else if (ProgressService.yoonRowTitles.contains(entry.value)) {
+        yoonTotal++;
+        if (mastered) yoonLearned++;
+      }
+    }
+
+    return _KanaCategoryStats(
+      _CategoryCount(basicLearned, basicTotal),
+      _CategoryCount(dakuonLearned, dakuonTotal),
+      _CategoryCount(yoonLearned, yoonTotal),
+    );
+  }
+}
+
+/// Three colored arcs, each weighted by the category's share of all kana.
+/// The space between arcs separates Basic, Dakuon and Yoon visually.
+class _KanaDonutPainter extends CustomPainter {
+  final _KanaCategoryStats stats;
+
+  const _KanaDonutPainter(this.stats);
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 12;
-    const strokeWidth = 22.0;
-
-    // Outer background track ring[cite: 34]
-    final bgPaint = Paint()
-      ..color = const Color(0xFFD8D2C8)
+    final radius = math.min(size.width, size.height) / 2 - 13;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    const strokeWidth = 18.0;
+    final background = Paint()
+      ..color = _ProgressColors.beige
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
+    canvas.drawCircle(center, radius, background);
 
-    canvas.drawCircle(center, radius, bgPaint);
+    if (stats.total == 0) return;
+    const gapRadians = 0.055;
+    var start = -math.pi / 2;
+    final parts = [
+      (stats.basic, _ProgressColors.basicGreen),
+      (stats.dakuon, _ProgressColors.dakuonBlue),
+      (stats.yoon, _ProgressColors.yoonBrown),
+    ];
 
-    // Active arc progress segment[cite: 34]
-    final activePaint = Paint()
-      ..color = AppColors.yoonBrown
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    final sweepAngle =
-        ((basicProgress * 46 + dakuonProgress * 25 + yoonProgress * 33) / 104) *
-        2 *
-        math.pi;
-
-    if (sweepAngle > 0) {
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2,
-        sweepAngle,
-        false,
-        activePaint,
+    for (final part in parts) {
+      final portion = 2 * math.pi * part.$1.total / stats.total;
+      final paintedSweep = math.max(
+        0.0,
+        portion * part.$1.fraction - gapRadians,
       );
+      if (paintedSweep > 0) {
+        final paint = Paint()
+          ..color = part.$2
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round;
+        canvas.drawArc(
+          rect,
+          start + gapRadians / 2,
+          paintedSweep,
+          false,
+          paint,
+        );
+      }
+      start += portion;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ProgressDonutPainter oldDelegate) {
-    return oldDelegate.basicProgress != basicProgress ||
-        oldDelegate.dakuonProgress != dakuonProgress ||
-        oldDelegate.yoonProgress != yoonProgress;
+  bool shouldRepaint(covariant _KanaDonutPainter oldDelegate) {
+    return oldDelegate.stats.basic.learned != stats.basic.learned ||
+        oldDelegate.stats.dakuon.learned != stats.dakuon.learned ||
+        oldDelegate.stats.yoon.learned != stats.yoon.learned;
   }
 }

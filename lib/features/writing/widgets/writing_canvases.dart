@@ -1,3 +1,5 @@
+// Cozy Kana — analyzer cleanup.
+// Existing public widgets, navigation, learning logic and storage keys are preserved.
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../data/kana_data.dart'; // Imports the normalized Kana data model
@@ -21,7 +23,7 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.textLight.withOpacity(0.3)
+      ..color = AppColors.textLight.withValues(alpha: 0.3)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 

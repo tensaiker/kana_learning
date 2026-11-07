@@ -1,3 +1,7 @@
+// Cozy Kana — Profile & Settings screen.
+//
+// Learner-facing version: Developer & Debug Tools have been removed.
+// All other profile, audio, haptic, About, and reset workflows are preserved.
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,10 +26,9 @@ class AppColors {
   static const Color dangerRed = Color(0xFFD88A82);
   static const Color flameOrange = Color(0xFFE06229);
   static const Color flameBadgeBg = Color(0xFFFFD2BA);
-  static const Color devPurple = Color(0xFFB8A5C6);
 }
 
-/// Profile & Settings Screen with Integrated Developer & Debug Tools.
+/// Profile & Settings screen for learners.
 ///
 /// Features & Guidelines:
 /// 1. Learner Profile & Badges:
@@ -36,8 +39,9 @@ class AppColors {
 ///    - Reset Kana Progress: Resets mastered characters while preserving streaks and profile.
 ///    - Reset All Data & Streaks: Wipes SharedPreferences entirely (including onboarding flags)
 ///      and returns the user to [WelcomeScreen].
-/// 4. Developer / Debug Tools:
-///    - Unlock all rows, restore initial row locks, simulate SRS ratings, and clear flashcard tags.
+/// 4. Developer tools:
+///    - Removed from this screen in all build modes.
+///    - A previously saved "unlock all rows" override is turned off on load.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -84,6 +88,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// Loads profile settings and mirrors shared keys for seamless HomeScreen synchronization.
   Future<void> _loadSettings() async {
     _prefs = await SharedPreferences.getInstance();
+
+    // IMPORTANT FOR RELEASE:
+    // Earlier development versions could save an "Unlock All Rows" override.
+    // Since this screen no longer exposes developer controls, disable that
+    // override without erasing genuine quiz results or completed lesson rows.
+    // ProgressService notifies Learn/Practice of the updated lock status.
+    final progress = ProgressService.instance;
+    if (progress.unlockAllRows) {
+      await progress.setUnlockAllRows(false);
+    }
+
     if (!mounted) return;
 
     setState(() {
@@ -353,7 +368,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.beige.withOpacity(0.5),
+                      color: AppColors.beige.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.textDark, width: 1.5),
                     ),
@@ -395,7 +410,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             activeTrackColor: AppColors.taupe,
                             inactiveTrackColor: AppColors.beige,
                             thumbColor: AppColors.sand,
-                            overlayColor: AppColors.sand.withOpacity(0.3),
+                            overlayColor: AppColors.sand.withValues(alpha: 0.3),
                             thumbShape: const RoundSliderThumbShape(
                               enabledThumbRadius: 9,
                             ),
@@ -440,7 +455,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             activeTrackColor: AppColors.taupe,
                             inactiveTrackColor: AppColors.beige,
                             thumbColor: AppColors.sand,
-                            overlayColor: AppColors.sand.withOpacity(0.3),
+                            overlayColor: AppColors.sand.withValues(alpha: 0.3),
                             thumbShape: const RoundSliderThumbShape(
                               enabledThumbRadius: 9,
                             ),
@@ -507,7 +522,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.beige.withOpacity(0.5),
+                      color: AppColors.beige.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.textDark, width: 1.5),
                     ),
@@ -700,8 +715,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   context,
                   PageRouteBuilder(
                     transitionDuration: const Duration(milliseconds: 400),
-                    pageBuilder: (_, __, ___) => const WelcomeScreen(),
-                    transitionsBuilder: (_, animation, __, child) =>
+                    pageBuilder: (_, _, _) => const WelcomeScreen(),
+                    transitionsBuilder: (_, animation, _, child) =>
                         FadeTransition(opacity: animation, child: child),
                   ),
                   (route) => false,
@@ -762,114 +777,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ===========================================================================
-  // DEVELOPER & DEBUG ACTIONS
-  // ===========================================================================
-
-  /// Resets row question checkpoints and completion flags back to initial state
-  /// (enforces 'A row' as the only unlocked row). Preserves study streak and profile.
-  Future<void> _resetRowCheckpointsOnly() async {
-    TactileFeedback.press();
-    await ProgressService.instance.resetRowCheckpoints();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.cream,
-          content: const Text(
-            "Row locks reset! Only 'A row' is unlocked.",
-            style: TextStyle(
-              color: AppColors.textDark,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: const BorderSide(color: AppColors.textDark, width: 1.5),
-          ),
-        ),
-      );
-    }
-  }
-
-  /// Injects simulated SRS ratings across Hiragana and Katakana characters
-  /// so all 5 Quiz difficulty buckets (Easy, Good, Hard, Again, All) have testable data.
-  Future<void> _simulateFlashcardRatings() async {
-    TactileFeedback.success();
-
-    final Map<String, String> mockRatings = {
-      // Easy (10 characters)
-      'あ': 'Easy', 'い': 'Easy', 'う': 'Easy', 'え': 'Easy', 'お': 'Easy',
-      'ア': 'Easy', 'イ': 'Easy', 'ウ': 'Easy', 'エ': 'Easy', 'オ': 'Easy',
-      // Good (6 characters)
-      'か': 'Good', 'き': 'Good', 'く': 'Good',
-      'カ': 'Good', 'キ': 'Good', 'ク': 'Good',
-      // Hard (4 characters)
-      'さ': 'Hard', 'し': 'Hard',
-      'サ': 'Hard', 'シ': 'Hard',
-      // Again (3 characters)
-      'た': 'Again',
-      'タ': 'Again', 'チ': 'Again',
-    };
-
-    final writes = <Future<bool>>[];
-    for (final entry in mockRatings.entries) {
-      writes.add(_prefs.setString('kana_difficulty_${entry.key}', entry.value));
-    }
-    await Future.wait(writes);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.cream,
-          content: const Text(
-            'Simulated SRS ratings generated! (Easy: 10, Good: 6, Hard: 4, Again: 3)',
-            style: TextStyle(
-              color: AppColors.textDark,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: const BorderSide(color: AppColors.textDark, width: 1.5),
-          ),
-        ),
-      );
-    }
-  }
-
-  /// Erases all stored flashcard difficulty ratings (`kana_difficulty_*`)
-  Future<void> _clearFlashcardRatings() async {
-    TactileFeedback.press();
-    final keys = _prefs
-        .getKeys()
-        .where((k) => k.startsWith('kana_difficulty_'))
-        .toList();
-
-    if (keys.isNotEmpty) {
-      await Future.wait(keys.map((k) => _prefs.remove(k)));
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.cream,
-          content: const Text(
-            'All flashcard difficulty ratings cleared.',
-            style: TextStyle(
-              color: AppColors.textDark,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: const BorderSide(color: AppColors.textDark, width: 1.5),
-          ),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -908,11 +815,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // 3. App Card (About the app -> Features, Reset Progress -> Data Management)
                       _buildAppCard(),
-                      const SizedBox(height: 24),
 
-                      // 4. Developer / Debug Tools Card (Live Unlocks & Rating Testing)
-                      _buildDeveloperCard(ps),
-                      const SizedBox(height: 30),
+                      // Small bottom margin keeps the last card above the
+                      // persistent bottom navigation bar.
+                      const SizedBox(height: 24),
                     ],
                   );
                 },
@@ -1110,7 +1016,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: AppColors.beige.withOpacity(0.5),
+        color: AppColors.beige.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.textDark, width: 1.5),
       ),
@@ -1226,79 +1132,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ===========================================================================
-  // 5. DEVELOPER / DEBUG TOOLS CARD
-  // ===========================================================================
-  Widget _buildDeveloperCard(ProgressService ps) {
-    return _buildCardBase(
-      headerText: 'Developer & Debug Tools',
-      headerIcon: Icons.bug_report_outlined,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Live Unlock All Rows Toggle
-          _buildToggleRow(
-            label: 'Unlock All Rows (Dev Override)',
-            value: ps.unlockAllRows,
-            onChanged: (val) {
-              TactileFeedback.toggle();
-              ps.setUnlockAllRows(val);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: AppColors.cream,
-                  content: Text(
-                    val
-                        ? 'All rows unlocked across the app.'
-                        : 'Row progression locks re-enforced.',
-                    style: const TextStyle(
-                      color: AppColors.textDark,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  duration: const Duration(seconds: 1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: const BorderSide(
-                      color: AppColors.textDark,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          const Divider(color: AppColors.textDark, height: 22, thickness: 1),
-
-          // 2. Lock to 'A row' Only
-          _buildSettingsNavigationTile(
-            icon: Icons.lock_reset_rounded,
-            title: "Lock to 'A row' Only",
-            subtitle: 'Reset row progression without losing streak',
-            onTap: _resetRowCheckpointsOnly,
-          ),
-          const Divider(color: AppColors.textDark, height: 22, thickness: 1),
-
-          // 3. Simulate Flashcard SRS Ratings
-          _buildSettingsNavigationTile(
-            icon: Icons.auto_fix_high_rounded,
-            title: 'Simulate Flashcard Ratings',
-            subtitle: 'Populate Easy, Good, Hard, Again quiz buckets',
-            onTap: _simulateFlashcardRatings,
-          ),
-          const Divider(color: AppColors.textDark, height: 22, thickness: 1),
-
-          // 4. Clear Flashcard Ratings
-          _buildSettingsNavigationTile(
-            icon: Icons.layers_clear_outlined,
-            title: 'Clear Flashcard Ratings',
-            subtitle: 'Reset SRS difficulty ratings back to 0',
-            onTap: _clearFlashcardRatings,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSettingsNavigationTile({
     required IconData icon,
     required String title,
@@ -1314,7 +1147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: AppColors.beige.withOpacity(0.5),
+              color: AppColors.beige.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppColors.textDark, width: 1.2),
             ),
@@ -1481,7 +1314,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const Spacer(),
-                if (trailingAction != null) trailingAction,
+                // Add the widget only when it is non-null (Dart 3.8+).
+                ?trailingAction,
               ],
             ),
           ),
@@ -1651,7 +1485,7 @@ class AboutApplicationScreen extends StatelessWidget {
                           title: 'Flashcard SRS',
                           description:
                               'Reinforce recognition with customizable spaced-repetition difficulty ratings.',
-                          bgColor: AppColors.beige.withOpacity(0.6),
+                          bgColor: AppColors.beige.withValues(alpha: 0.6),
                         ),
                         const SizedBox(height: 10),
                         _buildFeaturePill(

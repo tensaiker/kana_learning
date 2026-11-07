@@ -1,5 +1,8 @@
+// Cozy Kana — analyzer cleanup.
+// Existing public widgets, navigation, learning logic and storage keys are preserved.
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../features/writing/data/vocabulary_data.dart'; // Canonical 104-kana mapping per script.
 
 /// Lightweight data holder for row-level question checkpoints (e.g., 5/20)[cite: 12].
 class RowProgressData {
@@ -29,7 +32,7 @@ class ProgressService extends ChangeNotifier {
   int _masteredKatakanaCount = 0;
 
   int _streakDays = 0;
-  String _lastActiveDate = '';
+  // Activity dates are the single source of truth for the study streak.
   List<bool> _activeDaysThisWeek = List.filled(7, false);
 
   // Active script state for LearnScreen (true = Hiragana, false = Katakana)[cite: 12]
@@ -79,11 +82,31 @@ class ProgressService extends ChangeNotifier {
   int _wordsCompletedCount = 0;
   int _flashcardsReviewedCount = 0;
 
+  // Persisted learning activity and separately measured quiz/handwriting results.
+  // These fields are NOT used to unlock lesson rows.
+  Set<String> _studyActivityDates = {};
+  Set<String> _writtenKana = {};
+  int _quizAnswersCount = 0;
+  int _quizCorrectCount = 0;
+
   /// Initializes SharedPreferences and loads saved progress[cite: 12].
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _loadData();
-    _updateStreak();
+    // Legacy streaks counted launches, not studying. Start a clean activity
+    // streak once after upgrading; never erase actual Kana or lesson progress.
+    if (!(_prefs?.getBool('activityStreakV2') ?? false)) {
+      _studyActivityDates.clear();
+      _streakDays = 0;
+      _activeDaysThisWeek = List.filled(7, false);
+      await _prefs!.setBool('activityStreakV2', true);
+      await Future.wait([
+        _prefs!.remove('streakDays'),
+        _prefs!.remove('lastActiveDate'),
+        for (int i = 0; i < 7; i++) _prefs!.remove('activeDay_$i'),
+      ]);
+    }
+    _refreshActivityDisplay();
   }
 
   void _loadData() {
@@ -94,7 +117,6 @@ class ProgressService extends ChangeNotifier {
     _recalculateMasteredCounts();
 
     _streakDays = prefs.getInt('streakDays') ?? 0;
-    _lastActiveDate = prefs.getString('lastActiveDate') ?? '';
 
     for (int i = 0; i < 7; i++) {
       _activeDaysThisWeek[i] = prefs.getBool('activeDay_$i') ?? false;
@@ -104,66 +126,116 @@ class ProgressService extends ChangeNotifier {
     _masteredWords = (prefs.getStringList('masteredWords') ?? []).toSet();
     _wordsCompletedCount = prefs.getInt('wordsCompletedCount') ?? 0;
     _flashcardsReviewedCount = prefs.getInt('flashcardsReviewedCount') ?? 0;
+    _writtenKana = (prefs.getStringList('writtenKanaV1') ?? []).toSet();
+    _quizAnswersCount = prefs.getInt('quizAnswersCountV1') ?? 0;
+    _quizCorrectCount = prefs.getInt('quizCorrectCountV1') ?? 0;
+    _studyActivityDates = (prefs.getStringList('studyActivityDatesV2') ?? [])
+        .toSet();
 
     // Load row progression override preference (defaults to false)[cite: 12]
     unlockAllRows = prefs.getBool('unlockAllRows') ?? false;
   }
 
+  // Count only the canonical Kana, including complete Yoon combinations.
+  // This keeps the Home/Profile totals aligned with Progress' category bars.
   void _recalculateMasteredCounts() {
-    int hCount = 0;
-    int kCount = 0;
-    for (final char in _masteredKana) {
-      if (_isHiragana(char)) hCount++;
-      if (_isKatakana(char)) kCount++;
+    _masteredHiraganaCount = 0;
+    _masteredKatakanaCount = 0;
+    for (final kana in _masteredKana) {
+      if (!kanaToRowTitleMap.containsKey(kana)) continue;
+      if (_isHiragana(kana)) _masteredHiraganaCount++;
+      if (_isKatakana(kana)) _masteredKatakanaCount++;
     }
-    _masteredHiraganaCount = hCount;
-    _masteredKatakanaCount = kCount;
   }
 
-  void _updateStreak() {
-    final prefs = _prefs;
-    if (prefs == null) return;
+  String _dateKey(DateTime value) =>
+      '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
-    final now = DateTime.now();
-    final todayStr =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-    int weekdayIndex = now.weekday - 1;
+  /// Calculate the visible streak and Monday–Sunday calendar without adding
+  /// a day merely because the application was opened.
+  void _refreshActivityDisplay() {
+    final today = DateTime.now();
+    final midnight = DateTime(today.year, today.month, today.day);
+    final monday = midnight.subtract(Duration(days: midnight.weekday - 1));
 
-    if (weekdayIndex == 0 && _lastActiveDate != todayStr) {
-      _activeDaysThisWeek = List.filled(7, false);
+    _activeDaysThisWeek = List<bool>.generate(
+      7,
+      (index) => _studyActivityDates.contains(
+        _dateKey(monday.add(Duration(days: index))),
+      ),
+    );
+
+    // An active streak remains visible through the next day, giving the user
+    // the opportunity to continue it before midnight.
+    var cursor = midnight;
+    if (!_studyActivityDates.contains(_dateKey(cursor))) {
+      cursor = cursor.subtract(const Duration(days: 1));
     }
+    var count = 0;
+    while (_studyActivityDates.contains(_dateKey(cursor))) {
+      count++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    _streakDays = count;
+  }
 
-    if (_lastActiveDate == todayStr) return;
-
-    if (_lastActiveDate.isEmpty) {
-      _streakDays = 1;
-    } else {
-      final lastDate = DateTime.tryParse(_lastActiveDate);
-      if (lastDate != null) {
-        final difference = DateTime(now.year, now.month, now.day)
-            .difference(DateTime(lastDate.year, lastDate.month, lastDate.day))
-            .inDays;
-
-        if (difference == 1) {
-          _streakDays += 1;
-        } else if (difference > 1) {
-          _streakDays = 1;
-          _activeDaysThisWeek = List.filled(7, false);
-        }
-      } else {
-        _streakDays = 1;
+  /// Call only when the learner actually studies: answers a quiz question,
+  /// reviews a flashcard, finishes a Word Builder answer, or writes Kana.
+  /// A single calendar date can only be recorded once.
+  void recordStudyActivity() {
+    final today = _dateKey(DateTime.now());
+    if (!_studyActivityDates.add(today)) return;
+    _refreshActivityDisplay();
+    final prefs = _prefs;
+    if (prefs != null) {
+      // Preserve legacy preference keys used by existing Profile UI.
+      prefs.setStringList('studyActivityDatesV2', _studyActivityDates.toList());
+      prefs.setInt('streakDays', _streakDays);
+      prefs.setString('lastActiveDate', today);
+      for (var day = 0; day < 7; day++) {
+        prefs.setBool('activeDay_$day', _activeDaysThisWeek[day]);
       }
     }
-
-    _activeDaysThisWeek[weekdayIndex] = true;
-    _lastActiveDate = todayStr;
-
-    prefs.setInt('streakDays', _streakDays);
-    prefs.setString('lastActiveDate', _lastActiveDate);
-    prefs.setBool('activeDay_$weekdayIndex', true);
-
     notifyListeners();
   }
+
+  /// Store quiz accuracy separately from Kana mastery and row unlocking.
+  /// This counts answered questions in BOTH Learn and Practice.
+  void recordQuizAnswer({required bool correct}) {
+    _quizAnswersCount++;
+    if (correct) _quizCorrectCount++;
+    final prefs = _prefs;
+    if (prefs != null) {
+      prefs.setInt('quizAnswersCountV1', _quizAnswersCount);
+      prefs.setInt('quizCorrectCountV1', _quizCorrectCount);
+    }
+    recordStudyActivity();
+    notifyListeners();
+  }
+
+  /// A Kana is considered written only after its memory-writing stage succeeds.
+  /// Repeating the exercise does not inflate the unique total.
+  void markKanaWritten(String kana) {
+    if (kana.trim().isEmpty || !kanaToRowTitleMap.containsKey(kana)) return;
+    if (_writtenKana.add(kana)) {
+      _prefs?.setStringList('writtenKanaV1', _writtenKana.toList());
+      notifyListeners();
+    }
+    recordStudyActivity();
+  }
+
+  bool isKanaWritten(String kana) => _writtenKana.contains(kana);
+
+  int get writtenHiraganaCount => _writtenKana
+      .where((kana) => kanaToRowTitleMap.containsKey(kana) && _isHiragana(kana))
+      .length;
+  int get writtenKatakanaCount => _writtenKana
+      .where((kana) => kanaToRowTitleMap.containsKey(kana) && _isKatakana(kana))
+      .length;
+  int get quizAnswersCount => _quizAnswersCount;
+  int get quizCorrectCount => _quizCorrectCount;
+  double get quizAccuracy =>
+      _quizAnswersCount == 0 ? 0.0 : _quizCorrectCount / _quizAnswersCount;
 
   /// Sets whether the Learn screen displays Hiragana or Katakana[cite: 12].
   void setLearnScript({required bool isHiragana}) {
@@ -251,6 +323,8 @@ class ProgressService extends ChangeNotifier {
     required String rowTitle,
     required int currentQuestion,
     required int totalQuestions,
+    // Practice quiz reviews must not mark Learn lesson rows complete.
+    bool markCompleted = true,
   }) async {
     final prefs = _prefs ?? await SharedPreferences.getInstance();
     final keyCurrent = 'row_progress_${writingSystem}_${rowTitle}_current';
@@ -262,7 +336,9 @@ class ProgressService extends ChangeNotifier {
     ];
 
     // If all questions are finished, mark the row completed to unlock next rows[cite: 12]
-    if (currentQuestion >= totalQuestions && totalQuestions > 0) {
+    if (markCompleted &&
+        currentQuestion >= totalQuestions &&
+        totalQuestions > 0) {
       writes.add(
         prefs.setBool('row_completed_${writingSystem}_$rowTitle', true),
       );
@@ -346,8 +422,10 @@ class ProgressService extends ChangeNotifier {
     if (kana.isEmpty || _masteredKana.contains(kana)) return;
 
     _masteredKana.add(kana);
-    if (_isHiragana(kana)) _masteredHiraganaCount++;
-    if (_isKatakana(kana)) _masteredKatakanaCount++;
+    if (kanaToRowTitleMap.containsKey(kana)) {
+      if (_isHiragana(kana)) _masteredHiraganaCount++;
+      if (_isKatakana(kana)) _masteredKatakanaCount++;
+    }
 
     final prefs = _prefs;
     if (prefs != null) {
@@ -374,6 +452,7 @@ class ProgressService extends ChangeNotifier {
     _flashcardsReviewedCount += 1;
     final prefs = _prefs ?? await SharedPreferences.getInstance();
     await prefs.setInt('flashcardsReviewedCount', _flashcardsReviewedCount);
+    recordStudyActivity();
     notifyListeners();
   }
 
@@ -394,23 +473,12 @@ class ProgressService extends ChangeNotifier {
       writes.add(prefs.setStringList('masteredWords', _masteredWords.toList()));
     }
 
-    // Add individual kana characters with O(N) iteration[cite: 12]
-    bool kanaAdded = false;
-    for (final rune in word.runes) {
-      final char = String.fromCharCode(rune);
-      if (char.isNotEmpty && !_masteredKana.contains(char)) {
-        _masteredKana.add(char);
-        if (_isHiragana(char)) _masteredHiraganaCount++;
-        if (_isKatakana(char)) _masteredKatakanaCount++;
-        kanaAdded = true;
-      }
-    }
-
-    if (kanaAdded) {
-      writes.add(prefs.setStringList('masteredKana', _masteredKana.toList()));
-    }
+    // Important: successfully constructing a word does NOT prove mastery of
+    // every Kana in that word. Quiz mastery is recorded by markKanaMastered.
+    // Existing saved Kana mastery is preserved for backward compatibility.
 
     await Future.wait(writes);
+    recordStudyActivity();
     notifyListeners();
   }
 
@@ -430,10 +498,12 @@ class ProgressService extends ChangeNotifier {
     _masteredHiraganaCount = 0;
     _masteredKatakanaCount = 0;
     _masteredWords.clear();
+    _writtenKana.clear();
     final prefs = _prefs ?? await SharedPreferences.getInstance();
     await Future.wait([
       prefs.remove('masteredKana'),
       prefs.remove('masteredWords'),
+      prefs.remove('writtenKanaV1'),
     ]);
     notifyListeners();
   }
@@ -471,8 +541,11 @@ class ProgressService extends ChangeNotifier {
     _masteredWords.clear();
     _wordsCompletedCount = 0;
     _flashcardsReviewedCount = 0;
+    _writtenKana.clear();
+    _quizAnswersCount = 0;
+    _quizCorrectCount = 0;
+    _studyActivityDates.clear();
     _streakDays = 0;
-    _lastActiveDate = '';
     _activeDaysThisWeek = List.filled(7, false);
 
     final prefs = _prefs ?? await SharedPreferences.getInstance();
@@ -481,6 +554,10 @@ class ProgressService extends ChangeNotifier {
       prefs.remove('masteredWords'),
       prefs.remove('wordsCompletedCount'),
       prefs.remove('flashcardsReviewedCount'),
+      prefs.remove('writtenKanaV1'),
+      prefs.remove('quizAnswersCountV1'),
+      prefs.remove('quizCorrectCountV1'),
+      prefs.remove('studyActivityDatesV2'),
       prefs.remove('streakDays'),
       prefs.remove('lastActiveDate'),
       prefs.remove('unlockAllRows'),
@@ -492,13 +569,13 @@ class ProgressService extends ChangeNotifier {
 
     await Future.wait(removes);
     await resetRowCheckpoints();
-    _updateStreak();
+    // Reset is not a study activity; streak stays at zero.
     notifyListeners();
   }
 
   // --- GETTERS ---[cite: 12]
   int get streakDays => _streakDays;
-  List<bool> get activeDaysThisWeek => _activeDaysThisWeek;
+  List<bool> get activeDaysThisWeek => List.unmodifiable(_activeDaysThisWeek);
   int get totalMastered => _masteredKana.length;
 
   // Cached O(1) getters for dashboard and progress card animations

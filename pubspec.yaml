@@ -41,7 +41,7 @@ flutter:
   # Static asset definitions
   assets:
     - assets/data/ # Preloaded vocabulary JSON files
-    - assets/image/ # UI assets (cozy_kana_logo.png, Welcome_Bg.jpeg)
+    - assets/image/ # Logo, welcome_UI.png, splash and three onboarding images
 
 # --- LAUNCHER ICON CONFIGURATION (flutter_launcher_icons) ---
 # NOTE ON LOGO SIZING:
@@ -51,6 +51,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
+  remove_alpha_ios: true # Opaque iOS launcher icons (source PNG is transparent)
   # Fallback asset for legacy Android versions (API < 26) and iOS
   image_path: "assets/image/cozy_kana_logo.png"
   min_sdk_android: 21
@@ -67,17 +68,18 @@ flutter_launcher_icons:
 # --- NATIVE SPLASH SCREEN CONFIGURATION (flutter_native_splash) ---
 # Replaces the default black OS window while the Flutter engine initializes.
 flutter_native_splash:
-  color: "#EADFD1"
-  color_dark: "#EADFD1" # Prevents system Dark Mode from reverting background to black
-  image: "assets/image/cozy_kana_logo.png"
+  color: "#FDF8F3"
+  color_dark: "#FDF8F3" # Match the cozy cream background in dark mode
+  image: "assets/image/splash_screen.png"
   android_gravity: center
   ios_content_mode: center
   web_image_mode: center
 
   # Android 12+ System Splash Screen API
   android_12:
-    color: "#EADFD1"
-    color_dark: "#EADFD1"
+    # Android 12+ shows an OS-controlled icon, not a full-screen picture.
+    color: "#FDF8F3"
+    color_dark: "#FDF8F3"
     image: "assets/image/cozy_kana_logo.png"
-    icon_background_color: "#EADFD1"
-    icon_background_color_dark: "#EADFD1"
+    icon_background_color: "#FDF8F3"
+    icon_background_color_dark: "#FDF8F3"
