@@ -2,6 +2,7 @@
 //
 // Learner-facing version: Developer & Debug Tools have been removed.
 // All other profile, audio, haptic, About, and reset workflows are preserved.
+import '../theme/cozy_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,21 +14,21 @@ import 'welcome_screen.dart'; // Routes to Welcome onboarding after full data re
 
 // --- COLOR PALETTE (Cozy Pastel Stationery Theme) ---
 class AppColors {
-  static const Color cream = Color(0xFFFDF8F3);
-  static const Color beige = Color(0xFFEADFD1);
-  static const Color sand = Color(0xFFDCC6A8);
-  static const Color taupe = Color(0xFFC6B8A5);
-  static const Color textDark = Color(0xFF5D534A);
-  static const Color textLight = Color(0xFF8B8076);
+  static Color get cream => CozyPalette.cream;
+  static Color get beige => CozyPalette.beige;
+  static Color get sand => CozyPalette.sand;
+  static Color get taupe => CozyPalette.taupe;
+  static Color get textDark => CozyPalette.textDark;
+  static Color get textLight => CozyPalette.textLight;
 
-  static const Color sage = Color(0xFFB7C9B2);
-  static const Color lightSage = Color(0xFFE4EFE7);
-  static const Color skyBlue = Color(0xFFA5C4E5);
-  static const Color lightSkyBlue = Color(0xFFEBF0F5);
-  static const Color greenButton = Color(0xFF6EAA78);
-  static const Color dangerRed = Color(0xFFD88A82);
-  static const Color flameOrange = Color(0xFFE06229);
-  static const Color flameBadgeBg = Color(0xFFFFD2BA);
+  static Color get sage => CozyPalette.sage;
+  static Color get lightSage => CozyPalette.lightSageShade;
+  static Color get skyBlue => CozyPalette.skyBlue;
+  static Color get lightSkyBlue => CozyPalette.lightSkyBlue;
+  static Color get greenButton => CozyPalette.greenButton;
+  static Color get dangerRed => CozyPalette.dangerRed;
+  static Color get flameOrange => CozyPalette.flameOrange;
+  static Color get flameBadgeBg => CozyPalette.flameBadgeBg;
 }
 
 /// Profile & Settings screen for learners.
@@ -172,9 +173,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: AppColors.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.textDark, width: 2),
+          side: BorderSide(color: CozyPalette.outline, width: 2),
         ),
-        title: const Text(
+        title: Text(
           'Edit Your Name',
           style: TextStyle(
             color: AppColors.textDark,
@@ -185,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           controller: controller,
           autofocus: true,
           cursorColor: AppColors.textDark,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textDark,
             fontWeight: FontWeight.bold,
           ),
@@ -198,14 +199,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.textDark,
-                width: 1.5,
-              ),
+              borderSide: BorderSide(color: CozyPalette.outline, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.textDark, width: 2),
+              borderSide: BorderSide(color: CozyPalette.outline, width: 2),
             ),
           ),
         ),
@@ -215,10 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TactileFeedback.toggle();
               Navigator.pop(dialogCtx);
             },
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: AppColors.textLight),
-            ),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textLight)),
           ),
           GestureDetector(
             onTap: () {
@@ -235,9 +230,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 color: AppColors.taupe,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.textDark, width: 1.5),
+                border: Border.all(color: CozyPalette.outline, width: 1.5),
               ),
-              child: const Text(
+              child: Text(
                 'Save',
                 style: TextStyle(
                   color: AppColors.textDark,
@@ -265,7 +260,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Select Avatar Badge',
               style: TextStyle(
                 fontSize: 18,
@@ -292,12 +287,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: isSelected ? AppColors.sand : AppColors.beige,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.textDark,
+                        color: CozyPalette.outline,
                         width: isSelected ? 2.5 : 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.textDark,
+                          color: CozyPalette.shadow,
                           offset: Offset(0, isSelected ? 1 : 3),
                           blurRadius: 0,
                         ),
@@ -356,7 +351,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Row(
+                  Row(
                     children: [
                       Icon(
                         Icons.volume_up_outlined,
@@ -382,12 +377,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.beige.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.textDark, width: 1.5),
+                      border: Border.all(
+                        color: CozyPalette.outline,
+                        width: 1.5,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Audio & Pronunciation (TTS)',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -399,7 +397,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Speech Speed',
                               style: TextStyle(
                                 fontSize: 13,
@@ -409,7 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             Text(
                               '${_speechRate.toStringAsFixed(2)}x',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.textDark,
@@ -444,7 +442,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Speech Volume',
                               style: TextStyle(
                                 fontSize: 13,
@@ -454,7 +452,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             Text(
                               '${(_speechVolume * 100).toInt()}%',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.textDark,
@@ -498,11 +496,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 color: AppColors.sand,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: AppColors.textDark,
+                                  color: CozyPalette.outline,
                                   width: 1.5,
                                 ),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
@@ -536,12 +534,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.beige.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.textDark, width: 1.5),
+                      border: Border.all(
+                        color: CozyPalette.outline,
+                        width: 1.5,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Tactile & Haptics',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -561,7 +562,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             TactileFeedback.soundEnabled = val;
                           },
                         ),
-                        const Divider(
+                        Divider(
                           color: AppColors.textDark,
                           height: 24,
                           thickness: 1,
@@ -598,78 +599,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TactileFeedback.press();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.cream,
+      // The surface below rebuilds as soon as the learner switches theme.
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-          child: ListenableBuilder(
-            listenable: AppearanceService.instance,
-            builder: (context, _) {
-              final selected = AppearanceService.instance.mode;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Row(
+      builder: (sheetContext) => ListenableBuilder(
+        listenable: AppearanceService.instance,
+        builder: (context, _) => Container(
+          decoration: BoxDecoration(
+            color: AppColors.cream,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+              child: ListenableBuilder(
+                listenable: AppearanceService.instance,
+                builder: (context, _) {
+                  final selected = AppearanceService.instance.mode;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(Icons.palette_outlined, color: AppColors.textDark),
-                      SizedBox(width: 10),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.palette_outlined,
+                            color: AppColors.textDark,
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'Appearance',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textDark,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       Text(
-                        'Appearance',
+                        'Choose the look that feels most comfortable for studying.',
                         style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textDark,
-                          fontSize: 20,
+                          color: AppColors.textLight,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildAppearanceChoice(
+                        label: 'Cozy Light',
+                        subtitle: 'Warm cream and beige (recommended)',
+                        icon: Icons.wb_sunny_outlined,
+                        mode: ThemeMode.light,
+                        selected: selected == ThemeMode.light,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildAppearanceChoice(
+                        label: 'Cozy Dark',
+                        subtitle: 'Warm cocoa cards with soft cream lettering',
+                        icon: Icons.dark_mode_outlined,
+                        mode: ThemeMode.dark,
+                        selected: selected == ThemeMode.dark,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildAppearanceChoice(
+                        label: 'Follow System',
+                        subtitle: 'Match the device appearance setting',
+                        icon: Icons.settings_brightness_outlined,
+                        mode: ThemeMode.system,
+                        selected: selected == ThemeMode.system,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Your choice is saved automatically and applies to all learning screens.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textLight,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Choose the look that feels most comfortable for studying.',
-                    style: TextStyle(color: AppColors.textLight, fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildAppearanceChoice(
-                    label: 'Cozy Light',
-                    subtitle: 'Warm cream and beige (recommended)',
-                    icon: Icons.wb_sunny_outlined,
-                    mode: ThemeMode.light,
-                    selected: selected == ThemeMode.light,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildAppearanceChoice(
-                    label: 'Cozy Dark',
-                    subtitle: 'Coffee-toned system theme (partial support)',
-                    icon: Icons.dark_mode_outlined,
-                    mode: ThemeMode.dark,
-                    selected: selected == ThemeMode.dark,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildAppearanceChoice(
-                    label: 'Follow System',
-                    subtitle: 'Match the device appearance setting',
-                    icon: Icons.settings_brightness_outlined,
-                    mode: ThemeMode.system,
-                    selected: selected == ThemeMode.system,
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Note: Other learning screens still use fixed cozy colors. '
-                    'A full dark palette will need those screens to be updated.',
-                    style: TextStyle(fontSize: 11, color: AppColors.textLight),
-                  ),
-                ],
-              );
-            },
+                  );
+                },
+              ),
+            ),
           ),
-        ),
-      ),
+        ), // Themed Container surface.
+      ), // AppearanceService listener updates sheet background.
     );
   }
 
@@ -693,7 +712,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: selected ? AppColors.sand : AppColors.beige,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: AppColors.textDark,
+            color: CozyPalette.outline,
             width: selected ? 2.2 : 1.2,
           ),
         ),
@@ -707,17 +726,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textDark,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: AppColors.textLight,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: AppColors.textLight, fontSize: 11),
                   ),
                 ],
               ),
@@ -753,7 +769,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(
                       Icons.notifications_active_outlined,
@@ -771,7 +787,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'A small reminder each day to keep practicing Japanese Kana.',
                   style: TextStyle(color: AppColors.textLight, fontSize: 12),
                 ),
@@ -780,12 +796,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.beige,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.textDark, width: 1.5),
+                    border: Border.all(color: CozyPalette.outline, width: 1.5),
                   ),
                   child: SwitchListTile.adaptive(
                     // Flutter 3.31+: replace deprecated activeColor with thumb styling.
                     activeThumbColor: AppColors.greenButton,
-                    title: const Text(
+                    title: Text(
                       'Daily Reminder',
                       style: TextStyle(
                         color: AppColors.textDark,
@@ -793,7 +809,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontSize: 14,
                       ),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Off by default. Enable when you want.',
                       style: TextStyle(
                         color: AppColors.textLight,
@@ -838,7 +854,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Android may deliver non-urgent reminders a little later to save battery.',
                   style: TextStyle(color: AppColors.textLight, fontSize: 11),
                 ),
@@ -932,7 +948,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const Row(
+            Row(
               children: [
                 Icon(
                   Icons.delete_outline_rounded,
@@ -984,11 +1000,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: AppColors.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.textDark, width: 2),
+          side: BorderSide(color: CozyPalette.outline, width: 2),
         ),
         title: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.warning_amber_rounded,
               color: AppColors.dangerRed,
               size: 28,
@@ -996,7 +1012,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(width: 8),
             Text(
               resetAll ? 'Reset All Data?' : 'Reset Kana Progress?',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textDark,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -1008,7 +1024,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           resetAll
               ? 'This will erase all progress, streak history, profile name, and return to the Welcome onboarding screen. This cannot be undone.'
               : 'This will reset your mastered characters count. Your study streak and profile will be preserved.',
-          style: const TextStyle(color: AppColors.textDark, height: 1.4),
+          style: TextStyle(color: AppColors.textDark, height: 1.4),
         ),
         actions: [
           TextButton(
@@ -1016,10 +1032,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TactileFeedback.toggle();
               Navigator.pop(dialogCtx);
             },
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: AppColors.textDark),
-            ),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textDark)),
           ),
           GestureDetector(
             onTap: () async {
@@ -1063,7 +1076,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       backgroundColor: AppColors.cream,
-                      content: const Text(
+                      content: Text(
                         'Mastered kana reset.',
                         style: TextStyle(
                           color: AppColors.textDark,
@@ -1072,8 +1085,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
-                        side: const BorderSide(
-                          color: AppColors.textDark,
+                        side: BorderSide(
+                          color: CozyPalette.outline,
                           width: 1.5,
                         ),
                       ),
@@ -1087,10 +1100,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 color: AppColors.dangerRed,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.textDark, width: 1.5),
-                boxShadow: const [
+                border: Border.all(color: CozyPalette.outline, width: 1.5),
+                boxShadow: [
                   BoxShadow(
-                    color: AppColors.textDark,
+                    color: CozyPalette.shadow,
                     offset: Offset(0, 3),
                     blurRadius: 0,
                   ),
@@ -1112,8 +1125,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.beige,
         body: Center(
           child: CircularProgressIndicator(color: AppColors.textDark),
@@ -1122,11 +1138,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      // Cocoa Night uses a darker canvas while the existing stationery cards
-      // remain light until the full app palette is migrated.
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF342B25)
-          : AppColors.beige,
+      // Matches the themed canvas used on every tab.
+      backgroundColor: AppColors.beige,
       body: SafeArea(
         child: Column(
           children: [
@@ -1173,12 +1186,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildTopHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.sand,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-        border: Border(bottom: BorderSide(color: AppColors.textDark, width: 2)),
+        border: Border(
+          bottom: BorderSide(color: CozyPalette.outline, width: 2),
+        ),
       ),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
@@ -1204,11 +1219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       headerIcon: Icons.badge_outlined,
       trailingAction: GestureDetector(
         onTap: _showEditNameDialog,
-        child: const Icon(
-          Icons.edit_outlined,
-          color: AppColors.textDark,
-          size: 20,
-        ),
+        child: Icon(Icons.edit_outlined, color: AppColors.textDark, size: 20),
       ),
       child: Column(
         children: [
@@ -1225,10 +1236,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.sage,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.textDark, width: 2),
-                        boxShadow: const [
+                        border: Border.all(
+                          color: CozyPalette.outline,
+                          width: 2,
+                        ),
+                        boxShadow: [
                           BoxShadow(
-                            color: AppColors.textDark,
+                            color: CozyPalette.shadow,
                             offset: Offset(0, 3),
                             blurRadius: 0,
                           ),
@@ -1249,11 +1263,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: AppColors.sand,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppColors.textDark,
+                            color: CozyPalette.outline,
                             width: 1.5,
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.edit,
                           size: 14,
                           color: AppColors.textDark,
@@ -1273,7 +1287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Flexible(
                           child: Text(
                             _userName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textDark,
@@ -1284,7 +1298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(width: 6),
                         GestureDetector(
                           onTap: _showEditNameDialog,
-                          child: const Icon(
+                          child: Icon(
                             Icons.edit_outlined,
                             size: 18,
                             color: AppColors.textLight,
@@ -1293,7 +1307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'Japanese Kana Learner',
                       style: TextStyle(
                         fontSize: 12,
@@ -1355,7 +1369,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppColors.beige.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textDark, width: 1.5),
+        border: Border.all(color: CozyPalette.outline, width: 1.5),
       ),
       child: Column(
         children: [
@@ -1363,7 +1377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
@@ -1372,7 +1386,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           Text(
             subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               color: AppColors.textLight,
               fontWeight: FontWeight.bold,
@@ -1401,14 +1415,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 : 'Set a gentle daily practice reminder',
             onTap: _showNotificationSettingsModal,
           ),
-          const Divider(color: AppColors.textDark, height: 20, thickness: 1),
+          Divider(color: AppColors.textDark, height: 20, thickness: 1),
           _buildSettingsNavigationTile(
             icon: Icons.volume_up_outlined,
             title: 'Sound',
             subtitle: 'Adjust audio & tactile settings',
             onTap: _showSoundSettingsModal,
           ),
-          const Divider(color: AppColors.textDark, height: 20, thickness: 1),
+          Divider(color: AppColors.textDark, height: 20, thickness: 1),
           _buildSettingsNavigationTile(
             icon: Icons.palette_outlined,
             title: 'Appearance',
@@ -1443,7 +1457,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               );
             },
           ),
-          const Divider(color: AppColors.textDark, height: 20, thickness: 1),
+          Divider(color: AppColors.textDark, height: 20, thickness: 1),
           _buildSettingsNavigationTile(
             icon: Icons.refresh_rounded,
             title: 'Reset Progress',
@@ -1472,7 +1486,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(
               color: AppColors.beige.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.textDark, width: 1.2),
+              border: Border.all(color: CozyPalette.outline, width: 1.2),
             ),
             child: Icon(icon, color: AppColors.textDark, size: 20),
           ),
@@ -1483,7 +1497,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
@@ -1491,7 +1505,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textLight,
                     fontWeight: FontWeight.w600,
@@ -1500,7 +1514,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.textDark, size: 22),
+          Icon(Icons.chevron_right, color: AppColors.textDark, size: 22),
         ],
       ),
     );
@@ -1517,7 +1531,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
@@ -1534,7 +1548,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(
               color: value ? AppColors.greenButton : AppColors.beige,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.textDark, width: 1.8),
+              border: Border.all(color: CozyPalette.outline, width: 1.8),
             ),
             child: AnimatedAlign(
               duration: const Duration(milliseconds: 180),
@@ -1545,7 +1559,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.cream,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.textDark, width: 1.2),
+                  border: Border.all(color: CozyPalette.outline, width: 1.2),
                 ),
               ),
             ),
@@ -1569,10 +1583,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.textDark, width: 1.8),
-          boxShadow: const [
+          border: Border.all(color: CozyPalette.outline, width: 1.8),
+          boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, 3),
               blurRadius: 0,
             ),
@@ -1604,10 +1618,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -1618,10 +1632,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.sand,
               border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
+                bottom: BorderSide(color: CozyPalette.outline, width: 2),
               ),
             ),
             child: Row(
@@ -1630,7 +1644,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(width: 8),
                 Text(
                   headerText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     color: AppColors.textDark,
@@ -1657,31 +1671,31 @@ class AboutApplicationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return Scaffold(
-      // Cocoa Night uses a darker canvas while the existing stationery cards
-      // remain light until the full app palette is migrated.
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF342B25)
-          : AppColors.beige,
+      // Matches the themed canvas used on every tab.
+      backgroundColor: AppColors.beige,
       body: SafeArea(
         child: Column(
           children: [
             // Top Bar
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.sand,
                 borderRadius: BorderRadius.vertical(
                   bottom: Radius.circular(16),
                 ),
                 border: Border(
-                  bottom: BorderSide(color: AppColors.textDark, width: 2),
+                  bottom: BorderSide(color: CozyPalette.outline, width: 2),
                 ),
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_ios_new,
                       color: AppColors.textDark,
                       size: 22,
@@ -1692,7 +1706,7 @@ class AboutApplicationScreen extends StatelessWidget {
                     },
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'About',
                     style: TextStyle(
                       color: AppColors.textDark,
@@ -1738,7 +1752,7 @@ class AboutApplicationScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 14),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1807,7 +1821,7 @@ class AboutApplicationScreen extends StatelessWidget {
                           title: 'Katakana Lessons',
                           description:
                               'Practice reading Katakana, including loanwords and foreign names.',
-                          bgColor: const Color(0xFFF3E7F7),
+                          bgColor: CozyPalette.lavender,
                         ),
                         const SizedBox(height: 10),
                         _buildFeaturePill(
@@ -1839,7 +1853,7 @@ class AboutApplicationScreen extends StatelessWidget {
                           title: 'Word Builder',
                           description:
                               'Build Japanese words using tiles, categories, and flexible practice modes.',
-                          bgColor: const Color(0xFFFFF0D4),
+                          bgColor: CozyPalette.paleGold,
                         ),
                         const SizedBox(height: 10),
                         _buildFeaturePill(
@@ -1867,7 +1881,7 @@ class AboutApplicationScreen extends StatelessWidget {
                   _buildAboutCard(
                     headerText: 'Credits',
                     headerIcon: Icons.code_rounded,
-                    child: const Column(
+                    child: Column(
                       children: [
                         _CreditRow(
                           icon: Icons.code_rounded,
@@ -1912,10 +1926,10 @@ class AboutApplicationScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -1926,10 +1940,10 @@ class AboutApplicationScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.sand,
               border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
+                bottom: BorderSide(color: CozyPalette.outline, width: 2),
               ),
             ),
             child: Row(
@@ -1940,7 +1954,7 @@ class AboutApplicationScreen extends StatelessWidget {
                 ],
                 Text(
                   headerText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     color: AppColors.textDark,
@@ -1967,7 +1981,7 @@ class AboutApplicationScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.textDark, width: 1.5),
+        border: Border.all(color: CozyPalette.outline, width: 1.5),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1978,13 +1992,13 @@ class AboutApplicationScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.cream,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.textDark, width: 1.2),
+              border: Border.all(color: CozyPalette.outline, width: 1.2),
             ),
             alignment: Alignment.center,
             child: kanaChar != null
                 ? Text(
                     kanaChar,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textDark,
@@ -1999,7 +2013,7 @@ class AboutApplicationScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
@@ -2008,7 +2022,7 @@ class AboutApplicationScreen extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textLight,
                     height: 1.3,
@@ -2036,6 +2050,9 @@ class _CreditRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2045,7 +2062,7 @@ class _CreditRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.beige,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.textDark, width: 1.2),
+            border: Border.all(color: CozyPalette.outline, width: 1.2),
           ),
           child: Icon(icon, color: AppColors.textDark, size: 20),
         ),
@@ -2056,7 +2073,7 @@ class _CreditRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                   color: AppColors.textLight,
@@ -2065,7 +2082,7 @@ class _CreditRow extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   height: 1.5,
                   fontWeight: FontWeight.bold,

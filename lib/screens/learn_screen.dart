@@ -1,5 +1,6 @@
 // Cozy Kana — analyzer cleanup.
 // Existing public widgets, navigation, learning logic and storage keys are preserved.
+import '../theme/cozy_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart'; // Imports native text-to-speech engine
 import 'package:shared_preferences/shared_preferences.dart'; // Imports SharedPreferences for TTS settings lookup[cite: 11]
@@ -10,23 +11,23 @@ import '../utils/tactile_feedback.dart'; // Imports tactile stationery mechanica
 
 // --- COLOR PALETTE ---
 class AppColors {
-  static const Color cream = Color(0xFFFDF8F3);
-  static const Color beige = Color(0xFFEADFD1);
-  static const Color sand = Color(0xFFDCC6A8);
-  static const Color taupe = Color(0xFFC6B8A5);
-  static const Color textDark = Color(0xFF5D534A);
-  static const Color textLight = Color(0xFF8B8076);
+  static Color get cream => CozyPalette.cream;
+  static Color get beige => CozyPalette.beige;
+  static Color get sand => CozyPalette.sand;
+  static Color get taupe => CozyPalette.taupe;
+  static Color get textDark => CozyPalette.textDark;
+  static Color get textLight => CozyPalette.textLight;
 
   // Hiragana Colors (Green)[cite: 11]
-  static const Color sage = Color(0xFFB7C9B2);
-  static const Color lightSage = Color(0xFFE4EFE7);
+  static Color get sage => CozyPalette.sage;
+  static Color get lightSage => CozyPalette.lightSageShade;
 
   // Katakana Colors (Blue)[cite: 11]
-  static const Color skyBlue = Color(0xFFA5C4E5);
-  static const Color lightSkyBlue = Color(0xFFEBF0F5);
+  static Color get skyBlue => CozyPalette.skyBlue;
+  static Color get lightSkyBlue => CozyPalette.lightSkyBlue;
 
   // Celebration & Unlock Gold Accent
-  static const Color unlockedGold = Color(0xFFE2B457);
+  static Color get unlockedGold => CozyPalette.unlockedGold;
 }
 
 /// Kana Learn Screen with Row Unlocking Progression & Celebration Animations.
@@ -342,6 +343,9 @@ class _LearnScreenState extends State<LearnScreen>
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     // ListenableBuilder ensures the screen responds immediately when ProgressService updates[cite: 11]
     return ListenableBuilder(
       listenable: ProgressService.instance,
@@ -381,15 +385,17 @@ class _LearnScreenState extends State<LearnScreen>
   Widget _buildTopHeader(bool isHiragana) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.sand,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-        border: Border(bottom: BorderSide(color: AppColors.textDark, width: 2)),
+        border: Border(
+          bottom: BorderSide(color: CozyPalette.outline, width: 2),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             'Kana Learn',
             style: TextStyle(
               fontSize: 24,
@@ -411,7 +417,7 @@ class _LearnScreenState extends State<LearnScreen>
       decoration: BoxDecoration(
         color: AppColors.sand,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
+        border: Border.all(color: CozyPalette.outline, width: 2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -434,7 +440,7 @@ class _LearnScreenState extends State<LearnScreen>
                   width: 2,
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'あ',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
@@ -462,7 +468,7 @@ class _LearnScreenState extends State<LearnScreen>
                   width: 2,
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'ア',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
@@ -507,10 +513,10 @@ class _LearnScreenState extends State<LearnScreen>
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -530,7 +536,7 @@ class _LearnScreenState extends State<LearnScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Basic Kana',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -567,7 +573,7 @@ class _LearnScreenState extends State<LearnScreen>
                 // --- DAKUON & HANDAKUON ROWS ---[cite: 11]
                 Row(
                   children: [
-                    const Text(
+                    Text(
                       'Dakuon',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -577,13 +583,13 @@ class _LearnScreenState extends State<LearnScreen>
                     ),
                     if (isDakuonLocked) ...[
                       const SizedBox(width: 8),
-                      const Icon(
+                      Icon(
                         Icons.lock_outline,
                         size: 16,
                         color: AppColors.textDark,
                       ),
                       const SizedBox(width: 4),
-                      const Text(
+                      Text(
                         '(Finish Wa / N row)',
                         style: TextStyle(
                           fontSize: 11,
@@ -720,7 +726,7 @@ class _LearnScreenState extends State<LearnScreen>
                 // --- YOON (Contracted Sounds) ROWS ---[cite: 11]
                 Row(
                   children: [
-                    const Text(
+                    Text(
                       'Yoon',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -730,13 +736,13 @@ class _LearnScreenState extends State<LearnScreen>
                     ),
                     if (isYoonLocked) ...[
                       const SizedBox(width: 8),
-                      const Icon(
+                      Icon(
                         Icons.lock_outline,
                         size: 16,
                         color: AppColors.textDark,
                       ),
                       const SizedBox(width: 4),
-                      const Text(
+                      Text(
                         '(Finish Pa row)',
                         style: TextStyle(
                           fontSize: 11,
@@ -1076,8 +1082,8 @@ class _LearnScreenState extends State<LearnScreen>
       decoration: BoxDecoration(
         color: isHiragana ? AppColors.lightSage : AppColors.lightSkyBlue,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-        border: const Border(
-          bottom: BorderSide(color: AppColors.textDark, width: 2),
+        border: Border(
+          bottom: BorderSide(color: CozyPalette.outline, width: 2),
         ),
       ),
       child: Row(
@@ -1088,7 +1094,7 @@ class _LearnScreenState extends State<LearnScreen>
             children: [
               Text(
                 isHiragana ? 'ひらがな' : 'カタカナ',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                   color: AppColors.textDark,
@@ -1096,7 +1102,7 @@ class _LearnScreenState extends State<LearnScreen>
               ),
               Text(
                 isHiragana ? 'Hiragana Row' : 'Katakana Row',
-                style: const TextStyle(fontSize: 12, color: AppColors.textDark),
+                style: TextStyle(fontSize: 12, color: AppColors.textDark),
               ),
             ],
           ),
@@ -1105,7 +1111,7 @@ class _LearnScreenState extends State<LearnScreen>
             children: [
               Text(
                 '$currentMastered/104',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
@@ -1183,8 +1189,8 @@ class _LearnScreenState extends State<LearnScreen>
                   spreadRadius: 2 * glowAlpha,
                 )
               else
-                const BoxShadow(
-                  color: AppColors.textDark,
+                BoxShadow(
+                  color: CozyPalette.shadow,
                   offset: Offset(0, 3),
                   blurRadius: 0,
                 ),
@@ -1200,7 +1206,7 @@ class _LearnScreenState extends State<LearnScreen>
                     children: [
                       Text(
                         rowName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textDark,
                           fontWeight: FontWeight.bold,
@@ -1217,11 +1223,11 @@ class _LearnScreenState extends State<LearnScreen>
                             color: AppColors.unlockedGold,
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: AppColors.textDark,
+                              color: CozyPalette.outline,
                               width: 1.2,
                             ),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
@@ -1247,7 +1253,7 @@ class _LearnScreenState extends State<LearnScreen>
                   if (isLocked)
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.lock_outline,
                           size: 16,
                           color: AppColors.textDark,
@@ -1257,7 +1263,7 @@ class _LearnScreenState extends State<LearnScreen>
                           prerequisiteName.isNotEmpty
                               ? 'Finish $prerequisiteName'
                               : 'Locked',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textDark,
@@ -1401,6 +1407,9 @@ class _Interactive3DCharButtonState extends State<Interactive3DCharButton> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     if (widget.kana.isEmpty) {
       return const SizedBox(width: 48, height: 56);
     }
@@ -1438,10 +1447,10 @@ class _Interactive3DCharButtonState extends State<Interactive3DCharButton> {
         decoration: BoxDecoration(
           color: widget.bgColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.textDark, width: 1.5),
+          border: Border.all(color: CozyPalette.outline, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, _isPressed ? 0 : 4.0),
               blurRadius: 0,
             ),
@@ -1452,7 +1461,7 @@ class _Interactive3DCharButtonState extends State<Interactive3DCharButton> {
           children: [
             Text(
               widget.kana,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,
@@ -1460,7 +1469,7 @@ class _Interactive3DCharButtonState extends State<Interactive3DCharButton> {
             ),
             Text(
               widget.romaji,
-              style: const TextStyle(fontSize: 10, color: AppColors.textDark),
+              style: TextStyle(fontSize: 10, color: AppColors.textDark),
             ),
           ],
         ),
@@ -1494,6 +1503,9 @@ class _Interactive3DActionButtonState extends State<Interactive3DActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return GestureDetector(
       onTapDown: (_) {
         if (widget.isLocked) return;
@@ -1523,10 +1535,10 @@ class _Interactive3DActionButtonState extends State<Interactive3DActionButton> {
               ? widget.bgColor.withValues(alpha: 0.45)
               : widget.bgColor,
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.textDark, width: 1.5),
+          border: Border.all(color: CozyPalette.outline, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, (!widget.isLocked && _isPressed) ? 0 : 3.0),
               blurRadius: 0,
             ),
@@ -1536,16 +1548,12 @@ class _Interactive3DActionButtonState extends State<Interactive3DActionButton> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (widget.isLocked) ...[
-              const Icon(
-                Icons.lock_outline,
-                size: 14,
-                color: AppColors.textDark,
-              ),
+              Icon(Icons.lock_outline, size: 14, color: AppColors.textDark),
               const SizedBox(width: 4),
             ],
             Text(
               widget.label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,

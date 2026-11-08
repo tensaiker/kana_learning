@@ -3,6 +3,7 @@
 // Pictures are separate transparent artwork assets; all controls below are
 // REAL Flutter widgets, not buttons baked into images.
 
+import '../theme/cozy_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,12 +11,12 @@ import '../utils/tactile_feedback.dart';
 import 'welcome_screen.dart';
 
 class _IntroColors {
-  static const cream = Color(0xFFFDF8F3);
-  static const brown = Color(0xFF5D534A);
-  static const muted = Color(0xFF8B8076);
-  static const sage = Color(0xFF8EA66F);
-  static const paleSage = Color(0xFFE4EFE7);
-  static const sand = Color(0xFFDCC6A8);
+  static Color get cream => CozyPalette.cream;
+  static Color get brown => CozyPalette.textDark;
+  static Color get muted => CozyPalette.textLight;
+  static Color get sage => CozyPalette.introSage;
+  static Color get paleSage => CozyPalette.lightSageShade;
+  static Color get sand => CozyPalette.sand;
 }
 
 /// Introductory pages for first-time learners.
@@ -112,6 +113,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return Scaffold(
       backgroundColor: _IntroColors.cream,
       body: Stack(
@@ -147,7 +151,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 18),
-                  const Text(
+                  Text(
                     'Cozy Kana',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -184,7 +188,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             Text(
                               page.title,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: _IntroColors.brown,
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
@@ -195,7 +199,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             Text(
                               page.description,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: _IntroColors.muted,
                                 fontSize: 14,
                                 height: 1.5,
@@ -233,7 +237,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: OutlinedButton(
                           onPressed: _isFinishing ? null : _finishIntro,
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
+                            side: BorderSide(
                               color: _IntroColors.brown,
                               width: 1.4,
                             ),

@@ -1,5 +1,6 @@
 // Cozy Kana — analyzer cleanup.
 // Existing public widgets, navigation, learning logic and storage keys are preserved.
+import '../theme/cozy_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Reads card difficulty ratings saved from Flashcards[cite: 13]
@@ -13,32 +14,30 @@ import '../utils/tactile_feedback.dart';
 
 // --- COLOR PALETTE ---
 class AppColors {
-  static const Color cream = Color(0xFFFDF8F3);
-  static const Color beige = Color(0xFFEADFD1);
-  static const Color sand = Color(0xFFDCC6A8);
-  static const Color taupe = Color(0xFFC6B8A5);
-  static const Color textDark = Color(0xFF5D534A);
-  static const Color textLight = Color(0xFF8B8076);
+  static Color get cream => CozyPalette.cream;
+  static Color get beige => CozyPalette.beige;
+  static Color get sand => CozyPalette.sand;
+  static Color get taupe => CozyPalette.taupe;
+  static Color get textDark => CozyPalette.textDark;
+  static Color get textLight => CozyPalette.textLight;
 
   // Hiragana Colors (Green)[cite: 13]
-  static const Color sage = Color(0xFFB7C9B2);
-  static const Color lightSage = Color(0xFFE4EFE7);
-  static const Color greenButton = Color(0xFF6EAA78);
+  static Color get sage => CozyPalette.sage;
+  static Color get lightSage => CozyPalette.lightSageShade;
+  static Color get greenButton => CozyPalette.greenButton;
 
   // Katakana Colors (Blue)[cite: 13]
-  static const Color skyBlue = Color(0xFFA5C4E5);
-  static const Color lightSkyBlue = Color(0xFFEBF0F5);
+  static Color get skyBlue => CozyPalette.skyBlue;
+  static Color get lightSkyBlue => CozyPalette.lightSkyBlue;
 
   // Difficulty & Feedback Colors (Matching Updated Quiz UI)[cite: 13]
-  static const Color ratingAgain = Color(
-    0xFFD88A82,
-  ); // Soft red/coral[cite: 13]
-  static const Color ratingHard = Color(
-    0xFFE29E57,
-  ); // Warm amber/orange[cite: 13]
-  static const Color ratingGood = Color(0xFF9FB89A); // Sage green[cite: 13]
-  static const Color ratingEasy = Color(0xFFA5C4E5); // Soft blue[cite: 13]
-  static const Color flameOrange = Color(0xFFE06229);
+  static Color get ratingAgain =>
+      CozyPalette.ratingAgain; // Soft red/coral[cite: 13]
+  static Color get ratingHard =>
+      CozyPalette.ratingHard; // Warm amber/orange[cite: 13]
+  static Color get ratingGood => CozyPalette.ratingGood; // Sage green[cite: 13]
+  static Color get ratingEasy => CozyPalette.ratingEasy; // Soft blue[cite: 13]
+  static Color get flameOrange => CozyPalette.flameOrange;
 }
 
 enum FlashcardQuestionType { kanaToRomaji, listening, romajiToKana, mix }
@@ -446,16 +445,16 @@ class _PracticeScreenState extends State<PracticeScreen> {
         backgroundColor: AppColors.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.textDark, width: 2),
+          side: BorderSide(color: CozyPalette.outline, width: 2),
         ),
         title: Row(
           children: [
-            const Icon(Icons.lock_rounded, color: AppColors.textDark, size: 26),
+            Icon(Icons.lock_rounded, color: AppColors.textDark, size: 26),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 '$rowTitle is Locked',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
                   fontSize: 18,
@@ -466,7 +465,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
         ),
         content: Text(
           'Complete the "$prereq" lesson in the Learn tab to unlock these characters.',
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textDark,
             fontSize: 14,
             height: 1.4,
@@ -475,7 +474,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
+            child: Text(
               'Got it',
               style: TextStyle(
                 color: AppColors.textDark,
@@ -542,6 +541,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return ListenableBuilder(
       listenable: ProgressService.instance,
       builder: (context, _) {
@@ -591,15 +593,17 @@ class _PracticeScreenState extends State<PracticeScreen> {
   Widget _buildTopHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.sand,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-        border: Border(bottom: BorderSide(color: AppColors.textDark, width: 2)),
+        border: Border(
+          bottom: BorderSide(color: CozyPalette.outline, width: 2),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             'Kana Practice',
             style: TextStyle(
               fontSize: 24,
@@ -620,7 +624,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       decoration: BoxDecoration(
         color: AppColors.sand,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
+        border: Border.all(color: CozyPalette.outline, width: 2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -646,7 +650,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   width: 2,
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'あ',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
@@ -677,7 +681,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   width: 2,
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'ア',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
@@ -705,10 +709,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -720,15 +724,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.sand,
               border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
+                bottom: BorderSide(color: CozyPalette.outline, width: 2),
               ),
             ),
             child: Text(
               '$systemName Practice',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,
@@ -752,7 +756,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   title: 'Word Builder',
                   description: 'Assemble real vocabulary from kana',
                   bgColor: cardBgColor,
-                  iconWidget: const Text(
+                  iconWidget: Text(
                     'Aa',
                     style: TextStyle(
                       fontSize: 20,
@@ -779,7 +783,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   bgColor: cardBgColor,
                   iconWidget: Text(
                     _isHiragana ? 'あ' : 'ア',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textDark,
@@ -818,7 +822,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
             decoration: BoxDecoration(
               color: AppColors.sage.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.textDark, width: 1.5),
+              border: Border.all(color: CozyPalette.outline, width: 1.5),
             ),
             alignment: Alignment.center,
             child:
@@ -831,7 +835,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
@@ -840,15 +844,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textLight,
-                  ),
+                  style: TextStyle(fontSize: 12, color: AppColors.textLight),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.textDark, size: 32),
+          Icon(Icons.chevron_right, color: AppColors.textDark, size: 32),
         ],
       ),
     );
@@ -864,10 +865,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -879,10 +880,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.sand,
               border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
+                bottom: BorderSide(color: CozyPalette.outline, width: 2),
               ),
             ),
             child: Row(
@@ -893,7 +894,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     TactileFeedback.toggle();
                     setState(() => _activeSubScreen = null);
                   },
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
@@ -921,7 +922,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Kana',
                   style: TextStyle(
                     fontSize: 16,
@@ -932,7 +933,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 const SizedBox(height: 10),
                 _buildAccordionSelector(systemName),
                 const SizedBox(height: 22),
-                const Text(
+                Text(
                   'Question type',
                   style: TextStyle(
                     fontSize: 16,
@@ -960,10 +961,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -975,10 +976,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.sand,
               border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
+                bottom: BorderSide(color: CozyPalette.outline, width: 2),
               ),
             ),
             child: Row(
@@ -989,7 +990,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     TactileFeedback.toggle();
                     setState(() => _activeSubScreen = null);
                   },
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
@@ -1115,7 +1116,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
             color: selected ? AppColors.lightSage : AppColors.cream,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: AppColors.textDark,
+              color: CozyPalette.outline,
               width: selected ? 2.4 : 1.2,
             ),
           ),
@@ -1129,7 +1130,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textDark,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -1138,7 +1139,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     const SizedBox(height: 3),
                     Text(
                       description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textLight,
                         fontSize: 11,
                       ),
@@ -1161,7 +1162,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Practice mode',
           style: TextStyle(
             fontSize: 16,
@@ -1198,7 +1199,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       decoration: BoxDecoration(
         color: AppColors.beige.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textDark, width: 1.8),
+        border: Border.all(color: CozyPalette.outline, width: 1.8),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -1206,11 +1207,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
           isExpanded: true, // Avoid clipped labels on narrower phones.
           borderRadius: BorderRadius.circular(12),
           dropdownColor: AppColors.cream,
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down_rounded,
             color: AppColors.textDark,
           ),
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textDark,
             fontSize: 14,
             fontWeight: FontWeight.bold,
@@ -1239,10 +1240,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -1254,10 +1255,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.sand,
               border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
+                bottom: BorderSide(color: CozyPalette.outline, width: 2),
               ),
             ),
             child: Row(
@@ -1268,7 +1269,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     TactileFeedback.toggle();
                     setState(() => _activeSubScreen = null);
                   },
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
@@ -1299,7 +1300,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 _buildWordBuilderPracticeMode(),
                 const SizedBox(height: 22),
                 // Filter before choosing question type, length and round size.
-                const Text(
+                Text(
                   'Vocabulary category',
                   style: TextStyle(
                     fontSize: 16,
@@ -1313,7 +1314,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   onChanged: (value) => setState(() => _wbCategory = value),
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'Question type',
                   style: TextStyle(
                     fontSize: 16,
@@ -1327,7 +1328,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.beige.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.textDark, width: 1.8),
+                    border: Border.all(color: CozyPalette.outline, width: 1.8),
                   ),
                   child: Row(
                     children: [
@@ -1369,7 +1370,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 const SizedBox(height: 22),
 
-                const Text(
+                Text(
                   'Word length',
                   style: TextStyle(
                     fontSize: 16,
@@ -1383,7 +1384,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.beige.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.textDark, width: 1.8),
+                    border: Border.all(color: CozyPalette.outline, width: 1.8),
                   ),
                   child: Row(
                     children: [
@@ -1427,7 +1428,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 const SizedBox(height: 22),
 
-                const Text(
+                Text(
                   'Words per round',
                   style: TextStyle(
                     fontSize: 16,
@@ -1441,7 +1442,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.beige.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.textDark, width: 1.8),
+                    border: Border.all(color: CozyPalette.outline, width: 1.8),
                   ),
                   child: Row(
                     children: [10, 20, 30, 40].map((count) {
@@ -1463,12 +1464,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
                                     : AppColors.beige,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: AppColors.textDark,
+                                  color: CozyPalette.outline,
                                   width: isSelected ? 2.5 : 1.5,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.textDark,
+                                    color: CozyPalette.shadow,
                                     offset: Offset(0, isSelected ? 1 : 3),
                                     blurRadius: 0,
                                   ),
@@ -1477,7 +1478,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                               child: Center(
                                 child: Text(
                                   '$count',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                     color: AppColors.textDark,
@@ -1539,12 +1540,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
           color: isSelected ? AppColors.sand : AppColors.beige,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: AppColors.textDark,
+            color: CozyPalette.outline,
             width: isSelected ? 2.5 : 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, isSelected ? 1 : 4),
               blurRadius: 0,
             ),
@@ -1560,7 +1561,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 title,
                 maxLines: 1,
                 softWrap: false,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
                   color: AppColors.textDark,
@@ -1570,7 +1571,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textLight,
@@ -1600,10 +1601,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -1615,10 +1616,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.sand,
               border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
+                bottom: BorderSide(color: CozyPalette.outline, width: 2),
               ),
             ),
             child: Row(
@@ -1629,7 +1630,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     TactileFeedback.toggle();
                     setState(() => _activeSubScreen = null);
                   },
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
@@ -1652,7 +1653,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 const Spacer(),
                 Text(
                   '${filteredWords.length} words',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                     color: AppColors.textDark,
@@ -1665,18 +1666,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
               onChanged: (val) => setState(() => _vocabSearchQuery = val),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textDark,
                 fontWeight: FontWeight.bold,
               ),
               decoration: InputDecoration(
                 hintText: 'Search $systemName, Romaji, or English...',
-                hintStyle: const TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 13,
-                ),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textDark),
+                hintStyle: TextStyle(color: AppColors.textLight, fontSize: 13),
+                prefixIcon: Icon(Icons.search, color: AppColors.textDark),
                 filled: true,
                 fillColor: AppColors.beige.withValues(alpha: 0.5),
                 contentPadding: const EdgeInsets.symmetric(
@@ -1685,17 +1683,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AppColors.textDark,
+                  borderSide: BorderSide(
+                    color: CozyPalette.outline,
                     width: 1.5,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AppColors.textDark,
-                    width: 2,
-                  ),
+                  borderSide: BorderSide(color: CozyPalette.outline, width: 2),
                 ),
               ),
             ),
@@ -1706,7 +1701,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Category',
                   style: TextStyle(
                     fontSize: 13,
@@ -1724,7 +1719,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
           ),
           Expanded(
             child: filteredWords.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 40),
                       child: Text(
@@ -1764,10 +1759,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
         decoration: BoxDecoration(
           color: isMastered ? AppColors.lightSage : AppColors.beige,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.textDark, width: 2),
-          boxShadow: const [
+          border: Border.all(color: CozyPalette.outline, width: 2),
+          boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, 3),
               blurRadius: 0,
             ),
@@ -1781,7 +1776,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 children: [
                   Text(
                     word.kana,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textDark,
@@ -1790,7 +1785,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   const SizedBox(height: 3),
                   Text(
                     word.romaji,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textDark,
@@ -1801,15 +1796,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     word.english,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textDark,
-                    ),
+                    style: TextStyle(fontSize: 13, color: AppColors.textDark),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     VocabularyCategories.label(word.category),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textLight,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -1819,11 +1811,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            const Icon(
-              Icons.volume_up_rounded,
-              color: AppColors.textDark,
-              size: 30,
-            ),
+            Icon(Icons.volume_up_rounded, color: AppColors.textDark, size: 30),
           ],
         ),
       ),
@@ -1835,7 +1823,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       decoration: BoxDecoration(
         color: AppColors.beige,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.textDark, width: 1.8),
+        border: Border.all(color: CozyPalette.outline, width: 1.8),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -1855,9 +1843,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.sand,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.textDark, width: 1.5),
+                      border: Border.all(
+                        color: CozyPalette.outline,
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.checklist_rounded,
                       color: AppColors.textDark,
                       size: 26,
@@ -1870,7 +1861,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       children: [
                         Text(
                           'Select $systemName rows',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textDark,
@@ -1879,7 +1870,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         const SizedBox(height: 2),
                         Text(
                           '$_totalSelectedCharactersCount $systemName selected',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textLight,
                           ),
@@ -1899,7 +1890,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
             ),
           ),
           if (_isRowsExpanded) ...[
-            const Divider(color: AppColors.textDark, height: 1, thickness: 1.5),
+            Divider(color: AppColors.textDark, height: 1, thickness: 1.5),
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -1943,7 +1934,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       decoration: BoxDecoration(
         color: AppColors.beige.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textDark, width: 1.8),
+        border: Border.all(color: CozyPalette.outline, width: 1.8),
       ),
       child: Column(
         children: [
@@ -2047,20 +2038,16 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 decoration: BoxDecoration(
                   color: allSelected ? AppColors.sand : AppColors.cream,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.textDark, width: 1.5),
+                  border: Border.all(color: CozyPalette.outline, width: 1.5),
                 ),
                 child: allSelected
-                    ? const Icon(
-                        Icons.check,
-                        size: 14,
-                        color: AppColors.textDark,
-                      )
+                    ? Icon(Icons.check, size: 14, color: AppColors.textDark)
                     : null,
               ),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
@@ -2069,7 +2056,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               const Spacer(),
               Text(
                 '$currentCount/$totalCount',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textLight,
@@ -2129,7 +2116,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
           decoration: BoxDecoration(
             color: AppColors.sand.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.textDark, width: 1.5),
+            border: Border.all(color: CozyPalette.outline, width: 1.5),
           ),
           child: Row(
             children: [
@@ -2149,7 +2136,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         borderRadius: BorderRadius.circular(6),
                         border: text.isNotEmpty
                             ? Border.all(
-                                color: AppColors.textDark.withValues(
+                                color: CozyPalette.outline.withValues(
                                   alpha: 0.5,
                                 ),
                                 width: 1,
@@ -2160,7 +2147,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         fit: BoxFit.scaleDown,
                         child: Text(
                           text,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textDark,
@@ -2172,11 +2159,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
               ),
               if (isLocked)
-                const Icon(
-                  Icons.lock_outline,
-                  size: 20,
-                  color: AppColors.textDark,
-                )
+                Icon(Icons.lock_outline, size: 20, color: AppColors.textDark)
               else
                 Container(
                   width: 24,
@@ -2184,7 +2167,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   decoration: BoxDecoration(
                     color: isSelected ? AppColors.textDark : AppColors.cream,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.textDark, width: 1.5),
+                    border: Border.all(color: CozyPalette.outline, width: 1.5),
                   ),
                   child: isSelected
                       ? const Icon(Icons.check, size: 16, color: Colors.white)
@@ -2339,7 +2322,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
           insetPadding: const EdgeInsets.symmetric(horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
-            side: const BorderSide(color: AppColors.textDark, width: 2),
+            side: BorderSide(color: CozyPalette.outline, width: 2),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
@@ -2350,13 +2333,13 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 // The sand-colored heading matches Cozy Kana's other cards.
                 Container(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.sand,
                     border: Border(
-                      bottom: BorderSide(color: AppColors.textDark, width: 2),
+                      bottom: BorderSide(color: CozyPalette.outline, width: 2),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Icon(
                         Icons.auto_stories_outlined,
@@ -2388,7 +2371,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                           color: AppColors.beige,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: AppColors.textDark,
+                            color: CozyPalette.outline,
                             width: 1.5,
                           ),
                         ),
@@ -2397,7 +2380,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                             Text(
                               '$actualCount ${actualCount == 1 ? 'word' : 'words'} ready',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 23,
                                 fontWeight: FontWeight.w900,
                                 color: AppColors.textDark,
@@ -2407,7 +2390,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                             Text(
                               'You selected $_wbWordsPerRound words',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 color: AppColors.textLight,
                                 fontWeight: FontWeight.bold,
@@ -2417,7 +2400,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      const Text(
+                      Text(
                         'Only a few words match your current category, '
                         'length, and practice mode. You can still enjoy '
                         'a shorter round, or adjust your options.',
@@ -2442,8 +2425,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
                             minimumSize: const Size.fromHeight(48),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(13),
-                              side: const BorderSide(
-                                color: AppColors.textDark,
+                              side: BorderSide(
+                                color: CozyPalette.outline,
                                 width: 1.5,
                               ),
                             ),
@@ -2461,8 +2444,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textDark,
                             minimumSize: const Size.fromHeight(44),
-                            side: const BorderSide(
-                              color: AppColors.textDark,
+                            side: BorderSide(
+                              color: CozyPalette.outline,
                               width: 1.5,
                             ),
                             shape: RoundedRectangleBorder(
@@ -2538,6 +2521,9 @@ class _Interactive3DQuizDifficultyButtonState
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return GestureDetector(
       onTapDown: (_) {
         TactileFeedback.press();
@@ -2556,10 +2542,10 @@ class _Interactive3DQuizDifficultyButtonState
         decoration: BoxDecoration(
           color: widget.color,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.textDark, width: 2),
+          border: Border.all(color: CozyPalette.outline, width: 2),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, _isPressed ? 0 : 4.0),
               blurRadius: 0,
             ),
@@ -2575,7 +2561,7 @@ class _Interactive3DQuizDifficultyButtonState
               children: [
                 Text(
                   widget.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
@@ -2892,6 +2878,9 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     final currentQ = _questions[_currentIndex % _questions.length];
     final bool isRomajiChoices =
         (widget.questionType == WordBuilderQuestionType.kanaToRomaji);
@@ -2908,19 +2897,19 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.sand,
                     borderRadius: BorderRadius.vertical(
                       bottom: Radius.circular(16),
                     ),
                     border: Border(
-                      bottom: BorderSide(color: AppColors.textDark, width: 2),
+                      bottom: BorderSide(color: CozyPalette.outline, width: 2),
                     ),
                   ),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.arrow_back_ios_new,
                           color: AppColors.textDark,
                           size: 22,
@@ -2931,7 +2920,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                         },
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Word Builder',
                         style: TextStyle(
                           color: AppColors.textDark,
@@ -2952,10 +2941,13 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.cream,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.textDark, width: 2),
-                        boxShadow: const [
+                        border: Border.all(
+                          color: CozyPalette.outline,
+                          width: 2,
+                        ),
+                        boxShadow: [
                           BoxShadow(
-                            color: AppColors.textDark,
+                            color: CozyPalette.shadow,
                             offset: Offset(0, 4),
                             blurRadius: 0,
                           ),
@@ -2967,7 +2959,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                         children: [
                           Text(
                             '${_currentIndex + 1} of ${widget.totalQuestions}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textDark,
@@ -2977,7 +2969,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                           LinearProgressIndicator(
                             value: (_currentIndex + 1) / widget.totalQuestions,
                             backgroundColor: AppColors.beige,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
+                            valueColor: AlwaysStoppedAnimation<Color>(
                               AppColors.taupe,
                             ),
                             minHeight: 6,
@@ -2990,7 +2982,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                               color: AppColors.beige.withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: AppColors.textDark,
+                                color: CozyPalette.outline,
                                 width: 1.8,
                               ),
                             ),
@@ -3004,7 +2996,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                       isRomajiChoices
                                           ? 'Choose the correct romaji'
                                           : 'Choose the correct ${widget.isHiragana ? "Hiragana" : "Katakana"}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                         color: AppColors.textDark,
@@ -3012,7 +3004,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                     ),
                                     GestureDetector(
                                       onTap: () => _speakWord(currentQ.kana),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.volume_up_rounded,
                                         color: AppColors.textDark,
                                         size: 28,
@@ -3034,7 +3026,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   currentQ.english,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     color: AppColors.textLight,
                                   ),
@@ -3173,9 +3165,9 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                     ),
                                     boxShadow: isUsed
                                         ? const []
-                                        : const [
+                                        : [
                                             BoxShadow(
-                                              color: AppColors.textDark,
+                                              color: CozyPalette.shadow,
                                               offset: Offset(0, 3),
                                               blurRadius: 0,
                                             ),
@@ -3190,7 +3182,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                                             padding: const EdgeInsets.all(4.0),
                                             child: Text(
                                               text,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 22,
                                                 fontWeight: FontWeight.bold,
                                                 color: AppColors.textDark,
@@ -3246,15 +3238,15 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: _isCorrect
-                        ? const Color(0xFFD3EEDD)
-                        : const Color(0xFFF7D2CE),
+                        ? CozyPalette.successLight
+                        : CozyPalette.softCoralBg,
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(24),
                     ),
-                    border: Border.all(color: AppColors.textDark, width: 2),
-                    boxShadow: const [
+                    border: Border.all(color: CozyPalette.outline, width: 2),
+                    boxShadow: [
                       BoxShadow(
-                        color: AppColors.textDark,
+                        color: CozyPalette.shadow,
                         offset: Offset(0, -3),
                         blurRadius: 0,
                       ),
@@ -3269,8 +3261,8 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                           Icon(
                             _isCorrect ? Icons.check_circle : Icons.cancel,
                             color: _isCorrect
-                                ? const Color(0xFF4A885B)
-                                : const Color(0xFFB54C43),
+                                ? CozyPalette.correctMid
+                                : CozyPalette.incorrectMid,
                             size: 26,
                           ),
                           const SizedBox(width: 8),
@@ -3280,8 +3272,8 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: _isCorrect
-                                  ? const Color(0xFF2E633C)
-                                  : const Color(0xFF8C342C),
+                                  ? CozyPalette.correctStrong
+                                  : CozyPalette.incorrectStrong,
                             ),
                           ),
                         ],
@@ -3289,7 +3281,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                       const SizedBox(height: 10),
                       Text(
                         currentQ.kana,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textDark,
@@ -3297,7 +3289,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                       ),
                       Text(
                         currentQ.syllables.join(' • '),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textLight,
@@ -3311,23 +3303,23 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: _isCorrect
-                                ? const Color(0xFFA2D3AD)
-                                : const Color(0xFFE28B83),
+                                ? CozyPalette.softMint
+                                : CozyPalette.softCoral,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppColors.textDark,
+                              color: CozyPalette.outline,
                               width: 2,
                             ),
-                            boxShadow: const [
+                            boxShadow: [
                               BoxShadow(
-                                color: AppColors.textDark,
+                                color: CozyPalette.shadow,
                                 offset: Offset(0, 3),
                                 blurRadius: 0,
                               ),
                             ],
                           ),
                           alignment: Alignment.center,
-                          child: const Text(
+                          child: Text(
                             'Continue',
                             style: TextStyle(
                               fontSize: 16,
@@ -3381,6 +3373,9 @@ class WordBuilderResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     final double percent = totalQuestions > 0
         ? (correctCount / totalQuestions)
         : 0.0;
@@ -3406,19 +3401,19 @@ class WordBuilderResultScreen extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.sand,
                 borderRadius: BorderRadius.vertical(
                   bottom: Radius.circular(16),
                 ),
                 border: Border(
-                  bottom: BorderSide(color: AppColors.textDark, width: 2),
+                  bottom: BorderSide(color: CozyPalette.outline, width: 2),
                 ),
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_ios_new,
                       color: AppColors.textDark,
                       size: 22,
@@ -3429,7 +3424,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                     },
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Practice Summary',
                     style: TextStyle(
                       color: AppColors.textDark,
@@ -3452,10 +3447,13 @@ class WordBuilderResultScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.cream,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.textDark, width: 2),
-                        boxShadow: const [
+                        border: Border.all(
+                          color: CozyPalette.outline,
+                          width: 2,
+                        ),
+                        boxShadow: [
                           BoxShadow(
-                            color: AppColors.textDark,
+                            color: CozyPalette.shadow,
                             offset: Offset(0, 4),
                             blurRadius: 0,
                           ),
@@ -3469,16 +3467,16 @@ class WordBuilderResultScreen extends StatelessWidget {
                               horizontal: 16,
                               vertical: 12,
                             ),
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.sand,
                               border: Border(
                                 bottom: BorderSide(
-                                  color: AppColors.textDark,
+                                  color: CozyPalette.outline,
                                   width: 2,
                                 ),
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
                                 Icon(
                                   Icons.military_tech_outlined,
@@ -3508,12 +3506,12 @@ class WordBuilderResultScreen extends StatelessWidget {
                                     color: AppColors.beige,
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: AppColors.textDark,
+                                      color: CozyPalette.outline,
                                       width: 2.2,
                                     ),
-                                    boxShadow: const [
+                                    boxShadow: [
                                       BoxShadow(
-                                        color: AppColors.textDark,
+                                        color: CozyPalette.shadow,
                                         offset: Offset(0, 3),
                                         blurRadius: 0,
                                       ),
@@ -3525,13 +3523,13 @@ class WordBuilderResultScreen extends StatelessWidget {
                                     children: [
                                       Text(
                                         '$percentInt%',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 28,
                                           fontWeight: FontWeight.w900,
                                           color: AppColors.textDark,
                                         ),
                                       ),
-                                      const Text(
+                                      Text(
                                         'Score',
                                         style: TextStyle(
                                           fontSize: 11,
@@ -3546,7 +3544,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                                 Text(
                                   titleMessage,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.textDark,
@@ -3556,7 +3554,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                                 Text(
                                   subtitleMessage,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textLight,
                                   ),
@@ -3604,10 +3602,13 @@ class WordBuilderResultScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.cream,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.textDark, width: 2),
-                        boxShadow: const [
+                        border: Border.all(
+                          color: CozyPalette.outline,
+                          width: 2,
+                        ),
+                        boxShadow: [
                           BoxShadow(
-                            color: AppColors.textDark,
+                            color: CozyPalette.shadow,
                             offset: Offset(0, 4),
                             blurRadius: 0,
                           ),
@@ -3621,16 +3622,16 @@ class WordBuilderResultScreen extends StatelessWidget {
                               horizontal: 16,
                               vertical: 12,
                             ),
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.sand,
                               border: Border(
                                 bottom: BorderSide(
-                                  color: AppColors.textDark,
+                                  color: CozyPalette.outline,
                                   width: 2,
                                 ),
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
                                 Icon(
                                   Icons.list_alt_rounded,
@@ -3673,10 +3674,10 @@ class WordBuilderResultScreen extends StatelessWidget {
                                       ? AppColors.lightSage.withValues(
                                           alpha: 0.5,
                                         )
-                                      : const Color(0xFFFDE8E7),
+                                      : CozyPalette.errorLight,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: AppColors.textDark,
+                                    color: CozyPalette.outline,
                                     width: 1.2,
                                   ),
                                 ),
@@ -3704,7 +3705,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                                             children: [
                                               Text(
                                                 kana,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.bold,
                                                   color: AppColors.textDark,
@@ -3712,7 +3713,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                                               ),
                                               Text(
                                                 romaji,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.bold,
                                                   color: AppColors.textLight,
@@ -3723,7 +3724,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                                           const SizedBox(height: 2),
                                           Text(
                                             english,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 12,
                                               color: AppColors.textDark,
                                             ),
@@ -3737,7 +3738,7 @@ class WordBuilderResultScreen extends StatelessWidget {
                                         TactileFeedback.press();
                                         FlutterTts().speak(kana);
                                       },
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.volume_up_rounded,
                                         color: AppColors.textDark,
                                         size: 20,
@@ -3798,7 +3799,7 @@ class WordBuilderResultScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.beige.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textDark, width: 1.5),
+        border: Border.all(color: CozyPalette.outline, width: 1.5),
       ),
       child: Column(
         children: [
@@ -3806,7 +3807,7 @@ class WordBuilderResultScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w900,
               color: AppColors.textDark,
@@ -3815,7 +3816,7 @@ class WordBuilderResultScreen extends StatelessWidget {
           ),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               color: AppColors.textLight,
@@ -3852,6 +3853,9 @@ class _Interactive3DCardState extends State<_Interactive3DCard> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return GestureDetector(
       onTapDown: (_) {
         TactileFeedback.press();
@@ -3870,10 +3874,10 @@ class _Interactive3DCardState extends State<_Interactive3DCard> {
         decoration: BoxDecoration(
           color: widget.bgColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.textDark, width: 2),
+          border: Border.all(color: CozyPalette.outline, width: 2),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, _isPressed ? 0 : 4.0),
               blurRadius: 0,
             ),
@@ -3907,6 +3911,9 @@ class _Interactive3DButtonState extends State<_Interactive3DButton> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return GestureDetector(
       onTapDown: (_) {
         TactileFeedback.press();
@@ -3925,10 +3932,10 @@ class _Interactive3DButtonState extends State<_Interactive3DButton> {
         decoration: BoxDecoration(
           color: widget.bgColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.textDark, width: 2),
+          border: Border.all(color: CozyPalette.outline, width: 2),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, _isPressed ? 0 : 3.0),
               blurRadius: 0,
             ),
@@ -3941,7 +3948,7 @@ class _Interactive3DButtonState extends State<_Interactive3DButton> {
             const SizedBox(width: 8),
             Text(
               widget.label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,

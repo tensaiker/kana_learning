@@ -1,5 +1,6 @@
 // Cozy Kana — analyzer cleanup.
 // Existing public widgets, navigation, learning logic and storage keys are preserved.
+import '../../../theme/cozy_palette.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../services/progress_service.dart'; // Writing mastery is tracked separately from quizzes.
@@ -43,6 +44,10 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
 
   // Toggle for peek hint in memory mode
   bool _showExampleInMemoryMode = false;
+
+  // Display the result inside this route (instead of opening a dialog on top
+  // of the drawing canvas). Does not change handwriting validation or progress.
+  bool _isLessonComplete = false;
 
   // Managed timer for seamless auto-advance after completion
   Timer? _autoAdvanceTimer;
@@ -108,7 +113,7 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
         }
       });
     } else {
-      // Advance to next character or show completion dialog
+      // Advance to next character or show the full-page result
       if (_currentCharIndex < widget.lessonCharacters.length - 1) {
         setState(() {
           _currentCharIndex++;
@@ -117,7 +122,7 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
           _replayAnimation();
         });
       } else {
-        _showCompletionDialog();
+        _finishWritingLesson();
       }
     }
   }
@@ -296,50 +301,262 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
     });
   }
 
-  void _showCompletionDialog() {
+  /// Runs only after the last Kana finishes the final (memory) writing stage.
+  /// Progress was already recorded by _onStrokeCompleted; do not record it twice.
+  void _finishWritingLesson() {
+    if (_isLessonComplete) return;
+    _cancelAutoAdvance();
     TactileFeedback.success();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cream,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.textDark, width: 2),
-        ),
-        title: const Text(
-          'Lesson Complete! 🎉',
-          style: TextStyle(
-            color: AppColors.textDark,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: const Text(
-          'Great job! You have completed all writing stages for this lesson.',
-          style: TextStyle(color: AppColors.textDark),
-        ),
-        actions: [
-          GestureDetector(
-            onTap: () {
-              TactileFeedback.press();
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Return to previous screen
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+    setState(() => _isLessonComplete = true);
+  }
+
+  /// Full-page result replaces the old AlertDialog, so the canvas and its
+  /// disabled buttons can no longer show through behind the celebration.
+  /// The middle section scrolls on compact Android phones and larger text sizes.
+  Widget _buildCompletionScreen() {
+    final characters = widget.lessonCharacters;
+    final total = characters.length;
+
+    return Scaffold(
+      backgroundColor: AppColors.beige,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Keep the same stationery header style as the writing activity.
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
               decoration: BoxDecoration(
-                color: AppColors.taupe,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.textDark, width: 1.5),
+                color: AppColors.sand,
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(16),
+                ),
+                border: Border(
+                  bottom: BorderSide(color: CozyPalette.outline, width: 2),
+                ),
               ),
-              child: const Text(
-                'Back to Lessons',
-                style: TextStyle(
-                  color: AppColors.textDark,
-                  fontWeight: FontWeight.bold,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.draw_outlined,
+                    color: AppColors.textDark,
+                    size: 25,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Writing Complete',
+                      style: TextStyle(
+                        color: AppColors.textDark,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 21,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.cream,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: CozyPalette.outline, width: 1.8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: CozyPalette.shadow,
+                        offset: const Offset(0, 4),
+                        blurRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: CozyPalette.lightSageShade,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: CozyPalette.outline,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.check_circle_outline_rounded,
+                            color: CozyPalette.basicGreen,
+                            size: 42,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Lesson Complete!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'You finished every writing stage for this lesson. '
+                        'Keep practicing to make each character feel natural!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.45,
+                          color: AppColors.textLight,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+
+                      // Display session completion, not a made-up handwriting
+                      // accuracy score or a change to quiz mastery.
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildWritingResultStat(
+                              '$total/$total',
+                              'Kana practiced',
+                              Icons.edit_note_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildWritingResultStat(
+                              '4',
+                              'Writing stages',
+                              Icons.layers_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Characters practiced',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Wrap keeps 5+ Kana legible on narrow phones.
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          for (final character in characters)
+                            Container(
+                              constraints: const BoxConstraints(minWidth: 54),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: CozyPalette.lightSageShade,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: CozyPalette.outline,
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    character.kana,
+                                    style: TextStyle(
+                                      fontSize: 25,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textDark,
+                                    ),
+                                  ),
+                                  Text(
+                                    character.romaji,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textLight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
+
+            // The action stays visible while the result details scroll.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    TactileFeedback.press();
+                    Navigator.of(context).pop(); // One route pop (no dialog).
+                  },
+                  icon: const Icon(Icons.menu_book_outlined),
+                  label: const Text('Back to Lessons'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.taupe,
+                    foregroundColor: AppColors.textDark,
+                    textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: CozyPalette.outline, width: 1.6),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWritingResultStat(String value, String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.beige,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: CozyPalette.outline, width: 1.2),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 23, color: AppColors.textLight),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textDark,
+            ),
+          ),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, color: AppColors.textLight),
           ),
         ],
       ),
@@ -367,8 +584,11 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     if (widget.lessonCharacters.isEmpty) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.beige,
         body: Center(
           child: Text(
@@ -378,6 +598,10 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
         ),
       );
     }
+
+    // Switch to the complete result route without changing the handwriting
+    // state machine, recorded progress, or animation/timer handling.
+    if (_isLessonComplete) return _buildCompletionScreen();
 
     final currentChar = widget.lessonCharacters[_currentCharIndex];
 
@@ -389,19 +613,19 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
             // 1. Top Bar
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.sand,
                 borderRadius: BorderRadius.vertical(
                   bottom: Radius.circular(16),
                 ),
                 border: Border(
-                  bottom: BorderSide(color: AppColors.textDark, width: 2),
+                  bottom: BorderSide(color: CozyPalette.outline, width: 2),
                 ),
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close,
                       color: AppColors.textDark,
                       size: 28,
@@ -414,7 +638,7 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                   const SizedBox(width: 8),
                   Text(
                     currentChar.kana,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textDark,
@@ -423,15 +647,12 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                   const SizedBox(width: 8),
                   Text(
                     currentChar.romaji,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      color: AppColors.textDark,
-                    ),
+                    style: TextStyle(fontSize: 20, color: AppColors.textDark),
                   ),
                   const SizedBox(width: 4),
                   // Audio pronunciation replay button
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.volume_up_rounded,
                       color: AppColors.textDark,
                       size: 24,
@@ -445,7 +666,7 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                   const Spacer(),
                   Text(
                     '${_currentCharIndex + 1} of ${widget.lessonCharacters.length}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textDark,
                       fontWeight: FontWeight.bold,
@@ -474,7 +695,7 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                                 : AppColors.cream,
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: AppColors.textDark,
+                              color: CozyPalette.outline,
                               width: 1.5,
                             ),
                           ),
@@ -485,7 +706,7 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                   const SizedBox(height: 12),
                   Text(
                     _getStageInstruction(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textDark,
@@ -505,10 +726,10 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
                     decoration: BoxDecoration(
                       color: AppColors.cream,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.textDark, width: 2),
-                      boxShadow: const [
+                      border: Border.all(color: CozyPalette.outline, width: 2),
+                      boxShadow: [
                         BoxShadow(
-                          color: AppColors.textDark,
+                          color: CozyPalette.shadow,
                           offset: Offset(0, 4),
                           blurRadius: 0,
                         ),
@@ -754,12 +975,12 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
             color: buttonColor,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: AppColors.textDark,
+              color: CozyPalette.outline,
               width: isPulsing ? 2.5 : 2.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.textDark,
+                color: CozyPalette.shadow,
                 offset: Offset(0, isPulsing ? 4 : 3),
                 blurRadius: isPulsing ? 2 : 0,
               ),
@@ -768,7 +989,7 @@ class _WritingLessonScreenState extends State<WritingLessonScreen>
           child: Center(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,

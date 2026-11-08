@@ -1,3 +1,4 @@
+import '../theme/cozy_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Persists individual Kana difficulty ratings and audio settings
@@ -8,18 +9,20 @@ import '../utils/tactile_feedback.dart'; // Tactile haptics and mechanical sound
 
 // --- COLOR PALETTE ---
 class AppColors {
-  static const Color cream = Color(0xFFFDF8F3);
-  static const Color beige = Color(0xFFEADFD1);
-  static const Color sand = Color(0xFFDCC6A8);
-  static const Color taupe = Color(0xFFC6B8A5);
-  static const Color textDark = Color(0xFF5D534A);
-  static const Color textLight = Color(0xFF8B8076);
+  static Color get cream => CozyPalette.cream;
+  static Color get beige => CozyPalette.beige;
+  static Color get sand => CozyPalette.sand;
+  static Color get taupe => CozyPalette.taupe;
+  static Color get textDark => CozyPalette.textDark;
+  static Color get textLight => CozyPalette.textLight;
 
   // 3D Rating button colors matching the stationery palette
-  static const Color ratingAgain = Color(0xFFE8A0A0); // Soft pastel red
-  static const Color ratingHard = Color(0xFFE8C396); // Soft pastel orange
-  static const Color ratingGood = Color(0xFFB7C9B2); // Sage green
-  static const Color ratingEasy = Color(0xFFA5C4E5); // Soft pastel blue
+  static Color get ratingAgain =>
+      CozyPalette.flashcardRatingAgain; // Soft pastel red
+  static Color get ratingHard =>
+      CozyPalette.flashcardRatingHard; // Soft pastel orange
+  static Color get ratingGood => CozyPalette.sage; // Sage green
+  static Color get ratingEasy => CozyPalette.ratingEasy; // Soft pastel blue
 }
 
 /// Interactive 3D Flashcard Screen with Audio & Pronunciation Consistency.
@@ -221,9 +224,9 @@ class _FlashcardScreenState extends State<FlashcardScreen>
         backgroundColor: AppColors.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.textDark, width: 2),
+          side: BorderSide(color: CozyPalette.outline, width: 2),
         ),
-        title: const Text(
+        title: Text(
           'Lesson Complete! 🎉',
           textAlign: TextAlign.center,
           style: TextStyle(
@@ -231,7 +234,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: const Text(
+        content: Text(
           'You finished reviewing your selected kana cards.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.textDark),
@@ -256,16 +259,16 @@ class _FlashcardScreenState extends State<FlashcardScreen>
               decoration: BoxDecoration(
                 color: AppColors.taupe,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.textDark, width: 1.5),
-                boxShadow: const [
+                border: Border.all(color: CozyPalette.outline, width: 1.5),
+                boxShadow: [
                   BoxShadow(
-                    color: AppColors.textDark,
+                    color: CozyPalette.shadow,
                     offset: Offset(0, 3),
                     blurRadius: 0,
                   ),
                 ],
               ),
-              child: const Text(
+              child: Text(
                 'Back to Practice',
                 style: TextStyle(
                   color: AppColors.textDark,
@@ -281,6 +284,9 @@ class _FlashcardScreenState extends State<FlashcardScreen>
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     final currentType = _resolveQuestionTypeForCurrentCard();
 
     return Scaffold(
@@ -291,19 +297,19 @@ class _FlashcardScreenState extends State<FlashcardScreen>
             // Top Bar
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.sand,
                 borderRadius: BorderRadius.vertical(
                   bottom: Radius.circular(16),
                 ),
                 border: Border(
-                  bottom: BorderSide(color: AppColors.textDark, width: 2),
+                  bottom: BorderSide(color: CozyPalette.outline, width: 2),
                 ),
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_ios_new,
                       color: AppColors.textDark,
                       size: 22,
@@ -318,7 +324,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
                   const SizedBox(width: 8),
                   Text(
                     widget.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textDark,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
@@ -327,7 +333,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
                   const Spacer(),
                   Text(
                     '${_currentIndex + 1}/${_flashcards.length}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textDark,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
@@ -376,7 +382,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
               crossFadeState: _isFlipped
                   ? CrossFadeState.showSecond
                   : CrossFadeState.showFirst,
-              firstChild: const Padding(
+              firstChild: Padding(
                 padding: EdgeInsets.only(bottom: 40.0),
                 child: Text(
                   'Tap the card to reveal answer',
@@ -394,7 +400,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
                 ),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       'Rate recall:',
                       style: TextStyle(
                         color: AppColors.textDark,
@@ -456,7 +462,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
         case FlashcardQuestionType.kanaToRomaji:
           content = Text(
             kana,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 120,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
@@ -467,7 +473,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
         case FlashcardQuestionType.romajiToKana:
           content = Text(
             romaji,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 90,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
@@ -481,17 +487,14 @@ class _FlashcardScreenState extends State<FlashcardScreen>
             children: [
               IconButton(
                 iconSize: 72,
-                icon: const Icon(
-                  Icons.volume_up_rounded,
-                  color: AppColors.textDark,
-                ),
+                icon: Icon(Icons.volume_up_rounded, color: AppColors.textDark),
                 onPressed: () {
                   TactileFeedback.press();
                   _speakKana(kana);
                 },
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Tap to listen again',
                 style: TextStyle(color: AppColors.textLight, fontSize: 14),
               ),
@@ -502,7 +505,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
         case FlashcardQuestionType.mix:
           content = Text(
             kana,
-            style: const TextStyle(fontSize: 120, color: AppColors.textDark),
+            style: TextStyle(fontSize: 120, color: AppColors.textDark),
           );
           break;
       }
@@ -513,7 +516,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
         children: [
           Text(
             kana,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 100,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
@@ -525,7 +528,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
             children: [
               Text(
                 romaji,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 32,
                   color: AppColors.textLight,
                   fontWeight: FontWeight.bold,
@@ -542,9 +545,9 @@ class _FlashcardScreenState extends State<FlashcardScreen>
                   decoration: BoxDecoration(
                     color: AppColors.sand,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.textDark, width: 1.5),
+                    border: Border.all(color: CozyPalette.outline, width: 1.5),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.volume_up_rounded,
                     color: AppColors.textDark,
                     size: 22,
@@ -563,10 +566,10 @@ class _FlashcardScreenState extends State<FlashcardScreen>
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 5),
             blurRadius: 0,
           ),
@@ -611,6 +614,9 @@ class _Interactive3DRatingButtonState
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return GestureDetector(
       onTapDown: (_) {
         TactileFeedback.press();
@@ -632,10 +638,10 @@ class _Interactive3DRatingButtonState
             decoration: BoxDecoration(
               color: widget.color,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.textDark, width: 2),
+              border: Border.all(color: CozyPalette.outline, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.textDark,
+                  color: CozyPalette.shadow,
                   offset: Offset(0, _isPressed ? 0 : 4.0),
                   blurRadius: 0,
                 ),
@@ -646,7 +652,7 @@ class _Interactive3DRatingButtonState
           const SizedBox(height: 8),
           Text(
             widget.label,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textDark,
               fontWeight: FontWeight.bold,
               fontSize: 12,

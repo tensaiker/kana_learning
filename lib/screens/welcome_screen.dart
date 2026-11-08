@@ -4,6 +4,7 @@
 // The welcome heading, name input and action button are real Flutter widgets
 // so they remain readable and interactive on different Android screen sizes.
 
+import '../theme/cozy_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,11 +12,11 @@ import '../main.dart'; // MainNavigator preserves all five existing app tabs.
 import '../utils/tactile_feedback.dart';
 
 class _WelcomePalette {
-  static const cream = Color(0xFFFDF8F3);
-  static const brown = Color(0xFF79502F);
-  static const muted = Color(0xFF947963);
-  static const border = Color(0xFFDCC6A8);
-  static const danger = Color(0xFFB14F44);
+  static Color get cream => CozyPalette.cream;
+  static Color get brown => CozyPalette.welcomeBrown;
+  static Color get muted => CozyPalette.welcomeMuted;
+  static Color get border => CozyPalette.sand;
+  static Color get danger => CozyPalette.welcomeDanger;
 }
 
 /// Displays the stationery illustration, welcome heading, and name entry form.
@@ -95,6 +96,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     // Keep the background full-screen even when the keyboard opens.
     final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
 
@@ -112,6 +116,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             alignment: Alignment.topCenter,
             excludeFromSemantics: true, // Decorative background only.
           ),
+          // The illustrated wallpaper is an opaque light PNG. Dim it only in
+          // Cozy Dark so the cream heading and form have sufficient contrast.
+          if (CozyPalette.isDark) const ColoredBox(color: Color(0xC4231D1B)),
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -139,7 +146,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             // Real text rather than lettering baked into the PNG.
                             // This stays above the form and is accessible to
                             // screen readers and different screen densities.
-                            const Text(
+                            Text(
                               'Welcome to\nCozy Kana',
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -150,7 +157,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               ),
                             ),
                             const SizedBox(height: 26),
-                            const Row(
+                            Row(
                               children: [
                                 Icon(
                                   Icons.edit_outlined,
@@ -184,11 +191,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               },
                               decoration: InputDecoration(
                                 hintText: 'Enter your name',
-                                hintStyle: const TextStyle(
+                                hintStyle: TextStyle(
                                   color: _WelcomePalette.muted,
                                   fontSize: 14,
                                 ),
-                                prefixIcon: const Icon(
+                                prefixIcon: Icon(
                                   Icons.person_outline,
                                   color: _WelcomePalette.muted,
                                 ),
@@ -200,28 +207,28 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(26),
-                                  borderSide: const BorderSide(
+                                  borderSide: BorderSide(
                                     color: _WelcomePalette.border,
                                     width: 2,
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(26),
-                                  borderSide: const BorderSide(
+                                  borderSide: BorderSide(
                                     color: _WelcomePalette.brown,
                                     width: 2,
                                   ),
                                 ),
                                 errorBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(26),
-                                  borderSide: const BorderSide(
+                                  borderSide: BorderSide(
                                     color: _WelcomePalette.danger,
                                     width: 2,
                                   ),
                                 ),
                                 focusedErrorBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(26),
-                                  borderSide: const BorderSide(
+                                  borderSide: BorderSide(
                                     color: _WelcomePalette.danger,
                                     width: 2,
                                   ),
@@ -232,7 +239,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               const SizedBox(height: 8),
                               Text(
                                 _errorMessage!,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: _WelcomePalette.danger,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,

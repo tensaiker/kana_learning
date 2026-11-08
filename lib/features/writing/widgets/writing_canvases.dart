@@ -1,18 +1,19 @@
 // Cozy Kana — analyzer cleanup.
 // Existing public widgets, navigation, learning logic and storage keys are preserved.
+import '../../../theme/cozy_palette.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../data/kana_data.dart'; // Imports the normalized Kana data model
 
 // --- COLOR PALETTE ---
 class AppColors {
-  static const Color cream = Color(0xFFFDF8F3);
-  static const Color beige = Color(0xFFEADFD1);
-  static const Color sand = Color(0xFFDCC6A8);
-  static const Color taupe = Color(0xFFC6B8A5);
-  static const Color textDark = Color(0xFF5D534A);
-  static const Color textLight = Color(0xFF8B8076);
-  static const Color sage = Color(0xFFB7C9B2);
+  static Color get cream => CozyPalette.cream;
+  static Color get beige => CozyPalette.beige;
+  static Color get sand => CozyPalette.sand;
+  static Color get taupe => CozyPalette.taupe;
+  static Color get textDark => CozyPalette.textDark;
+  static Color get textLight => CozyPalette.textLight;
+  static Color get sage => CozyPalette.sage;
 }
 
 // -----------------------------------------------------------------------------
@@ -20,10 +21,11 @@ class AppColors {
 // -----------------------------------------------------------------------------
 /// Draws traditional dashed crosshair guidelines in the center of the canvas.
 class GridPainter extends CustomPainter {
+  final Color _gridColor = AppColors.textLight;
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.textLight.withValues(alpha: 0.3)
+      ..color = _gridColor.withValues(alpha: 0.3)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
@@ -54,7 +56,8 @@ class GridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) =>
+      oldDelegate is GridPainter && oldDelegate._gridColor != _gridColor;
 }
 
 // -----------------------------------------------------------------------------
@@ -70,8 +73,9 @@ class AuthenticFontRevealPainter extends CustomPainter {
   AuthenticFontRevealPainter({
     required this.character,
     required this.progress,
-    this.textColor = AppColors.textDark,
-  });
+    // Resolve the default at creation time so changing theme also updates ink.
+    Color? textColor,
+  }) : textColor = textColor ?? AppColors.textDark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -240,6 +244,9 @@ class StaticFontPainter extends CustomPainter {
 /// Renders numbered badges at the start of each stroke with subtle directional hints.
 class DirectionMarkerPainter extends CustomPainter {
   final KanaCharacter character;
+  final Color _textColor = AppColors.textDark;
+  final Color _sandColor = AppColors.sand;
+  final Color _taupeColor = AppColors.taupe;
 
   DirectionMarkerPainter({required this.character});
 
@@ -248,16 +255,16 @@ class DirectionMarkerPainter extends CustomPainter {
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     final circleFillPaint = Paint()
-      ..color = AppColors.sand
+      ..color = _sandColor
       ..style = PaintingStyle.fill;
 
     final circleBorderPaint = Paint()
-      ..color = AppColors.textDark
+      ..color = _textColor
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
     final arrowPaint = Paint()
-      ..color = AppColors.taupe
+      ..color = _taupeColor
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -296,8 +303,8 @@ class DirectionMarkerPainter extends CustomPainter {
       // Draw Number Text
       textPainter.text = TextSpan(
         text: '${i + 1}',
-        style: const TextStyle(
-          color: AppColors.textDark,
+        style: TextStyle(
+          color: _textColor,
           fontSize: 13,
           fontWeight: FontWeight.bold,
         ),
@@ -314,7 +321,12 @@ class DirectionMarkerPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) =>
+      oldDelegate is DirectionMarkerPainter &&
+      (oldDelegate.character != character ||
+          oldDelegate._textColor != _textColor ||
+          oldDelegate._sandColor != _sandColor ||
+          oldDelegate._taupeColor != _taupeColor);
 }
 
 // -----------------------------------------------------------------------------
@@ -328,9 +340,10 @@ class UserStrokePainter extends CustomPainter {
 
   UserStrokePainter({
     required this.points,
-    this.strokeColor = AppColors.sage,
+    // Keep the stroke readable against both cream and cocoa canvas colors.
+    Color? strokeColor,
     this.strokeWidth = 18.0,
-  });
+  }) : strokeColor = strokeColor ?? CozyPalette.writingInk;
 
   @override
   void paint(Canvas canvas, Size size) {

@@ -1,5 +1,6 @@
 // Cozy Kana — analyzer cleanup.
 // Existing public widgets, navigation, learning logic and storage keys are preserved.
+import 'theme/cozy_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
@@ -52,18 +53,18 @@ void main() async {
 
 // --- COLOR PALETTE (Cozy Pastel Stationery Theme) ---
 class AppColors {
-  static const Color cream = Color(0xFFFDF8F3);
-  static const Color beige = Color(0xFFEADFD1);
-  static const Color sand = Color(0xFFDCC6A8);
-  static const Color taupe = Color(0xFFC6B8A5);
-  static const Color textDark = Color(0xFF5D534A);
-  static const Color textLight = Color(0xFF8B8076);
+  static Color get cream => CozyPalette.cream;
+  static Color get beige => CozyPalette.beige;
+  static Color get sand => CozyPalette.sand;
+  static Color get taupe => CozyPalette.taupe;
+  static Color get textDark => CozyPalette.textDark;
+  static Color get textLight => CozyPalette.textLight;
 
-  static const Color sage = Color(0xFFB7C9B2);
-  static const Color greenButton = Color(0xFF6EAA78);
+  static Color get sage => CozyPalette.sage;
+  static Color get greenButton => CozyPalette.greenButton;
 
-  static const Color flameOrange = Color(0xFFE06229);
-  static const Color flameCardBgActive = Color(0xFFFFD4BE);
+  static Color get flameOrange => CozyPalette.flameOrange;
+  static Color get flameCardBgActive => CozyPalette.flameCardBgActive;
 }
 
 /// Helper model defining sequential rows, titles, and characters for the Recent Learning panel.
@@ -89,6 +90,7 @@ class KanaLearningApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // MaterialApp listens directly to AppearanceService below.
     // Theme changes are reactive; onboarding and progress are not restarted.
     return ListenableBuilder(
       listenable: AppearanceService.instance,
@@ -96,32 +98,45 @@ class KanaLearningApp extends StatelessWidget {
         title: 'Cozy Kana',
         debugShowCheckedModeBanner: false,
         themeMode: AppearanceService.instance.mode,
+        // Both theme objects use fixed color seeds. Screen colors are supplied
+        // by CozyPalette, which reacts to Light / Dark / Follow System.
+        // Keeping the light definition fixed prevents a system theme change
+        // from accidentally caching dark colors in the light ThemeData.
+        // Both theme objects use fixed color seeds. Screen colors are supplied
+        // by CozyPalette, which reacts to Light / Dark / Follow System.
+        // Keeping the light definition fixed prevents a system theme change
+        // from accidentally caching dark colors in the light ThemeData.
         theme: ThemeData(
           brightness: Brightness.light,
-          scaffoldBackgroundColor: AppColors.beige,
-          primaryColor: AppColors.taupe,
+          scaffoldBackgroundColor: CozyPalette.lightBeige,
+          primaryColor: CozyPalette.lightTaupe,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: AppColors.sage,
+            seedColor: CozyPalette.lightSage,
             brightness: Brightness.light,
+            surface: CozyPalette.lightCream,
           ),
           fontFamily: 'Nunito',
           textTheme: const TextTheme(
-            bodyLarge: TextStyle(color: AppColors.textDark),
-            bodyMedium: TextStyle(color: AppColors.textDark),
+            bodyLarge: TextStyle(color: CozyPalette.lightText),
+            bodyMedium: TextStyle(color: CozyPalette.lightText),
           ),
         ),
         darkTheme: ThemeData(
           brightness: Brightness.dark,
-          scaffoldBackgroundColor: const Color(0xFF302720),
+          scaffoldBackgroundColor: CozyPalette.darkBeige,
+          primaryColor: CozyPalette.darkTaupe,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFFC8AC8C),
+            seedColor: CozyPalette.darkSage,
             brightness: Brightness.dark,
-            surface: const Color(0xFF382D26),
+            surface: CozyPalette.darkCream,
           ),
           fontFamily: 'Nunito',
+          textTheme: const TextTheme(
+            bodyLarge: TextStyle(color: CozyPalette.darkText),
+            bodyMedium: TextStyle(color: CozyPalette.darkText),
+          ),
         ),
-        // Existing feature screens have their own fixed cozy colors.
-        // They must be migrated to Theme.of(context) to fully adopt dark mode.
+        // The existing navigator and all saved learning state are retained.
         home: initialScreen,
       ),
     );
@@ -165,6 +180,9 @@ class MainNavigatorState extends State<MainNavigator> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     final List<Widget> screens = [
       HomeScreen(
         key: _homeKey,
@@ -181,10 +199,10 @@ class MainNavigatorState extends State<MainNavigator> {
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.cream,
           border: Border(
-            top: BorderSide(color: AppColors.textDark, width: 1.5),
+            top: BorderSide(color: CozyPalette.outline, width: 1.5),
           ),
         ),
         child: BottomNavigationBar(
@@ -374,10 +392,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return Scaffold(
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF342B25)
-          : AppColors.beige,
+      backgroundColor: AppColors.beige,
       body: SafeArea(
         child: ListenableBuilder(
           listenable: ProgressService.instance,
@@ -431,10 +450,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.sand,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-        border: Border(bottom: BorderSide(color: AppColors.textDark, width: 2)),
+        border: Border(
+          bottom: BorderSide(color: CozyPalette.outline, width: 2),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -442,7 +463,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Expanded(
             child: Text(
               'こんにちは, $_userName!',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,
@@ -461,10 +482,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               decoration: BoxDecoration(
                 color: AppColors.sage,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.textDark, width: 2),
-                boxShadow: const [
+                border: Border.all(color: CozyPalette.outline, width: 2),
+                boxShadow: [
                   BoxShadow(
-                    color: AppColors.textDark,
+                    color: CozyPalette.shadow,
                     offset: Offset(0, 3),
                     blurRadius: 0,
                   ),
@@ -524,7 +545,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   children: [
                     Text(
                       '${(overallPercent * 100).toInt()}%',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
                         color: AppColors.textDark,
@@ -533,7 +554,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     const SizedBox(height: 2),
                     Text(
                       '${ps.totalMastered} characters',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textDark,
@@ -584,7 +605,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                     color: AppColors.textDark,
@@ -593,7 +614,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 const SizedBox(width: 12),
                 Text(
                   fractionText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
@@ -603,7 +624,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             Text(
               percentageText,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,
@@ -618,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           decoration: BoxDecoration(
             color: AppColors.beige,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: AppColors.textDark, width: 1.5),
+            border: Border.all(color: CozyPalette.outline, width: 1.5),
           ),
           alignment: Alignment.centerLeft,
           child: FractionallySizedBox(
@@ -714,10 +735,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textDark, width: 1.8),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 1.8),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 3),
             blurRadius: 0,
           ),
@@ -728,7 +749,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
@@ -739,7 +760,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Center(
               child: Text(
                 characters,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 4,
@@ -754,7 +775,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             children: [
               Text(
                 progressText,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
@@ -769,7 +790,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             decoration: BoxDecoration(
               color: AppColors.beige,
               borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: AppColors.textDark, width: 1.2),
+              border: Border.all(color: CozyPalette.outline, width: 1.2),
             ),
             alignment: Alignment.centerLeft,
             child: FractionallySizedBox(
@@ -794,16 +815,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 decoration: BoxDecoration(
                   color: AppColors.greenButton,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.textDark, width: 1.8),
-                  boxShadow: const [
+                  border: Border.all(color: CozyPalette.outline, width: 1.8),
+                  boxShadow: [
                     BoxShadow(
-                      color: AppColors.textDark,
+                      color: CozyPalette.shadow,
                       offset: Offset(0, 3),
                       blurRadius: 0,
                     ),
                   ],
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.play_arrow, color: AppColors.textDark, size: 18),
@@ -882,7 +903,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     children: [
                       Text(
                         '${ps.streakDays} ${ps.streakDays == 1 ? "day" : "days"}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
                           color: AppColors.textDark,
@@ -894,7 +915,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ? 'Keep the flame burning!'
                             : 'Study today to start your streak!',
                         softWrap: true,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textDark,
@@ -973,7 +994,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return _buildCardBase(
       headerText: 'Quotes',
       headerIcon: Icons.format_quote_rounded,
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -1011,10 +1032,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       decoration: BoxDecoration(
         color: AppColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -1025,10 +1046,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.sand,
               border: Border(
-                bottom: BorderSide(color: AppColors.textDark, width: 2),
+                bottom: BorderSide(color: CozyPalette.outline, width: 2),
               ),
             ),
             child: Row(
@@ -1037,7 +1058,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 const SizedBox(width: 8),
                 Text(
                   headerText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     color: AppColors.textDark,

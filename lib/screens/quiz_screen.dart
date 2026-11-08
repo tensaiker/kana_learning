@@ -1,5 +1,6 @@
 // Cozy Kana — analyzer cleanup.
 // Existing public widgets, navigation, learning logic and storage keys are preserved.
+import '../theme/cozy_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart'; // Native text-to-speech engine[cite: 13]
 import 'package:shared_preferences/shared_preferences.dart'; // Persistent storage for audio settings and SRS ratings[cite: 13]
@@ -9,29 +10,28 @@ import '../utils/tactile_feedback.dart'; // Tactile haptic and audio click feedb
 
 // --- COLOR PALETTE ---
 class AppColors {
-  static const Color cream = Color(0xFFFDF8F3);
-  static const Color beige = Color(0xFFEADFD1);
-  static const Color sand = Color(0xFFDCC6A8);
-  static const Color taupe = Color(0xFFC6B8A5);
-  static const Color textDark = Color(0xFF5D534A);
-  static const Color textLight = Color(0xFF8B8076);
-  static const Color sage = Color(0xFFB7C9B2);
+  static Color get cream => CozyPalette.cream;
+  static Color get beige => CozyPalette.beige;
+  static Color get sand => CozyPalette.sand;
+  static Color get taupe => CozyPalette.taupe;
+  static Color get textDark => CozyPalette.textDark;
+  static Color get textLight => CozyPalette.textLight;
+  static Color get sage => CozyPalette.sage;
 
   // Validation Colors[cite: 13]
-  static const Color correctBg = Color(
-    0xFFB4CDB4,
-  ); // Soft pastel green[cite: 13]
-  static const Color correctIcon = Color(0xFF5CA95C);
-  static const Color incorrectBg = Color(
-    0xFFD88A82,
-  ); // Soft pastel red[cite: 13]
-  static const Color incorrectIcon = Color(0xFFC95B50);
+  static Color get correctBg =>
+      CozyPalette.correctBg; // Soft pastel green[cite: 13]
+  static Color get correctIcon => CozyPalette.correctIcon;
+  static Color get incorrectBg =>
+      CozyPalette.incorrectBg; // Soft pastel red[cite: 13]
+  static Color get incorrectIcon => CozyPalette.incorrectIcon;
 
   // Difficulty Selector Colors (matching Flashcard SRS palette)[cite: 13]
-  static const Color ratingAgain = Color(0xFFD88A82); // Soft red[cite: 13]
-  static const Color ratingHard = Color(0xFFE29E57); // Warm orange[cite: 13]
-  static const Color ratingGood = Color(0xFF9FB89A); // Soft green[cite: 13]
-  static const Color ratingEasy = Color(0xFFA5C4E5); // Soft blue[cite: 13]
+  static Color get ratingAgain => CozyPalette.ratingAgain; // Soft red[cite: 13]
+  static Color get ratingHard =>
+      CozyPalette.ratingHard; // Warm orange[cite: 13]
+  static Color get ratingGood => CozyPalette.ratingGood; // Soft green[cite: 13]
+  static Color get ratingEasy => CozyPalette.ratingEasy; // Soft blue[cite: 13]
 }
 
 // The 4 distinct types of questions in the quiz[cite: 13]
@@ -400,9 +400,12 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     // Gracefully shows loading indicator until async question generation completes[cite: 13]
     if (_questions.isEmpty && !_showDifficultySelector) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.beige,
         body: Center(
           child: CircularProgressIndicator(color: AppColors.textDark),
@@ -434,10 +437,10 @@ class _QuizScreenState extends State<QuizScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.cream,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.textDark, width: 2),
-                      boxShadow: const [
+                      border: Border.all(color: CozyPalette.outline, width: 2),
+                      boxShadow: [
                         BoxShadow(
-                          color: AppColors.textDark,
+                          color: CozyPalette.shadow,
                           offset: Offset(0, 4),
                           blurRadius: 0,
                         ),
@@ -463,7 +466,7 @@ class _QuizScreenState extends State<QuizScreen> {
                           color: AppColors.cream,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: AppColors.textDark,
+                            color: CozyPalette.outline,
                             width: 1.5,
                           ),
                         ),
@@ -484,7 +487,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     const SizedBox(width: 12),
                     Text(
                       '${_currentQuestionIndex + 1}/${_questions.length} question',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textDark,
@@ -502,7 +505,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.cream,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.textDark, width: 2),
+                      border: Border.all(color: CozyPalette.outline, width: 2),
                     ),
                     child: Column(
                       children: [
@@ -516,7 +519,7 @@ class _QuizScreenState extends State<QuizScreen> {
                             color: AppColors.beige,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppColors.textDark,
+                              color: CozyPalette.outline,
                               width: 1.5,
                             ),
                           ),
@@ -524,7 +527,7 @@ class _QuizScreenState extends State<QuizScreen> {
                             _getInstructionText(
                               _questions[_currentQuestionIndex].type,
                             ),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textDark,
@@ -605,16 +608,18 @@ class _QuizScreenState extends State<QuizScreen> {
   Widget _buildTopHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.sand,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
-        border: Border(bottom: BorderSide(color: AppColors.textDark, width: 2)),
+        border: Border(
+          bottom: BorderSide(color: CozyPalette.outline, width: 2),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           IconButton(
-            icon: const Icon(Icons.close, color: AppColors.textDark, size: 28),
+            icon: Icon(Icons.close, color: AppColors.textDark, size: 28),
             onPressed: () {
               TactileFeedback.toggle();
               _exitAndSaveProgress();
@@ -630,7 +635,7 @@ class _QuizScreenState extends State<QuizScreen> {
               children: [
                 Text(
                   widget.writingSystem,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
@@ -641,7 +646,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   widget.enableDifficultySelector
                       ? '${widget.rowTitle} • $_selectedDifficulty'
                       : widget.rowTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textDark,
@@ -667,7 +672,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.tune_rounded,
                   color: AppColors.textDark,
                   size: 24,
@@ -688,7 +693,7 @@ class _QuizScreenState extends State<QuizScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Difficulty type',
             style: TextStyle(
               fontSize: 16,
@@ -702,7 +707,7 @@ class _QuizScreenState extends State<QuizScreen> {
             decoration: BoxDecoration(
               color: AppColors.beige.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.textDark, width: 1.8),
+              border: Border.all(color: CozyPalette.outline, width: 1.8),
             ),
             child: Column(
               children: [
@@ -747,7 +752,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 TactileFeedback.toggle();
                 setState(() => _showDifficultySelector = false);
               },
-              child: const Text(
+              child: Text(
                 'Back to options',
                 style: TextStyle(
                   color: AppColors.textDark,
@@ -786,12 +791,12 @@ class _QuizScreenState extends State<QuizScreen> {
           color: color,
           shape: BoxShape.circle,
           border: Border.all(
-            color: AppColors.textDark,
+            color: CozyPalette.outline,
             width: isSelected ? 3.5 : 2.0,
           ),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, 4),
               blurRadius: 0,
             ),
@@ -839,194 +844,312 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
+  /// Full-page summary for BOTH Learn and Practice quizzes. This is a layout
+  /// change only: question generation, mastery updates, and saved checkpoints
+  /// still use the existing _scores, _questions, and _exitAndSaveProgress.
   Widget _buildSummaryScreen() {
-    final int totalCorrect = _scores.values.fold(0, (sum, val) => sum + val);
+    final totalCorrect = _scores.values.fold<int>(
+      0,
+      (sum, score) => sum + score,
+    );
+    final totalQuestions = _questions.length;
+    final accuracy = totalQuestions == 0 ? 0.0 : totalCorrect / totalQuestions;
+    final percent = (accuracy * 100).round();
+
+    // Encouragement adapts to the actual quiz score without changing any
+    // lesson-unlock threshold or SRS difficulty rating.
+    final message = percent == 100
+        ? 'Excellent Work!'
+        : percent >= 80
+        ? 'Great Job!'
+        : percent >= 60
+        ? 'Keep Practicing!'
+        : 'Every Step Counts!';
 
     return Scaffold(
       backgroundColor: AppColors.beige,
       body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: const BoxDecoration(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(12, 12, 18, 16),
+              decoration: BoxDecoration(
                 color: AppColors.sand,
-                borderRadius: BorderRadius.vertical(
+                borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(16),
                 ),
                 border: Border(
-                  bottom: BorderSide(color: AppColors.textDark, width: 2),
+                  bottom: BorderSide(color: CozyPalette.outline, width: 2),
                 ),
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      color: AppColors.textDark,
-                      size: 28,
-                    ),
+                    tooltip: widget.enableDifficultySelector
+                        ? 'Back to practice'
+                        : 'Back to lessons',
+                    icon: Icon(Icons.close, color: AppColors.textDark),
                     onPressed: () {
                       TactileFeedback.toggle();
                       _exitAndSaveProgress();
                     },
                   ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.writingSystem,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.enableDifficultySelector
+                              ? 'Practice Results'
+                              : 'Lesson Results',
+                          style: TextStyle(
+                            color: AppColors.textDark,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                      Text(
-                        widget.enableDifficultySelector
-                            ? '${widget.rowTitle} • $_selectedDifficulty'
-                            : widget.rowTitle,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
+                        Text(
+                          widget.enableDifficultySelector
+                              ? '${widget.writingSystem} • ${widget.rowTitle} • $_selectedDifficulty'
+                              : '${widget.writingSystem} • ${widget.rowTitle}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.textLight,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.bar_chart_rounded,
+                    color: AppColors.textDark,
+                    size: 24,
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 32),
-
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.cream,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.textDark, width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Total score',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Prominent score summary instead of a tall empty card.
+                    Container(
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        color: AppColors.cream,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: CozyPalette.outline,
+                          width: 1.8,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: CozyPalette.shadow,
+                            offset: const Offset(0, 4),
+                            blurRadius: 0,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$totalCorrect/${_questions.length}',
-                        style: const TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      _buildScoreRow(
-                        "Pick the romaji",
-                        QuizType.seeKanaPickRomaji,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildScoreRow(
-                        "Pick the kana",
-                        QuizType.seeRomajiPickKana,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildScoreRow(
-                        "Listen, then pick the romaji",
-                        QuizType.listenPickRomaji,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildScoreRow(
-                        "Listen, then pick the kana",
-                        QuizType.listenPickKana,
-                      ),
-
-                      const Spacer(),
-
-                      GestureDetector(
-                        onTap: () {
-                          TactileFeedback.press();
-                          _exitAndSaveProgress();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: AppColors.taupe,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              color: CozyPalette.paleGold,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: CozyPalette.outline,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.emoji_events_outlined,
+                              color: CozyPalette.unlockedGold,
+                              size: 35,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            message,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 23,
+                              fontWeight: FontWeight.w900,
                               color: AppColors.textDark,
-                              width: 1.5,
-                            ),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: AppColors.textDark,
-                                offset: Offset(0, 3),
-                                blurRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Continue >',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textDark,
-                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '$totalCorrect/$totalQuestions',
+                            style: TextStyle(
+                              fontSize: 44,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          Text(
+                            '$percent% accuracy',
+                            style: TextStyle(
+                              color: CozyPalette.basicGreen,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: accuracy,
+                              minHeight: 9,
+                              backgroundColor: AppColors.beige,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                CozyPalette.basicGreen,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: AppColors.cream,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: CozyPalette.outline,
+                          width: 1.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: CozyPalette.shadow,
+                            offset: const Offset(0, 3),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Performance Breakdown',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _buildScoreRow(
+                            'Pick the romaji',
+                            QuizType.seeKanaPickRomaji,
+                            Icons.visibility_outlined,
+                          ),
+                          const SizedBox(height: 10),
+                          _buildScoreRow(
+                            'Pick the kana',
+                            QuizType.seeRomajiPickKana,
+                            Icons.translate_rounded,
+                          ),
+                          const SizedBox(height: 10),
+                          _buildScoreRow(
+                            'Listen → Romaji',
+                            QuizType.listenPickRomaji,
+                            Icons.volume_up_outlined,
+                          ),
+                          const SizedBox(height: 10),
+                          _buildScoreRow(
+                            'Listen → Kana',
+                            QuizType.listenPickKana,
+                            Icons.headphones_outlined,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Fixed bottom action eliminates the large, unused vertical gap.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    TactileFeedback.press();
+                    _exitAndSaveProgress();
+                  },
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: const Text('Continue'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.taupe,
+                    foregroundColor: AppColors.textDark,
+                    textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: CozyPalette.outline, width: 1.6),
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildScoreRow(String label, QuizType type) {
-    final int totalForType = _questions.where((q) => q.type == type).length;
-    final int scoreForType = _scores[type] ?? 0;
+  /// One compact, accessible score row. Counts come from the generated
+  /// questions, so a future change to the number of questions still works.
+  Widget _buildScoreRow(String label, QuizType type, IconData icon) {
+    final totalForType = _questions.where((q) => q.type == type).length;
+    final scoreForType = _scores[type] ?? 0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.cream,
+        color: AppColors.beige,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textDark, width: 1.2),
+        border: Border.all(color: CozyPalette.outline, width: 1.1),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 14, color: AppColors.textDark),
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: AppColors.cream,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 20, color: AppColors.textDark),
           ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 13, color: AppColors.textDark),
+            ),
+          ),
+          const SizedBox(width: 8),
           Text(
             '$scoreForType/$totalForType',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.textDark,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w900,
+              color: scoreForType == totalForType && totalForType > 0
+                  ? CozyPalette.basicGreen
+                  : AppColors.textDark,
             ),
           ),
         ],
@@ -1055,7 +1178,7 @@ class _QuizScreenState extends State<QuizScreen> {
         children: [
           Interactive3DSpeakerButton(onTap: () => _speakKana(q.targetKana)),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "Tap to hear it again",
             style: TextStyle(fontSize: 16, color: AppColors.textDark),
           ),
@@ -1103,6 +1226,9 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     Color bgColor;
     switch (widget.state) {
       case ButtonState.correct:
@@ -1140,10 +1266,10 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.textDark, width: 2),
+          border: Border.all(color: CozyPalette.outline, width: 2),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, _isPressed ? 0 : 6.0),
               blurRadius: 0,
             ),
@@ -1154,12 +1280,12 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
             Center(
               child: Text(
                 widget.label,
-                style: const TextStyle(fontSize: 40, color: AppColors.textDark),
+                style: TextStyle(fontSize: 40, color: AppColors.textDark),
               ),
             ),
             if (widget.state == ButtonState.correct ||
                 widget.state == ButtonState.revealedCorrect)
-              const Positioned(
+              Positioned(
                 top: 8,
                 right: 8,
                 child: Icon(
@@ -1169,7 +1295,7 @@ class _Interactive3DChoiceButtonState extends State<Interactive3DChoiceButton> {
                 ),
               ),
             if (widget.state == ButtonState.incorrect)
-              const Positioned(
+              Positioned(
                 top: 8,
                 right: 8,
                 child: Icon(
@@ -1202,6 +1328,9 @@ class _Interactive3DSpeakerButtonState
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return GestureDetector(
       onTapDown: (_) {
         TactileFeedback.press();
@@ -1221,16 +1350,16 @@ class _Interactive3DSpeakerButtonState
         decoration: BoxDecoration(
           color: AppColors.sand,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.textDark, width: 2.5),
+          border: Border.all(color: CozyPalette.outline, width: 2.5),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textDark,
+              color: CozyPalette.shadow,
               offset: Offset(0, _isPressed ? 0 : 8.0),
               blurRadius: 0,
             ),
           ],
         ),
-        child: const Icon(Icons.volume_up, size: 80, color: AppColors.textDark),
+        child: Icon(Icons.volume_up, size: 80, color: AppColors.textDark),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import '../theme/cozy_palette.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,18 +9,18 @@ import '../services/progress_service.dart';
 // Cozy Kana's existing stationery palette, scoped to this file.
 // A private name prevents accidental collisions with other screens' AppColors.
 class _ProgressColors {
-  static const cream = Color(0xFFFDF8F3);
-  static const beige = Color(0xFFEADFD1);
-  static const sand = Color(0xFFDCC6A8);
-  static const taupe = Color(0xFFC6B8A5);
-  static const textDark = Color(0xFF5D534A);
-  static const textLight = Color(0xFF8B8076);
-  static const basicGreen = Color(0xFF526E5A);
-  static const dakuonBlue = Color(0xFF7BA2C7);
-  static const yoonBrown = Color(0xFFA67C52);
-  static const flameOrange = Color(0xFFE06D39);
-  static const flameBadgeBg = Color(0xFFFFD2BA);
-  static const activeDay = Color(0xFF8FA98F);
+  static Color get cream => CozyPalette.cream;
+  static Color get beige => CozyPalette.beige;
+  static Color get sand => CozyPalette.sand;
+  static Color get taupe => CozyPalette.taupe;
+  static Color get textDark => CozyPalette.textDark;
+  static Color get textLight => CozyPalette.textLight;
+  static Color get basicGreen => CozyPalette.basicGreen;
+  static Color get dakuonBlue => CozyPalette.dakuonBlue;
+  static Color get yoonBrown => CozyPalette.yoonBrown;
+  static Color get flameOrange => CozyPalette.flameOrangeProgress;
+  static Color get flameBadgeBg => CozyPalette.flameBadgeBg;
+  static Color get activeDay => CozyPalette.activeDay;
 }
 
 /// The Progress tab uses only metrics already saved by ProgressService.
@@ -37,6 +38,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   @override
   Widget build(BuildContext context) {
+    CozyPalette.watch(
+      context,
+    ); // Repaint on light/dark or system theme changes.
     return ListenableBuilder(
       listenable: ProgressService.instance,
       builder: (context, _) {
@@ -84,16 +88,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: _ProgressColors.sand,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
         border: Border(
-          bottom: BorderSide(color: _ProgressColors.textDark, width: 2),
+          bottom: BorderSide(color: CozyPalette.outline, width: 2),
         ),
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               'Kana Progress',
               maxLines: 1,
@@ -118,7 +122,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       decoration: BoxDecoration(
         color: _ProgressColors.beige,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _ProgressColors.textDark, width: 1.6),
+        border: Border.all(color: CozyPalette.outline, width: 1.6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -157,7 +161,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           ),
           child: Text(
             symbol,
-            style: const TextStyle(
+            style: TextStyle(
               color: _ProgressColors.textDark,
               fontWeight: FontWeight.bold,
               fontSize: 18,
@@ -180,10 +184,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
       decoration: BoxDecoration(
         color: _ProgressColors.cream,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _ProgressColors.textDark, width: 2),
-        boxShadow: const [
+        border: Border.all(color: CozyPalette.outline, width: 2),
+        boxShadow: [
           BoxShadow(
-            color: _ProgressColors.textDark,
+            color: CozyPalette.shadow,
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -195,10 +199,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: _ProgressColors.sand,
               border: Border(
-                bottom: BorderSide(color: _ProgressColors.textDark, width: 2),
+                bottom: BorderSide(color: CozyPalette.outline, width: 2),
               ),
             ),
             child: Row(
@@ -208,7 +212,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: _ProgressColors.textDark,
@@ -245,7 +249,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   children: [
                     Text(
                       '${(stats.fraction * 100).round()}%',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                         color: _ProgressColors.textDark,
@@ -253,7 +257,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     ),
                     Text(
                       '${stats.learned}/${stats.total} mastered',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: _ProgressColors.textLight,
@@ -269,7 +273,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             alignment: Alignment.centerLeft,
             child: Text(
               '$script mastery',
-              style: const TextStyle(
+              style: TextStyle(
                 color: _ProgressColors.textDark,
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -295,7 +299,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             color: _ProgressColors.yoonBrown,
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Kana mastery is recorded from correct quiz answers. '
             'Handwriting is tracked separately. Yoon counts full combinations such as きゃ.',
             style: TextStyle(fontSize: 11, color: _ProgressColors.textLight),
@@ -324,7 +328,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _ProgressColors.textDark,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -334,7 +338,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             Text(
               '${category.learned}/${category.total}  •  '
               '${(category.fraction * 100).round()}%',
-              style: const TextStyle(
+              style: TextStyle(
                 color: _ProgressColors.textDark,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -348,7 +352,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           decoration: BoxDecoration(
             color: _ProgressColors.beige,
             borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: _ProgressColors.textDark, width: 1),
+            border: Border.all(color: CozyPalette.outline, width: 1),
           ),
           clipBehavior: Clip.antiAlias,
           child: Align(
@@ -373,7 +377,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       return _buildCard(
         title: 'Learning Journey',
         icon: Icons.menu_book_outlined,
-        child: const Text(
+        child: Text(
           'All rows are unlocked in Developer settings. Turn that option off '
           'to see meaningful lesson-completion counts.',
           style: TextStyle(color: _ProgressColors.textLight, fontSize: 13),
@@ -407,7 +411,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Lesson rows completed',
                   style: TextStyle(
@@ -419,7 +423,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               ),
               Text(
                 '$done/${allRows.length}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: _ProgressColors.textDark,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -445,19 +449,19 @@ class _ProgressScreenState extends State<ProgressScreen> {
             yoonDone,
             ProgressService.yoonRowTitles.length,
           ),
-          const Divider(height: 24, color: _ProgressColors.beige),
+          Divider(height: 24, color: _ProgressColors.beige),
           Text(
             nextRow == null
                 ? 'All $script lesson rows completed!'
                 : 'Next checkpoint: $nextRow',
-            style: const TextStyle(
+            style: TextStyle(
               color: _ProgressColors.textDark,
               fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
           ),
           if (nextRow != null)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 4),
               child: Text(
                 'Go to the Learn tab to continue.',
@@ -478,15 +482,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: _ProgressColors.textDark,
-            ),
+            style: TextStyle(fontSize: 12, color: _ProgressColors.textDark),
           ),
         ),
         Text(
           '$done/$total',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
             color: _ProgressColors.textDark,
@@ -535,10 +536,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           const SizedBox(height: 14),
           Text(
             'Successful Word Builder answers: ${ps.wordsCompletedCount}',
-            style: const TextStyle(
-              fontSize: 12,
-              color: _ProgressColors.textLight,
-            ),
+            style: TextStyle(fontSize: 12, color: _ProgressColors.textLight),
           ),
         ],
       ),
@@ -555,7 +553,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
       decoration: BoxDecoration(
         color: _ProgressColors.beige,
-        border: Border.all(color: _ProgressColors.textDark, width: 1.2),
+        border: Border.all(color: CozyPalette.outline, width: 1.2),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
@@ -565,7 +563,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 23,
               fontWeight: FontWeight.bold,
               color: _ProgressColors.textDark,
@@ -574,10 +572,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 11,
-              color: _ProgressColors.textLight,
-            ),
+            style: TextStyle(fontSize: 11, color: _ProgressColors.textLight),
           ),
         ],
       ),
@@ -602,7 +597,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         children: [
           Text(
             'Written from memory: $written / 104 Kana',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: _ProgressColors.textDark,
@@ -619,14 +614,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
           const SizedBox(height: 16),
           Text(
             'Quiz accuracy: $accuracy',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: _ProgressColors.textDark,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Writing counts unique Kana completed in memory mode. '
             'Accuracy measures answers recorded after this update.',
             style: TextStyle(fontSize: 11, color: _ProgressColors.textLight),
@@ -650,7 +645,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.local_fire_department,
                 color: _ProgressColors.flameOrange,
                 size: 24,
@@ -658,7 +653,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               const SizedBox(width: 6),
               Text(
                 '${ps.streakDays} ${ps.streakDays == 1 ? 'day' : 'days'}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.bold,
                   color: _ProgressColors.textDark,
@@ -675,7 +670,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: _ProgressColors.flameOrange),
                 ),
-                child: const Text(
+                child: Text(
                   'This week',
                   style: TextStyle(
                     fontSize: 11,
@@ -695,7 +690,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   children: [
                     Text(
                       days[index],
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         color: _ProgressColors.textDark,
@@ -711,12 +706,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
                             ? _ProgressColors.activeDay
                             : _ProgressColors.beige,
                         border: Border.all(
-                          color: _ProgressColors.textDark,
+                          color: CozyPalette.outline,
                           width: 1.4,
                         ),
                       ),
                       child: active
-                          ? const Icon(
+                          ? Icon(
                               Icons.check,
                               size: 13,
                               color: _ProgressColors.cream,
@@ -729,7 +724,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             }),
           ),
           const SizedBox(height: 16),
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
             child: Text(
               'A day is checked after a quiz answer, flashcard review, '
