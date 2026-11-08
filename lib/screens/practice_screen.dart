@@ -2833,6 +2833,8 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
       'romaji': currentQ.romaji,
       'english': currentQ.english,
       'isCorrect': match,
+      // For the results UI only; existing scoring and mastery rules stay intact.
+      'usedHint': _isHintActive,
     });
 
     _speakWord(currentQ.kana);
@@ -2848,8 +2850,10 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
     } else {
       final elapsed = DateTime.now().difference(_sessionStartTime);
 
-      Navigator.pushReplacement(
-        context,
+      // Capture NavigatorState, not this game's BuildContext. The game route
+      // is disposed by pushReplacement before the learner taps Try Again.
+      final navigator = Navigator.of(context);
+      navigator.pushReplacement(
         MaterialPageRoute(
           builder: (context) => WordBuilderResultScreen(
             totalQuestions: widget.totalQuestions,
@@ -2858,8 +2862,7 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
             summaryList: _sessionWordLog,
             isHiragana: widget.isHiragana,
             onPlayAgain: () {
-              Navigator.pushReplacement(
-                context,
+              navigator.pushReplacement(
                 MaterialPageRoute(
                   builder: (context) => WordBuilderGameScreen(
                     isHiragana: widget.isHiragana,
@@ -3365,45 +3368,44 @@ class WordBuilderResultScreen extends StatelessWidget {
   String _formatDuration(Duration d) {
     final minutes = d.inMinutes;
     final seconds = d.inSeconds % 60;
-    if (minutes > 0) {
-      return '${minutes}m ${seconds}s';
-    }
-    return '${seconds}s';
+    return minutes > 0 ? '${minutes}m ${seconds}s' : '${seconds}s';
   }
 
+  /// UI-only redesign: all scores come from the original Word Builder round.
+  /// The words list and the saved ProgressService records are unchanged.
   @override
   Widget build(BuildContext context) {
-    CozyPalette.watch(
-      context,
-    ); // Repaint on light/dark or system theme changes.
-    final double percent = totalQuestions > 0
-        ? (correctCount / totalQuestions)
-        : 0.0;
-    final int percentInt = (percent * 100).toInt();
+    CozyPalette.watch(context);
+    final accuracy = totalQuestions == 0 ? 0.0 : correctCount / totalQuestions;
+    final percent = (accuracy * 100).round();
+    final incorrect = totalQuestions - correctCount;
+    final hintsUsed = summaryList
+        .where((word) => word['usedHint'] == true)
+        .length;
 
-    String titleMessage;
-    String subtitleMessage;
-    if (percent >= 0.9) {
-      titleMessage = 'Taihen Yoku Dekimashita! 🎉';
-      subtitleMessage = 'Outstanding performance! You mastered this set!';
-    } else if (percent >= 0.7) {
-      titleMessage = 'Yoku Dekimashita! 🌸';
-      subtitleMessage = 'Great work! Keep up the daily practice!';
-    } else {
-      titleMessage = 'Ganbatte! 💪';
-      subtitleMessage = 'Good effort! Review the words below and try again!';
-    }
+    final title = percent >= 90
+        ? 'Excellent Work!'
+        : percent >= 70
+        ? 'Great Job!'
+        : 'Keep Practicing!';
+    final subtitle = percent >= 90
+        ? 'You did wonderfully in this word-building round.'
+        : percent >= 70
+        ? 'Good progress! A little practice goes a long way.'
+        : 'Review the words below and give it another try.';
 
     return Scaffold(
       backgroundColor: AppColors.beige,
       body: SafeArea(
         child: Column(
           children: [
+            // Same compact header treatment as Writing and Quiz results.
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(12, 12, 20, 14),
               decoration: BoxDecoration(
                 color: AppColors.sand,
-                borderRadius: BorderRadius.vertical(
+                borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(16),
                 ),
                 border: Border(
@@ -3413,267 +3415,217 @@ class WordBuilderResultScreen extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(
-                      Icons.arrow_back_ios_new,
-                      color: AppColors.textDark,
-                      size: 22,
-                    ),
+                    tooltip: 'Back to practice',
+                    icon: Icon(Icons.close, color: AppColors.textDark),
                     onPressed: () {
                       TactileFeedback.toggle();
                       Navigator.pop(context);
                     },
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Practice Summary',
-                    style: TextStyle(
-                      color: AppColors.textDark,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Word Builder Results',
+                          style: TextStyle(
+                            color: AppColors.textDark,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          '${isHiragana ? "Hiragana" : "Katakana"} • $totalQuestions words',
+                          style: TextStyle(
+                            color: AppColors.textLight,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  Icon(Icons.extension_outlined, color: AppColors.textDark),
                 ],
               ),
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 20,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.cream,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: CozyPalette.outline,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: CozyPalette.shadow,
-                            offset: Offset(0, 4),
-                            blurRadius: 0,
-                          ),
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
+                    // Main score is visually prominent and uses the actual score.
+                    _resultCard(
                       child: Column(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
+                            width: 62,
+                            height: 62,
                             decoration: BoxDecoration(
-                              color: AppColors.sand,
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: CozyPalette.outline,
-                                  width: 2,
-                                ),
+                              color: CozyPalette.paleGold,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: CozyPalette.outline,
+                                width: 1.2,
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.military_tech_outlined,
-                                  color: AppColors.textDark,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Round Results',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: AppColors.textDark,
-                                  ),
-                                ),
-                              ],
+                            child: Icon(
+                              Icons.emoji_events_outlined,
+                              color: CozyPalette.unlockedGold,
+                              size: 34,
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 110,
-                                  height: 110,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.beige,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: CozyPalette.outline,
-                                      width: 2.2,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: CozyPalette.shadow,
-                                        offset: Offset(0, 3),
-                                        blurRadius: 0,
-                                      ),
-                                    ],
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        '$percentInt%',
-                                        style: TextStyle(
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.w900,
-                                          color: AppColors.textDark,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Score',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.textLight,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                          const SizedBox(height: 12),
+                          Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textDark,
+                              fontSize: 23,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            subtitle,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textLight,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            '$correctCount/$totalQuestions',
+                            style: TextStyle(
+                              color: AppColors.textDark,
+                              fontSize: 42,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            '$percent% accuracy',
+                            style: TextStyle(
+                              color: CozyPalette.basicGreen,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: accuracy,
+                              minHeight: 9,
+                              backgroundColor: AppColors.beige,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                CozyPalette.basicGreen,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _resultStat(
+                                  icon: Icons.check_circle_outline,
+                                  value: '$correctCount',
+                                  label: 'Correct',
+                                  color: CozyPalette.basicGreen,
                                 ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  titleMessage,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textDark,
-                                  ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _resultStat(
+                                  icon: Icons.refresh_rounded,
+                                  value: '$incorrect',
+                                  label: 'To review',
+                                  color: AppColors.ratingHard,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  subtitleMessage,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textLight,
-                                  ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _resultStat(
+                                  icon: Icons.timer_outlined,
+                                  value: _formatDuration(elapsedDuration),
+                                  label: 'Time',
+                                  color: CozyPalette.yoonBrown,
                                 ),
-                                const SizedBox(height: 20),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildResultStatBadge(
-                                        icon: Icons.check_circle_outline,
-                                        iconColor: AppColors.greenButton,
-                                        value: '$correctCount/$totalQuestions',
-                                        label: 'Accuracy',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: _buildResultStatBadge(
-                                        icon: Icons.menu_book_rounded,
-                                        iconColor: AppColors.skyBlue,
-                                        value:
-                                            '${ProgressService.instance.totalMasteredWords}',
-                                        label: 'Mastered',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: _buildResultStatBadge(
-                                        icon: Icons.timer_outlined,
-                                        iconColor: AppColors.flameOrange,
-                                        value: _formatDuration(elapsedDuration),
-                                        label: 'Time Spent',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Hints used: $hintsUsed',
+                            style: TextStyle(
+                              color: AppColors.textLight,
+                              fontSize: 12,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.cream,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: CozyPalette.outline,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: CozyPalette.shadow,
-                            offset: Offset(0, 4),
-                            blurRadius: 0,
-                          ),
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
+                    const SizedBox(height: 20),
+                    // Word review remains scrollable for 10/20/30/40 rounds.
+                    _resultCard(
+                      padding: EdgeInsets.zero,
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.sand,
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: CozyPalette.outline,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.list_alt_rounded,
+                                  Icons.menu_book_outlined,
                                   color: AppColors.textDark,
-                                  size: 20,
+                                  size: 21,
                                 ),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Words Reviewed',
+                                    style: TextStyle(
+                                      color: AppColors.textDark,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                                 Text(
-                                  'Words Reviewed',
+                                  '${summaryList.length} words',
                                   style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: AppColors.textDark,
+                                    color: AppColors.textLight,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                          Divider(height: 1, color: CozyPalette.outline),
                           ListView.separated(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(14),
                             itemCount: summaryList.length,
                             separatorBuilder: (_, _) =>
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 9),
                             itemBuilder: (context, index) {
-                              final item = summaryList[index];
-                              final bool isCorrect = item['isCorrect'] ?? false;
-                              final String kana = item['kana'] ?? '';
-                              final String romaji = item['romaji'] ?? '';
-                              final String english = item['english'] ?? '';
-
+                              final word = summaryList[index];
+                              final wasCorrect = word['isCorrect'] == true;
+                              final usedHint = word['usedHint'] == true;
+                              final kana = word['kana'] as String? ?? '';
+                              final romaji = word['romaji'] as String? ?? '';
+                              final meaning = word['english'] as String? ?? '';
                               return Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
+                                  horizontal: 12,
+                                  vertical: 11,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: isCorrect
-                                      ? AppColors.lightSage.withValues(
-                                          alpha: 0.5,
-                                        )
+                                  color: wasCorrect
+                                      ? CozyPalette.successLight
                                       : CozyPalette.errorLight,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
@@ -3684,15 +3636,15 @@ class WordBuilderResultScreen extends StatelessWidget {
                                 child: Row(
                                   children: [
                                     Icon(
-                                      isCorrect
-                                          ? Icons.check_circle
-                                          : Icons.cancel,
-                                      color: isCorrect
-                                          ? AppColors.greenButton
-                                          : AppColors.ratingAgain,
+                                      wasCorrect
+                                          ? Icons.check_circle_outline
+                                          : Icons.error_outline,
+                                      color: wasCorrect
+                                          ? CozyPalette.correctStrong
+                                          : CozyPalette.incorrectStrong,
                                       size: 22,
                                     ),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -3702,47 +3654,55 @@ class WordBuilderResultScreen extends StatelessWidget {
                                             crossAxisAlignment:
                                                 WrapCrossAlignment.center,
                                             spacing: 8,
+                                            runSpacing: 2,
                                             children: [
                                               Text(
                                                 kana,
                                                 style: TextStyle(
+                                                  color: AppColors.textDark,
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.bold,
-                                                  color: AppColors.textDark,
                                                 ),
                                               ),
                                               Text(
                                                 romaji,
                                                 style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
                                                   color: AppColors.textLight,
+                                                  fontSize: 12,
                                                 ),
                                               ),
+                                              if (usedHint)
+                                                Icon(
+                                                  Icons.lightbulb_outline,
+                                                  size: 16,
+                                                  color: AppColors.textLight,
+                                                ),
                                             ],
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            english,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.textDark,
-                                            ),
+                                            meaning,
+                                            maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: AppColors.textDark,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    GestureDetector(
-                                      onTap: () {
+                                    IconButton(
+                                      tooltip: 'Play Japanese pronunciation',
+                                      icon: Icon(
+                                        Icons.volume_up_rounded,
+                                        color: AppColors.textDark,
+                                        size: 21,
+                                      ),
+                                      onPressed: () {
                                         TactileFeedback.press();
                                         FlutterTts().speak(kana);
                                       },
-                                      child: Icon(
-                                        Icons.volume_up_rounded,
-                                        color: AppColors.textDark,
-                                        size: 20,
-                                      ),
                                     ),
                                   ],
                                 ),
@@ -3752,34 +3712,42 @@ class WordBuilderResultScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _Interactive3DButton(
-                            label: 'Play Again',
-                            icon: Icons.replay,
-                            bgColor: AppColors.sand,
-                            onTap: onPlayAgain,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: _Interactive3DButton(
-                            label: 'Done',
-                            icon: Icons.check,
-                            bgColor: AppColors.taupe,
-                            onTap: () {
-                              TactileFeedback.toggle();
-                              Navigator.pop(context);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
                   ],
                 ),
+              ),
+            ),
+            // Fixed actions remain reachable even with a 40-word review.
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+              decoration: BoxDecoration(
+                color: AppColors.beige,
+                border: Border(
+                  top: BorderSide(color: CozyPalette.outline, width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _Interactive3DButton(
+                      label: 'Try Again',
+                      icon: Icons.replay_rounded,
+                      bgColor: AppColors.sand,
+                      onTap: onPlayAgain,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _Interactive3DButton(
+                      label: 'Done',
+                      icon: Icons.check_rounded,
+                      bgColor: AppColors.taupe,
+                      onTap: () {
+                        TactileFeedback.toggle();
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -3788,40 +3756,58 @@ class WordBuilderResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildResultStatBadge({
+  Widget _resultCard({required Widget child, EdgeInsetsGeometry? padding}) {
+    return Container(
+      padding: padding ?? const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cream,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: CozyPalette.outline, width: 1.8),
+        boxShadow: [
+          BoxShadow(
+            color: CozyPalette.shadow,
+            offset: const Offset(0, 4),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _resultStat({
     required IconData icon,
-    required Color iconColor,
     required String value,
     required String label,
+    required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 5),
       decoration: BoxDecoration(
-        color: AppColors.beige.withValues(alpha: 0.5),
+        color: AppColors.beige.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: CozyPalette.outline, width: 1.5),
+        border: Border.all(color: CozyPalette.outline, width: 1.2),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: iconColor, size: 20),
+          Icon(icon, color: color, size: 20),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textDark,
-            ),
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.textDark,
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+            ),
           ),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
             textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textLight, fontSize: 10),
           ),
         ],
       ),

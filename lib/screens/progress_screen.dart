@@ -85,44 +85,50 @@ class _ProgressScreenState extends State<ProgressScreen> {
   // ---------------------------------------------------------------------------
   // Header and script switcher
   // ---------------------------------------------------------------------------
+  // Match Learn and Practice: 24px sides, 20px top/bottom, 24px title,
+  // 38px toggle pill. SafeArea above already handles the phone status bar.
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       decoration: BoxDecoration(
         color: _ProgressColors.sand,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
         border: Border(
           bottom: BorderSide(color: CozyPalette.outline, width: 2),
         ),
       ),
       child: Row(
         children: [
+          // Expanded prevents the title from colliding with the script pill.
           Expanded(
             child: Text(
               'Kana Progress',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: _ProgressColors.textDark,
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           _buildScriptSwitch(),
         ],
       ),
     );
   }
 
+  /// Uses the same stationery pill dimensions and styling as Kana Learn.
+  /// This remains an independent Progress filter, not the Learn tab's setting.
   Widget _buildScriptSwitch() {
     return Container(
-      padding: const EdgeInsets.all(3),
+      height: 38,
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: _ProgressColors.beige,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: CozyPalette.outline, width: 1.6),
+        color: _ProgressColors.sand,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: CozyPalette.outline, width: 2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -142,29 +148,30 @@ class _ProgressScreenState extends State<ProgressScreen> {
       label: label,
       child: InkWell(
         onTap: () {
+          // Preserve the original independent Progress tab filter.
           if (_isHiragana != hiragana) {
             setState(() => _isHiragana = hiragana);
           }
         },
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 34),
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? _ProgressColors.taupe : Colors.transparent,
-            borderRadius: BorderRadius.circular(17),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: selected ? _ProgressColors.textDark : Colors.transparent,
-              width: 1.3,
+              width: 2,
             ),
           ),
           child: Text(
             symbol,
             style: TextStyle(
-              color: _ProgressColors.textDark,
               fontWeight: FontWeight.bold,
-              fontSize: 18,
+              color: _ProgressColors.textDark,
+              fontSize: 16,
             ),
           ),
         ),

@@ -356,35 +356,41 @@ class _LearnScreenState extends State<LearnScreen>
 
         _detectNewUnlocks(writingSystem, ps);
 
-        return Container(
-          color: AppColors.beige,
-          child: Column(
-            children: [
-              _buildTopHeader(isHiragana),
-
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 24,
+        // Match the other four tabs: SafeArea owns the status-bar inset, so the
+        // Learn header needs only normal 20px vertical padding (not 60px).
+        // Keep the existing list, row-unlock logic, and script selection intact.
+        return Scaffold(
+          backgroundColor: AppColors.beige,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildTopHeader(isHiragana),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 24,
+                    ),
+                    children: [
+                      _buildMainCard(isHiragana, writingSystem, ps),
+                      const SizedBox(height: 40),
+                    ],
                   ),
-                  children: [
-                    _buildMainCard(isHiragana, writingSystem, ps),
-                    const SizedBox(height: 40),
-                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  // --- TOP HEADER ---[cite: 11]
+  // --- TOP HEADER ---
+  // Same height, spacing, and alignment as the Practice tab header.
+  // SafeArea above already handles the phone's status bar and any cutout.
   Widget _buildTopHeader(bool isHiragana) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       decoration: BoxDecoration(
         color: AppColors.sand,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
@@ -393,16 +399,22 @@ class _LearnScreenState extends State<LearnScreen>
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Kana Learn',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+          // Constrain the title so smaller phones never overflow beside the pill.
+          Expanded(
+            child: Text(
+              'Kana Learn',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
             ),
           ),
+          const SizedBox(width: 12),
+          // Keep the same Hiragana/Katakana toggle and ProgressService updates.
           _buildToggle(isHiragana),
         ],
       ),
