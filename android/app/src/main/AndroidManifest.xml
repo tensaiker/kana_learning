@@ -6,6 +6,12 @@
     -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Needed to reschedule opted-in study reminders after device reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Android 13+ notification permission comes from the notifications plugin.
+         Our notification_service.dart requests it only when the learner opts in.
+         Exact alarm permissions are intentionally NOT requested. -->
+
     <!--
       Application Node:
       - android:label: Sets the official public name displayed beneath the app icon on device home screens.
@@ -45,6 +51,22 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Local notification receiver: delivers the daily study reminder. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+
+        <!-- Restores scheduled reminders after reboot or an app update. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <!-- 

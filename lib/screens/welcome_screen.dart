@@ -1,7 +1,8 @@
 // lib/screens/welcome_screen.dart
 // Cozy Kana — first-time name registration.
-// This screen deliberately uses the prepared welcome_UI.png illustration as a
-// BACKGROUND. Do not add the logo or welcome heading again; both are in the PNG.
+// The welcome_UI.png contains the stationery illustrations only.
+// The welcome heading, name input and action button are real Flutter widgets
+// so they remain readable and interactive on different Android screen sizes.
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,7 +18,7 @@ class _WelcomePalette {
   static const danger = Color(0xFFB14F44);
 }
 
-/// Displays the illustrated background and asks for a learner name.
+/// Displays the stationery illustration, welcome heading, and name entry form.
 ///
 /// SharedPreferences keys are unchanged to remain compatible with Home/Profile:
 ///  - 'user_name' and 'profile_username': the same name in both locations.
@@ -103,22 +104,24 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // The PNG already includes the notepad-and-cat logo, welcome title,
-          // books, mug and bottom waves. No duplicate texts/images are needed.
+          // The image contains only decoration (notepad/cat, books, mug, waves).
+          // Do not bake the heading into it: Flutter draws the heading below.
           Image.asset(
             'assets/image/welcome_UI.png',
             fit: BoxFit.cover,
             alignment: Alignment.topCenter,
-            semanticLabel: 'Welcome to Cozy Kana',
+            excludeFromSemantics: true, // Decorative background only.
           ),
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final availableHeight = constraints.maxHeight;
-                // Position the input in the illustration's open middle area.
-                // Move the form higher while the on-screen keyboard is open.
-                final topSpace =
-                    availableHeight * (keyboardHeight > 0 ? 0.24 : 0.40);
+                // Reserve space for the notebook-and-cat illustration.
+                // This is calculated from the FULL screen (not the smaller
+                // keyboard area), so opening the keyboard will not cause the
+                // heading and form to jump upward over the illustration.
+                // Limit the spacing for unusually short/tall screens.
+                final topSpace = (availableHeight * 0.29).clamp(170.0, 250.0);
 
                 return SingleChildScrollView(
                   keyboardDismissBehavior:
@@ -133,6 +136,20 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // Real text rather than lettering baked into the PNG.
+                            // This stays above the form and is accessible to
+                            // screen readers and different screen densities.
+                            const Text(
+                              'Welcome to\nCozy Kana',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _WelcomePalette.brown,
+                                fontSize: 30,
+                                height: 1.08,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 26),
                             const Row(
                               children: [
                                 Icon(
@@ -166,7 +183,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 }
                               },
                               decoration: InputDecoration(
-                                hintText: 'e.g. Kerby',
+                                hintText: 'Enter your name',
                                 hintStyle: const TextStyle(
                                   color: _WelcomePalette.muted,
                                   fontSize: 14,

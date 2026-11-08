@@ -50,10 +50,10 @@ enum WordLength { short, medium, long }
 /// Main Practice Hub & Sub-mode Configuration Screen.
 ///
 /// Features & Guidelines:
-/// 1. Dynamic Vocabulary Unlocking:
-///    - Word Builder pulls only words formed exclusively of unlocked kana characters.
-///    - Vocabulary Library visually distinguishes unlocked words from locked ones, displaying
-///      missing prerequisite row requirements and showing an informative locked modal when tapped.
+/// 1. Word Builder practice modes:
+///    - Learned Kana Only (default): words use unlocked lesson rows.
+///    - All Vocabulary: allows advanced words without unlocking Learn lessons.
+///    - Vocabulary Library remains freely browsable with pronunciation playback.
 /// 2. Flashcard & Quiz Progression:
 ///    - Flashcard row selection enforces lesson row unlocks from the Learn tab[cite: 13].
 ///    - Practice Hub Quiz passes `enableDifficultySelector: true` to QuizScreen,
@@ -91,6 +91,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
       WordBuilderQuestionType.romajiToKana;
   WordLength _wbLength = WordLength.short;
   int _wbWordsPerRound = 30;
+  // Word Builder only. Do not change the Learn, Flashcard, or Quiz unlock rules.
+  bool _wbLearnedKanaOnly = true;
+  // Independent filters: changing Library categories does not reset Word Builder.
+  String _wbCategory = VocabularyCategories.all;
+  String _vocabCategory = VocabularyCategories.all;
 
   String _vocabSearchQuery = '';
   late Set<String> _selectedRowIds;
@@ -461,64 +466,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
         ),
         content: Text(
           'Complete the "$prereq" lesson in the Learn tab to unlock these characters.',
-          style: const TextStyle(
-            color: AppColors.textDark,
-            fontSize: 14,
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Got it',
-              style: TextStyle(
-                color: AppColors.textDark,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Displays an informative modal when tapping a locked word in the Vocabulary Library.
-  void _showLockedWordDialog(WordBuilderQuestion word) {
-    TactileFeedback.error();
-    final missingRows = VocabularyService.instance.getMissingPrerequisiteRows(
-      word,
-    );
-    final missingRowText = missingRows.isNotEmpty
-        ? missingRows.join(', ')
-        : 'previous lesson rows';
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cream,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.textDark, width: 2),
-        ),
-        title: Row(
-          children: [
-            const Icon(Icons.lock_rounded, color: AppColors.textDark, size: 26),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Word Locked',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'To unlock "${word.plainKana}" (${word.romaji}), finish the following lesson(s) in the Learn tab:\n\n• $missingRowText',
           style: const TextStyle(
             color: AppColors.textDark,
             fontSize: 14,
@@ -1125,6 +1072,168 @@ class _PracticeScreenState extends State<PracticeScreen> {
   // ===========================================================================
   // 5. WORD BUILDER SETUP CARD
   // ===========================================================================
+  /// Returns the selected word-size limits using the model's kana-unit count.
+  /// Yoon combinations remain one selectable Kana unit, matching game slots.
+  (int, int) _wordBuilderLengthRange() => switch (_wbLength) {
+    WordLength.short => (2, 3),
+    WordLength.medium => (4, 5),
+    WordLength.long => (6, 99),
+  };
+
+  /// Filter by script, chosen length, and the selected practice mode.
+  /// This is used by both the setup preview and the actual round so counts match.
+  List<WordBuilderQuestion> _wordBuilderCandidates() {
+    final (minLength, maxLength) = _wordBuilderLengthRange();
+    return VocabularyService.instance.getWordsForGame(
+      isHiragana: _isHiragana,
+      minLength: minLength,
+      maxLength: maxLength,
+      onlyUnlocked: _wbLearnedKanaOnly,
+      category: _wbCategory,
+    );
+  }
+
+  /// Controls Word Builder filtering only. This never changes row unlocks.
+  Widget _buildWordBuilderPracticeMode() {
+    Widget option({
+      required bool learnedOnly,
+      required String title,
+      required String description,
+      required IconData icon,
+    }) {
+      final selected = _wbLearnedKanaOnly == learnedOnly;
+      return InkWell(
+        onTap: () {
+          TactileFeedback.toggle();
+          setState(() => _wbLearnedKanaOnly = learnedOnly);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.lightSage : AppColors.cream,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.textDark,
+              width: selected ? 2.4 : 1.2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: AppColors.textDark, size: 23),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: AppColors.textDark,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: AppColors.textDark,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Practice mode',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textDark,
+          ),
+        ),
+        const SizedBox(height: 12),
+        option(
+          learnedOnly: true,
+          title: 'Learned Kana Only',
+          description: 'Practice with Kana from available lessons.',
+          icon: Icons.school_outlined,
+        ),
+        const SizedBox(height: 10),
+        option(
+          learnedOnly: false,
+          title: 'All Vocabulary',
+          description: 'Explore words even before learning their Kana.',
+          icon: Icons.menu_book_outlined,
+        ),
+      ],
+    );
+  }
+
+  /// One reusable filter for both screens. New categories can be added in
+  /// VocabularyCategories without rewriting the UI or changing game logic.
+  Widget _buildVocabularyCategorySelector({
+    required String value,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.beige.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.textDark, width: 1.8),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true, // Avoid clipped labels on narrower phones.
+          borderRadius: BorderRadius.circular(12),
+          dropdownColor: AppColors.cream,
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.textDark,
+          ),
+          style: const TextStyle(
+            color: AppColors.textDark,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+          items: VocabularyCategories.choices.map((key) {
+            return DropdownMenuItem<String>(
+              value: key,
+              child: Text(
+                VocabularyCategories.label(key),
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }).toList(),
+          onChanged: (next) {
+            if (next == null || next == value) return;
+            TactileFeedback.toggle();
+            onChanged(next);
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildWordBuilderSetupCard() {
     return Container(
       decoration: BoxDecoration(
@@ -1187,6 +1296,23 @@ class _PracticeScreenState extends State<PracticeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildWordBuilderPracticeMode(),
+                const SizedBox(height: 22),
+                // Filter before choosing question type, length and round size.
+                const Text(
+                  'Vocabulary category',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildVocabularyCategorySelector(
+                  value: _wbCategory,
+                  onChanged: (value) => setState(() => _wbCategory = value),
+                ),
+                const SizedBox(height: 24),
                 const Text(
                   'Question type',
                   style: TextStyle(
@@ -1265,7 +1391,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         child: _buildSelectablePill(
                           isSelected: _wbLength == WordLength.short,
                           title: 'Short',
-                          subtitle: '2-3 kana per word',
+                          subtitle: '2–3 units',
                           onTap: () {
                             TactileFeedback.toggle();
                             setState(() => _wbLength = WordLength.short);
@@ -1277,7 +1403,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         child: _buildSelectablePill(
                           isSelected: _wbLength == WordLength.medium,
                           title: 'Medium',
-                          subtitle: '4-5 kana per word',
+                          subtitle: '4–5 units',
                           onTap: () {
                             TactileFeedback.toggle();
                             setState(() => _wbLength = WordLength.medium);
@@ -1289,7 +1415,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         child: _buildSelectablePill(
                           isSelected: _wbLength == WordLength.long,
                           title: 'Long',
-                          subtitle: '6+ kana per word',
+                          subtitle: '6+ units',
                           onTap: () {
                             TactileFeedback.toggle();
                             setState(() => _wbLength = WordLength.long);
@@ -1365,7 +1491,30 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     }).toList(),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
+                // Show how many *matching* words are available before starting.
+                Builder(
+                  builder: (context) {
+                    final count = _wordBuilderCandidates().length;
+                    final requested = _wbWordsPerRound;
+                    final actual = min(count, requested);
+                    return Text(
+                      count == 0
+                          ? 'No matching words. Try another category, length, or All Vocabulary.'
+                          : actual < requested
+                          ? '$count matching words available. This round will use $actual of $requested selected.'
+                          : '$count matching words available • $requested will be used.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: count == 0
+                            ? AppColors.ratingAgain
+                            : AppColors.textDark,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
                 _buildStartButton(onTap: () => _startWordBuilder()),
               ],
             ),
@@ -1404,14 +1553,19 @@ class _PracticeScreenState extends State<PracticeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: AppColors.textDark,
+            // FittedBox prevents "Medium" splitting on narrow Android phones.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                title,
+                maxLines: 1,
+                softWrap: false,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: AppColors.textDark,
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
@@ -1434,22 +1588,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
   // ===========================================================================
   Widget _buildVocabularyLibraryView() {
     final systemName = _isHiragana ? 'Hiragana' : 'Katakana';
-    final vocabService = VocabularyService.instance;
-
-    final pool = vocabService.allWords.isNotEmpty
-        ? vocabService.allWords
-        : allVocabulary;
-
-    final filteredWords = pool.where((w) => w.isHiragana == _isHiragana).where((
-      w,
-    ) {
-      if (_vocabSearchQuery.isEmpty) return true;
-      final q = _vocabSearchQuery.toLowerCase();
-      return w.plainKana.contains(q) ||
-          w.kana.contains(q) ||
-          w.romaji.toLowerCase().contains(q) ||
-          w.english.toLowerCase().contains(q);
-    }).toList();
+    // Search and category filtering share one service with Word Builder.
+    final filteredWords = VocabularyService.instance.searchWords(
+      isHiragana: _isHiragana,
+      query: _vocabSearchQuery,
+      category: _vocabCategory,
+    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -1556,13 +1700,35 @@ class _PracticeScreenState extends State<PracticeScreen> {
               ),
             ),
           ),
+          // Category and search are combined, not used as separate screens.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Category',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _buildVocabularyCategorySelector(
+                  value: _vocabCategory,
+                  onChanged: (value) => setState(() => _vocabCategory = value),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: filteredWords.isEmpty
                 ? const Center(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 40),
                       child: Text(
-                        'No words match your search.',
+                        'No words match your search or category.',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -1586,133 +1752,79 @@ class _PracticeScreenState extends State<PracticeScreen> {
     );
   }
 
+  /// The library is for exploration; Learn row locks remain independent.
+  /// A word may be new to the learner, but tapping it always plays its sound.
   Widget _buildVocabularyCard(WordBuilderQuestion word) {
-    final bool isMastered = ProgressService.instance.isWordMastered(word.kana);
-    final bool isUnlocked = VocabularyService.instance.isWordUnlocked(word);
-    final missingRows = !isUnlocked
-        ? VocabularyService.instance.getMissingPrerequisiteRows(word)
-        : <String>[];
-
-    Color cardBg;
-    if (!isUnlocked) {
-      cardBg = AppColors.beige.withValues(alpha: 0.45);
-    } else if (isMastered) {
-      cardBg = AppColors.lightSage;
-    } else {
-      cardBg = AppColors.beige;
-    }
-
-    return GestureDetector(
-      onTap: () {
-        if (!isUnlocked) {
-          _showLockedWordDialog(word);
-        } else {
-          _speakWord(word.kana);
-        }
-      },
-      child: Opacity(
-        opacity: isUnlocked ? 1.0 : 0.65,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isUnlocked ? AppColors.textDark : AppColors.textLight,
-              width: 2.0,
+    final isMastered = ProgressService.instance.isWordMastered(word.kana);
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _speakWord(word.kana),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: isMastered ? AppColors.lightSage : AppColors.beige,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.textDark, width: 2),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.textDark,
+              offset: Offset(0, 3),
+              blurRadius: 0,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.textDark,
-                offset: Offset(0, isUnlocked ? 3 : 1),
-                blurRadius: 0,
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          word.kana.split('').join(' '),
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDark,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        if (!isUnlocked) ...[
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.lock_outline,
-                            size: 16,
-                            color: AppColors.textDark,
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      word.romaji,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      word.english,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textDark,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (!isUnlocked && missingRows.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Requires: ${missingRows.join(', ')}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.ratingHard,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              if (isUnlocked)
-                GestureDetector(
-                  onTap: () => _speakWord(word.kana),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    color: Colors.transparent,
-                    child: const Icon(
-                      Icons.volume_up_rounded,
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    word.kana,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
                       color: AppColors.textDark,
-                      size: 34,
                     ),
                   ),
-                )
-              else
-                const Icon(
-                  Icons.lock_rounded,
-                  color: AppColors.textDark,
-                  size: 24,
-                ),
-            ],
-          ),
+                  const SizedBox(height: 3),
+                  Text(
+                    word.romaji,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    word.english,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    VocabularyCategories.label(word.category),
+                    style: const TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Icon(
+              Icons.volume_up_rounded,
+              color: AppColors.textDark,
+              size: 30,
+            ),
+          ],
         ),
       ),
     );
@@ -2196,61 +2308,195 @@ class _PracticeScreenState extends State<PracticeScreen> {
     _loadDifficultyCounts();
   }
 
-  void _startWordBuilder() {
+  /// Launches a Word Builder round without changing the chosen length bucket.
+  /// When fewer words exist, ask permission before starting a shorter round.
+  Future<void> _startWordBuilder() async {
     TactileFeedback.press();
-
-    // Pull strictly UNLOCKED words based on user's current progress
-    int minLen = 0;
-    int maxLen = 99;
-    if (_wbLength == WordLength.short) {
-      minLen = 2;
-      maxLen = 3;
-    } else if (_wbLength == WordLength.medium) {
-      minLen = 4;
-      maxLen = 5;
-    } else if (_wbLength == WordLength.long) {
-      minLen = 6;
-      maxLen = 99;
-    }
-
-    var available = VocabularyService.instance.getWordsForGame(
-      isHiragana: _isHiragana,
-      minLength: minLen,
-      maxLength: maxLen,
-      onlyUnlocked: true,
-    );
-
-    // Fallback if no words match the chosen length bucket among unlocked words
-    if (available.isEmpty) {
-      available = VocabularyService.instance.getWordsForGame(
-        isHiragana: _isHiragana,
-        onlyUnlocked: true,
-      );
-    }
+    final available = _wordBuilderCandidates()..shuffle();
 
     if (available.isEmpty) {
       TactileFeedback.error();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'No words unlocked yet! Finish more lessons in the Learn tab.',
+            _wbLearnedKanaOnly
+                ? 'No matching words. Try another category, length, or All Vocabulary.'
+                : 'No matching words. Try another category or word length.',
           ),
         ),
       );
       return;
     }
 
-    available.shuffle();
-    final selectedSet = available.take(_wbWordsPerRound).toList();
+    final actualCount = min(_wbWordsPerRound, available.length);
+    if (actualCount < _wbWordsPerRound) {
+      // Cozy, responsive confirmation. The actual vocabulary count is shown
+      // BEFORE launching, so the learner can change filters if preferred.
+      final shouldContinue = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => Dialog(
+          backgroundColor: AppColors.cream,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: AppColors.textDark, width: 2),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // The sand-colored heading matches Cozy Kana's other cards.
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  decoration: const BoxDecoration(
+                    color: AppColors.sand,
+                    border: Border(
+                      bottom: BorderSide(color: AppColors.textDark, width: 2),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.auto_stories_outlined,
+                        color: AppColors.textDark,
+                        size: 24,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'A little shorter today!',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.beige,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.textDark,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              '$actualCount ${actualCount == 1 ? 'word' : 'words'} ready',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 23,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'You selected $_wbWordsPerRound words',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textLight,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Only a few words match your current category, '
+                        'length, and practice mode. You can still enjoy '
+                        'a shorter round, or adjust your options.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.5,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      // Vertical buttons remain readable on narrow phones.
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          icon: const Icon(Icons.play_arrow_rounded),
+                          label: Text('Start $actualCount-word round'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.greenButton,
+                            foregroundColor: AppColors.textDark,
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(13),
+                              side: const BorderSide(
+                                color: AppColors.textDark,
+                                width: 1.5,
+                              ),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textDark,
+                            minimumSize: const Size.fromHeight(44),
+                            side: const BorderSide(
+                              color: AppColors.textDark,
+                              width: 1.5,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          child: const Text('Change options'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (shouldContinue != true || !mounted) return;
+    }
 
+    // Pass the EXACT selected words. No unrelated fallback words or row unlocks.
+    final selectedWords = available.take(actualCount).toList();
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WordBuilderGameScreen(
           isHiragana: _isHiragana,
           questionType: _wbQuestionType,
-          totalQuestions: min(_wbWordsPerRound, selectedSet.length),
-          words: selectedSet,
+          totalQuestions: selectedWords.length,
+          words: selectedWords,
         ),
       ),
     );
@@ -2406,12 +2652,8 @@ class _WordBuilderGameScreenState extends State<WordBuilderGameScreen> {
     _sessionStartTime = DateTime.now();
     _initTts();
     _questions = List.from(widget.words);
-    if (_questions.isEmpty) {
-      _questions = VocabularyService.instance.getWordsForGame(
-        isHiragana: widget.isHiragana,
-        onlyUnlocked: true,
-      );
-    }
+    // Setup guarantees a non-empty selection; never silently change modes.
+    assert(_questions.isNotEmpty, 'Word Builder requires selected words.');
     _questions.shuffle();
     _loadCurrentQuestion();
   }

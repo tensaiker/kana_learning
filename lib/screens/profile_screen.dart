@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/progress_service.dart';
+import '../services/appearance_service.dart';
+import '../services/notification_service.dart';
 import '../utils/tactile_feedback.dart';
 import 'welcome_screen.dart'; // Routes to Welcome onboarding after full data reset
 
@@ -73,6 +75,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _soundFxEnabled = true;
   bool _hapticsEnabled = true;
 
+  // Optional daily reminder. Scheduling is handled by NotificationService;
+  // these SharedPreferences keys only describe the user's chosen settings.
+  bool _dailyReminderEnabled = false;
+  int _reminderHour = 19;
+  int _reminderMinute = 0;
+
   @override
   void initState() {
     super.initState();
@@ -111,6 +119,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _speechVolume = _prefs.getDouble('settings_speech_volume') ?? 1.0;
       _soundFxEnabled = _prefs.getBool('settings_sound_fx') ?? true;
       _hapticsEnabled = _prefs.getBool('settings_haptics') ?? true;
+      _dailyReminderEnabled =
+          _prefs.getBool('settings_daily_reminder') ?? false;
+      _reminderHour = _prefs.getInt('settings_reminder_hour') ?? 19;
+      _reminderMinute = _prefs.getInt('settings_reminder_minute') ?? 0;
 
       // Sync with global tactile utility
       TactileFeedback.soundEnabled = _soundFxEnabled;
@@ -580,6 +592,319 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ===========================================================================
+  // APPEARANCE SETTINGS — persisted by AppearanceService
+  // ===========================================================================
+  void _showAppearanceSettingsModal() {
+    TactileFeedback.press();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.cream,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+          child: ListenableBuilder(
+            listenable: AppearanceService.instance,
+            builder: (context, _) {
+              final selected = AppearanceService.instance.mode;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.palette_outlined, color: AppColors.textDark),
+                      SizedBox(width: 10),
+                      Text(
+                        'Appearance',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDark,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Choose the look that feels most comfortable for studying.',
+                    style: TextStyle(color: AppColors.textLight, fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildAppearanceChoice(
+                    label: 'Cozy Light',
+                    subtitle: 'Warm cream and beige (recommended)',
+                    icon: Icons.wb_sunny_outlined,
+                    mode: ThemeMode.light,
+                    selected: selected == ThemeMode.light,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildAppearanceChoice(
+                    label: 'Cozy Dark',
+                    subtitle: 'Coffee-toned system theme (partial support)',
+                    icon: Icons.dark_mode_outlined,
+                    mode: ThemeMode.dark,
+                    selected: selected == ThemeMode.dark,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildAppearanceChoice(
+                    label: 'Follow System',
+                    subtitle: 'Match the device appearance setting',
+                    icon: Icons.settings_brightness_outlined,
+                    mode: ThemeMode.system,
+                    selected: selected == ThemeMode.system,
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Note: Other learning screens still use fixed cozy colors. '
+                    'A full dark palette will need those screens to be updated.',
+                    style: TextStyle(fontSize: 11, color: AppColors.textLight),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppearanceChoice({
+    required String label,
+    required String subtitle,
+    required IconData icon,
+    required ThemeMode mode,
+    required bool selected,
+  }) {
+    return InkWell(
+      onTap: () async {
+        TactileFeedback.toggle();
+        await AppearanceService.instance.setMode(mode);
+        if (mounted) setState(() {});
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.sand : AppColors.beige,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.textDark,
+            width: selected ? 2.2 : 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.textDark, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: AppColors.textDark,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // NOTIFICATION SETTINGS — actual opt-in, device-local daily reminders
+  // ===========================================================================
+  void _showNotificationSettingsModal() {
+    TactileFeedback.press();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.cream,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, updateSheet) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.notifications_active_outlined,
+                      color: AppColors.textDark,
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      'Study Reminders',
+                      style: TextStyle(
+                        color: AppColors.textDark,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'A small reminder each day to keep practicing Japanese Kana.',
+                  style: TextStyle(color: AppColors.textLight, fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.beige,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.textDark, width: 1.5),
+                  ),
+                  child: SwitchListTile.adaptive(
+                    // Flutter 3.31+: replace deprecated activeColor with thumb styling.
+                    activeThumbColor: AppColors.greenButton,
+                    title: const Text(
+                      'Daily Reminder',
+                      style: TextStyle(
+                        color: AppColors.textDark,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Off by default. Enable when you want.',
+                      style: TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 11,
+                      ),
+                    ),
+                    value: _dailyReminderEnabled,
+                    onChanged: (enabled) async {
+                      await _saveReminderSetting(
+                        enabled: enabled,
+                        time: TimeOfDay(
+                          hour: _reminderHour,
+                          minute: _reminderMinute,
+                        ),
+                      );
+                      if (sheetContext.mounted) updateSheet(() {});
+                    },
+                  ),
+                ),
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  onPressed: _dailyReminderEnabled
+                      ? () async {
+                          final chosen = await showTimePicker(
+                            context: sheetContext,
+                            initialTime: TimeOfDay(
+                              hour: _reminderHour,
+                              minute: _reminderMinute,
+                            ),
+                          );
+                          if (chosen == null) return;
+                          await _saveReminderSetting(
+                            enabled: true,
+                            time: chosen,
+                          );
+                          if (sheetContext.mounted) updateSheet(() {});
+                        }
+                      : null,
+                  icon: const Icon(Icons.schedule_outlined),
+                  label: Text(
+                    'Reminder time: ${TimeOfDay(hour: _reminderHour, minute: _reminderMinute).format(sheetContext)}',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Android may deliver non-urgent reminders a little later to save battery.',
+                  style: TextStyle(color: AppColors.textLight, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Persist only after scheduling/cancellation succeeds. Denied permissions
+  /// must not leave the switch displaying a misleading "enabled" state.
+  Future<void> _saveReminderSetting({
+    required bool enabled,
+    required TimeOfDay time,
+  }) async {
+    try {
+      if (enabled) {
+        final scheduled = await NotificationService.instance.scheduleDaily(
+          hour: time.hour,
+          minute: time.minute,
+        );
+        if (!scheduled) {
+          // Always use a block for conditional statements (Flutter lint).
+          if (mounted) {
+            _showSettingsMessage(
+              'Notification permission is required to enable reminders.',
+            );
+          }
+          return;
+        }
+      } else {
+        await NotificationService.instance.cancelReminder();
+      }
+      await _prefs.setBool('settings_daily_reminder', enabled);
+      await _prefs.setInt('settings_reminder_hour', time.hour);
+      await _prefs.setInt('settings_reminder_minute', time.minute);
+      if (!mounted) return;
+      setState(() {
+        _dailyReminderEnabled = enabled;
+        _reminderHour = time.hour;
+        _reminderMinute = time.minute;
+      });
+      _showSettingsMessage(
+        enabled
+            ? 'Daily study reminder scheduled.'
+            : 'Daily study reminder turned off.',
+      );
+    } catch (e) {
+      // Report an actual scheduling error without altering other settings.
+      if (mounted) {
+        _showSettingsMessage(
+          'Could not update reminders. Check notification setup and permissions.',
+        );
+      }
+    }
+  }
+
+  void _showSettingsMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+    );
+  }
+
+  // ===========================================================================
   // DATA MANAGEMENT MODAL (Reset Progress)
   // ===========================================================================
   void _showDataManagementModal() {
@@ -702,8 +1027,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.pop(dialogCtx);
 
               if (resetAll) {
-                // Completely erase SharedPreferences (including 'has_completed_onboarding')
+                // Cancel a previously scheduled reminder before clearing its setting.
+                // A notification should never survive a full account reset.
+                try {
+                  await NotificationService.instance.cancelReminder();
+                } catch (_) {
+                  // Reset must remain possible even if notifications are unavailable.
+                }
+                // Completely erase SharedPreferences (including onboarding flags).
                 await _prefs.clear();
+                AppearanceService.instance.reset();
 
                 // Re-initialize in-memory service models
                 await ProgressService.instance.init();
@@ -789,7 +1122,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.beige,
+      // Cocoa Night uses a darker canvas while the existing stationery cards
+      // remain light until the full app palette is migrated.
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF342B25)
+          : AppColors.beige,
       body: SafeArea(
         child: Column(
           children: [
@@ -1058,17 +1395,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           _buildSettingsNavigationTile(
             icon: Icons.notifications_none_rounded,
-            title: 'Notification',
-            subtitle: 'Manage your notifications',
-            onTap: () {
-              TactileFeedback.press();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Daily study reminders are scheduled.'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+            title: 'Notifications',
+            subtitle: _dailyReminderEnabled
+                ? 'Daily reminder is enabled'
+                : 'Set a gentle daily practice reminder',
+            onTap: _showNotificationSettingsModal,
           ),
           const Divider(color: AppColors.textDark, height: 20, thickness: 1),
           _buildSettingsNavigationTile(
@@ -1081,16 +1412,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildSettingsNavigationTile(
             icon: Icons.palette_outlined,
             title: 'Appearance',
-            subtitle: 'Customize your app theme',
-            onTap: () {
-              TactileFeedback.press();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Cozy stationery pastel palette is active.'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+            subtitle: 'Cozy Light, Cozy Dark, or Follow System',
+            onTap: _showAppearanceSettingsModal,
           ),
         ],
       ),
@@ -1335,7 +1658,11 @@ class AboutApplicationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.beige,
+      // Cocoa Night uses a darker canvas while the existing stationery cards
+      // remain light until the full app palette is migrated.
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF342B25)
+          : AppColors.beige,
       body: SafeArea(
         child: Column(
           children: [
@@ -1384,53 +1711,72 @@ class AboutApplicationScreen extends StatelessWidget {
                   vertical: 20,
                 ),
                 children: [
-                  // 1. Application Information
+                  // 1. Current branding — use the same app icon already
+                  // declared in pubspec.yaml for launcher generation.
                   _buildAboutCard(
                     headerText: 'Application Information',
+                    headerIcon: Icons.info_outline_rounded,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            color: AppColors.sage,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.textDark,
-                              width: 2,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'かな',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textDark,
-                            ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.asset(
+                            'assets/image/cozy_kana_launcher_legacy.png',
+                            width: 76,
+                            height: 76,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const SizedBox(
+                                  width: 76,
+                                  height: 76,
+                                  child: Icon(
+                                    Icons.menu_book_rounded,
+                                    size: 44,
+                                  ),
+                                ),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 14),
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Kana Application',
+                                'Cozy Kana',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w900,
                                   color: AppColors.textDark,
                                 ),
                               ),
-                              SizedBox(height: 6),
+                              SizedBox(height: 3),
                               Text(
-                                'A cozy, tactile Japanese Kana learning companion crafted with spaced repetition, native audio pronunciation, and interactive stroke tracing.',
+                                'Your cozy Japanese learning companion',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textLight,
+                                ),
+                              ),
+                              SizedBox(height: 9),
+                              Text(
+                                'Learn Hiragana and Katakana with guided lessons, '
+                                'handwriting, quizzes, flashcards, and categorized '
+                                'vocabulary. Track your progress at your own pace.',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textLight,
                                   height: 1.4,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Version 1.0.0',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textDark,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
@@ -1442,7 +1788,7 @@ class AboutApplicationScreen extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // 2. Features Panel
+                  // 2. Feature descriptions match the current app.
                   _buildAboutCard(
                     headerText: 'Features',
                     headerIcon: Icons.menu_book_rounded,
@@ -1452,7 +1798,7 @@ class AboutApplicationScreen extends StatelessWidget {
                           kanaChar: 'あ',
                           title: 'Hiragana Lessons',
                           description:
-                              'Master all 46 basic characters, dakuon, and compound yoon.',
+                              'Learn basic Kana, voiced sounds, and combination characters.',
                           bgColor: AppColors.lightSage,
                         ),
                         const SizedBox(height: 10),
@@ -1460,40 +1806,56 @@ class AboutApplicationScreen extends StatelessWidget {
                           kanaChar: 'ア',
                           title: 'Katakana Lessons',
                           description:
-                              'Build your reading confidence for loanwords and foreign terms.',
+                              'Practice reading Katakana, including loanwords and foreign names.',
                           bgColor: const Color(0xFFF3E7F7),
                         ),
                         const SizedBox(height: 10),
                         _buildFeaturePill(
-                          icon: Icons.edit_note_rounded,
-                          title: 'Interactive Stroke Writing',
+                          icon: Icons.draw_outlined,
+                          title: 'Interactive Handwriting',
                           description:
-                              'Follow stroke animations and trace Kana on canvas with real-time accuracy.',
+                              'Trace strokes and practice writing characters from memory.',
                           bgColor: AppColors.lightSkyBlue,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildFeaturePill(
+                          icon: Icons.style_outlined,
+                          title: 'Flashcard Learning',
+                          description:
+                              'Review characters and rate your recognition difficulty.',
+                          bgColor: AppColors.beige,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildFeaturePill(
+                          icon: Icons.quiz_outlined,
+                          title: 'Kana Quizzes',
+                          description:
+                              'Test Kana recognition, reading, and listening.',
+                          bgColor: AppColors.lightSage,
                         ),
                         const SizedBox(height: 10),
                         _buildFeaturePill(
                           icon: Icons.extension_outlined,
                           title: 'Word Builder',
                           description:
-                              'Assemble real JLPT vocabulary from syllable tiles with instant TTS feedback.',
+                              'Build Japanese words using tiles, categories, and flexible practice modes.',
                           bgColor: const Color(0xFFFFF0D4),
                         ),
                         const SizedBox(height: 10),
                         _buildFeaturePill(
-                          icon: Icons.style_outlined,
-                          title: 'Flashcard SRS',
+                          icon: Icons.local_library_outlined,
+                          title: 'Vocabulary Library',
                           description:
-                              'Reinforce recognition with customizable spaced-repetition difficulty ratings.',
-                          bgColor: AppColors.beige.withValues(alpha: 0.6),
+                              'Explore categorized offline vocabulary with search, meanings, and audio.',
+                          bgColor: AppColors.beige,
                         ),
                         const SizedBox(height: 10),
                         _buildFeaturePill(
-                          icon: Icons.menu_book_rounded,
-                          title: 'Vocabulary Library',
+                          icon: Icons.insights_outlined,
+                          title: 'Progress & Study Streaks',
                           description:
-                              'Offline dictionary with live search, English meanings, and audio replay.',
-                          bgColor: AppColors.cream,
+                              'Follow your writing, learning progress, and daily study activity.',
+                          bgColor: AppColors.lightSkyBlue,
                         ),
                       ],
                     ),
@@ -1501,20 +1863,31 @@ class AboutApplicationScreen extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // 3. Credits
+                  // 3. Credits — icon-led rows fit even on narrower phones.
                   _buildAboutCard(
                     headerText: 'Credits',
                     headerIcon: Icons.code_rounded,
                     child: const Column(
                       children: [
-                        _CreditRow(label: 'Developer', value: 'Kerby Cruz'),
-                        SizedBox(height: 10),
-                        _CreditRow(label: 'UI/UX Design', value: 'Kerby Cruz'),
-                        SizedBox(height: 10),
                         _CreditRow(
+                          icon: Icons.code_rounded,
+                          label: 'Developer',
+                          value: 'Kerby Cruz',
+                        ),
+                        Divider(height: 22, color: AppColors.beige),
+                        _CreditRow(
+                          icon: Icons.palette_outlined,
+                          label: 'UI/UX Design',
+                          value: 'Kerby Cruz',
+                        ),
+                        Divider(height: 22, color: AppColors.beige),
+                        _CreditRow(
+                          icon: Icons.computer_rounded,
                           label: 'Software Used',
                           value:
-                              '• Flutter / Dart — app development\n• VS Code — code editor\n• Figma — UI/UX design',
+                              'Flutter & Dart — app development\n'
+                              'VS Code — code editor\n'
+                              'Figma — UI/UX design',
                         ),
                       ],
                     ),
@@ -1651,36 +2024,55 @@ class AboutApplicationScreen extends StatelessWidget {
 }
 
 class _CreditRow extends StatelessWidget {
+  final IconData icon;
   final String label;
   final String value;
 
-  const _CreditRow({required this.label, required this.value});
+  const _CreditRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 110,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: AppColors.beige,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.textDark, width: 1.2),
           ),
+          child: Icon(icon, color: AppColors.textDark, size: 20),
         ),
+        const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
-              height: 1.4,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: AppColors.textLight,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.5,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ],
           ),
         ),
       ],

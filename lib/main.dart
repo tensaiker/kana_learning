@@ -11,6 +11,7 @@ import 'screens/welcome_screen.dart'; // Name registration (new learners)
 import 'screens/onboarding_screen.dart'; // Three-page first-time introduction
 import 'services/progress_service.dart';
 import 'services/vocabulary_service.dart';
+import 'services/appearance_service.dart';
 import 'utils/tactile_feedback.dart';
 
 void main() async {
@@ -25,6 +26,8 @@ void main() async {
   ]);
 
   final prefs = results[3] as SharedPreferences;
+  // Load the user's theme before MaterialApp is created.
+  AppearanceService.instance.load(prefs);
 
   // Startup routing: preserve the existing completed-registration key.
   // `has_seen_intro` tracks only the three introductory pages, independently
@@ -86,19 +89,41 @@ class KanaLearningApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Cozy Kana',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.beige,
-        primaryColor: AppColors.taupe,
-        fontFamily: 'Nunito',
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: AppColors.textDark),
-          bodyMedium: TextStyle(color: AppColors.textDark),
+    // Theme changes are reactive; onboarding and progress are not restarted.
+    return ListenableBuilder(
+      listenable: AppearanceService.instance,
+      builder: (context, _) => MaterialApp(
+        title: 'Cozy Kana',
+        debugShowCheckedModeBanner: false,
+        themeMode: AppearanceService.instance.mode,
+        theme: ThemeData(
+          brightness: Brightness.light,
+          scaffoldBackgroundColor: AppColors.beige,
+          primaryColor: AppColors.taupe,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppColors.sage,
+            brightness: Brightness.light,
+          ),
+          fontFamily: 'Nunito',
+          textTheme: const TextTheme(
+            bodyLarge: TextStyle(color: AppColors.textDark),
+            bodyMedium: TextStyle(color: AppColors.textDark),
+          ),
         ),
+        darkTheme: ThemeData(
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: const Color(0xFF302720),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFFC8AC8C),
+            brightness: Brightness.dark,
+            surface: const Color(0xFF382D26),
+          ),
+          fontFamily: 'Nunito',
+        ),
+        // Existing feature screens have their own fixed cozy colors.
+        // They must be migrated to Theme.of(context) to fully adopt dark mode.
+        home: initialScreen,
       ),
-      home: initialScreen,
     );
   }
 }
@@ -223,7 +248,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  bool _isStreakManualGlow = false;
+  // Streak styling is derived from saved activity, not a manual tap toggle.
 
   // Profile fields synchronized with Profile tab and onboarding storage
   String _userName = 'Kerby';
@@ -350,7 +375,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.beige,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF342B25)
+          : AppColors.beige,
       body: SafeArea(
         child: ListenableBuilder(
           listenable: ProgressService.instance,
@@ -805,53 +832,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildInteractiveStreakCard(ProgressService ps) {
     const days = ['Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun'];
 
-    final bool isFlameActive = ps.streakDays > 0 || _isStreakManualGlow;
+    // Only recorded learning activity can activate the flame.
+    // The card is intentionally NOT tappable: tapping must never simulate a streak.
+    final bool isFlameActive = ps.streakDays > 0;
     final int todayIndex = DateTime.now().weekday - 1;
 
     return _buildCardBase(
       headerText: 'Current Streak',
       headerIcon: Icons.calendar_month_outlined,
-      child: GestureDetector(
-        onTap: () {
-          TactileFeedback.press();
-          setState(() => _isStreakManualGlow = !_isStreakManualGlow);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(
-            color: isFlameActive
-                ? AppColors.flameCardBgActive
-                : AppColors.cream,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isFlameActive ? AppColors.flameOrange : AppColors.textDark,
-              width: isFlameActive ? 2.2 : 1.8,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isFlameActive
-                    ? AppColors.flameOrange.withValues(alpha: 0.35)
-                    : AppColors.textDark,
-                offset: Offset(0, isFlameActive ? 2.0 : 4.0),
-                blurRadius: 0,
-              ),
-            ],
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        // Reduced horizontal padding leaves space for text on narrow phones.
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: isFlameActive ? AppColors.flameCardBgActive : AppColors.cream,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isFlameActive ? AppColors.flameOrange : AppColors.textDark,
+            width: isFlameActive ? 2.2 : 1.8,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.local_fire_department_rounded,
-                    color: isFlameActive
-                        ? AppColors.flameOrange
-                        : AppColors.taupe,
-                    size: 54,
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
+          boxShadow: [
+            BoxShadow(
+              color: isFlameActive
+                  ? AppColors.flameOrange.withValues(alpha: 0.35)
+                  : AppColors.textDark,
+              offset: Offset(0, isFlameActive ? 2.0 : 4.0),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.local_fire_department_rounded,
+                  color: isFlameActive
+                      ? AppColors.flameOrange
+                      : AppColors.taupe,
+                  size: 46,
+                ),
+                const SizedBox(width: 12),
+                // Expanded constrains the text width and prevents the
+                // "RIGHT OVERFLOWED" warning when the subtitle is long.
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -867,6 +893,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         isFlameActive
                             ? 'Keep the flame burning!'
                             : 'Study today to start your streak!',
+                        softWrap: true,
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -875,21 +902,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
 
-              // Weekly calendar dots
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: List.generate(7, (index) {
-                  final isActive = ps.activeDaysThisWeek[index];
-                  final isToday = (index == todayIndex);
+            // Seven equal-width columns keep weekday labels and dots aligned.
+            // These values are read from ProgressService; the UI never changes them.
+            Row(
+              children: List.generate(7, (index) {
+                final isActive = ps.activeDaysThisWeek[index];
+                final isToday = index == todayIndex;
 
-                  return Column(
+                return Expanded(
+                  child: Column(
                     children: [
                       Text(
                         days[index],
+                        maxLines: 1,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: isToday
@@ -925,16 +955,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             : null,
                       ),
                     ],
-                  );
-                }),
-              ),
-            ],
-          ),
+                  ),
+                );
+              }),
+            ),
+          ],
         ),
       ),
     );
   }
 
+  // ===========================================================================
   // ===========================================================================
   // 4. QUOTES CARD
   // ===========================================================================

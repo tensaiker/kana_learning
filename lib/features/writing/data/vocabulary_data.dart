@@ -1,4 +1,60 @@
-// lib/data/vocabulary_data.dart
+// lib/features/writing/data/vocabulary_data.dart
+
+/// Supported topic filters for the Vocabulary Library and Word Builder.
+/// The `all` value means "do not filter" and is not saved on individual words.
+class VocabularyCategories {
+  static const String all = 'all';
+  static const String others = 'others';
+
+  /// Keep the order fixed so both filter menus stay consistent.
+  static const List<String> choices = [
+    all,
+    'greetings',
+    'family',
+    'numbers',
+    'animals',
+    'food_drinks',
+    'places',
+    'school',
+    'body_parts',
+    'colors',
+    'time_dates',
+    'nature',
+    'objects',
+    others,
+  ];
+
+  static const Map<String, String> labels = {
+    all: 'All Categories',
+    'greetings': 'Greetings',
+    'family': 'Family',
+    'numbers': 'Numbers',
+    'animals': 'Animals',
+    'food_drinks': 'Food & Drinks',
+    'places': 'Places',
+    'school': 'School',
+    'body_parts': 'Body Parts',
+    'colors': 'Colors',
+    'time_dates': 'Time & Dates',
+    'nature': 'Nature',
+    'objects': 'Objects',
+    others: 'Others',
+  };
+
+  /// Missing or unfamiliar category values never make a word disappear:
+  /// they are treated as Others. Only actual words use this normalization.
+  static String normalize(String? value) {
+    if (value == null || value.trim().isEmpty) return others;
+    final key = value
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    return key != all && labels.containsKey(key) ? key : others;
+  }
+
+  static String label(String key) => labels[key] ?? labels[others]!;
+}
 
 /// Model representing a single vocabulary entry for the Word Builder activity.
 class WordBuilderQuestion {
@@ -10,6 +66,7 @@ class WordBuilderQuestion {
   final List<String>
   kanaSyllables; // Kana syllables for tiles (e.g. ['む', 'ら'])
   final bool isHiragana; // True for Hiragana, false for Katakana
+  final String category; // Topic key; defaults to Others for older callers.
 
   const WordBuilderQuestion({
     required this.kana,
@@ -18,6 +75,7 @@ class WordBuilderQuestion {
     required this.syllables,
     required this.kanaSyllables,
     this.isHiragana = true,
+    this.category = VocabularyCategories.others,
   });
 
   /// Total syllable length used for filtering by WordLength.
@@ -135,6 +193,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['mu', 'ra'],
     kanaSyllables: ['む', 'ら'],
     isHiragana: true,
+    category: 'places',
   ),
   WordBuilderQuestion(
     kana: 'ね こ',
@@ -143,6 +202,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ne', 'ko'],
     kanaSyllables: ['ね', 'こ'],
     isHiragana: true,
+    category: 'animals',
   ),
   WordBuilderQuestion(
     kana: 'い ぬ',
@@ -151,6 +211,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['i', 'nu'],
     kanaSyllables: ['い', 'ぬ'],
     isHiragana: true,
+    category: 'animals',
   ),
   WordBuilderQuestion(
     kana: 'あ め',
@@ -159,6 +220,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['a', 'me'],
     kanaSyllables: ['あ', 'め'],
     isHiragana: true,
+    category: 'nature',
   ),
   WordBuilderQuestion(
     kana: 'は な',
@@ -167,6 +229,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ha', 'na'],
     kanaSyllables: ['は', 'な'],
     isHiragana: true,
+    category: 'nature',
   ),
   WordBuilderQuestion(
     kana: 'そ ら',
@@ -175,6 +238,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['so', 'ra'],
     kanaSyllables: ['そ', 'ら'],
     isHiragana: true,
+    category: 'nature',
   ),
   WordBuilderQuestion(
     kana: 'や ま',
@@ -183,6 +247,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ya', 'ma'],
     kanaSyllables: ['や', 'ま'],
     isHiragana: true,
+    category: 'nature',
   ),
   WordBuilderQuestion(
     kana: 'う み',
@@ -191,6 +256,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['u', 'mi'],
     kanaSyllables: ['う', 'み'],
     isHiragana: true,
+    category: 'nature',
   ),
   WordBuilderQuestion(
     kana: 'か わ',
@@ -199,6 +265,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ka', 'wa'],
     kanaSyllables: ['か', 'わ'],
     isHiragana: true,
+    category: 'nature',
   ),
   WordBuilderQuestion(
     kana: 'つ き',
@@ -207,6 +274,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['tsu', 'ki'],
     kanaSyllables: ['つ', 'き'],
     isHiragana: true,
+    category: 'nature',
   ),
   WordBuilderQuestion(
     kana: 'ほ し',
@@ -215,6 +283,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ho', 'shi'],
     kanaSyllables: ['ほ', 'し'],
     isHiragana: true,
+    category: 'nature',
   ),
   WordBuilderQuestion(
     kana: 'み ず',
@@ -223,6 +292,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['mi', 'zu'],
     kanaSyllables: ['み', 'ず'],
     isHiragana: true,
+    category: 'food_drinks',
   ),
   WordBuilderQuestion(
     kana: 'ひ と',
@@ -231,6 +301,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['hi', 'to'],
     kanaSyllables: ['ひ', 'と'],
     isHiragana: true,
+    category: 'family',
   ),
   WordBuilderQuestion(
     kana: 'く る ま',
@@ -239,6 +310,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ku', 'ru', 'ma'],
     kanaSyllables: ['く', 'る', 'ま'],
     isHiragana: true,
+    category: 'others',
   ),
   WordBuilderQuestion(
     kana: 'さ く ら',
@@ -247,6 +319,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['sa', 'ku', 'ra'],
     kanaSyllables: ['さ', 'く', 'ら'],
     isHiragana: true,
+    category: 'nature',
   ),
   WordBuilderQuestion(
     kana: 'さ か な',
@@ -255,6 +328,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['sa', 'ka', 'na'],
     kanaSyllables: ['さ', 'か', 'な'],
     isHiragana: true,
+    category: 'animals',
   ),
   WordBuilderQuestion(
     kana: 'こ こ ろ',
@@ -263,6 +337,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ko', 'ko', 'ro'],
     kanaSyllables: ['こ', 'こ', 'ろ'],
     isHiragana: true,
+    category: 'others',
   ),
   WordBuilderQuestion(
     kana: 'て が み',
@@ -271,6 +346,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['te', 'ga', 'mi'],
     kanaSyllables: ['て', 'が', 'み'],
     isHiragana: true,
+    category: 'objects',
   ),
   WordBuilderQuestion(
     kana: 'と り',
@@ -279,6 +355,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['to', 'ri'],
     kanaSyllables: ['と', 'り'],
     isHiragana: true,
+    category: 'animals',
   ),
   WordBuilderQuestion(
     kana: 'さ る',
@@ -287,6 +364,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['sa', 'ru'],
     kanaSyllables: ['さ', 'る'],
     isHiragana: true,
+    category: 'animals',
   ),
 
   // ===========================================================================
@@ -299,6 +377,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ho', 'n', 'sha'],
     kanaSyllables: ['ほ', 'ん', 'しゃ'],
     isHiragana: true,
+    category: 'places',
   ),
   WordBuilderQuestion(
     kana: 'あ さ ご は ん',
@@ -307,6 +386,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['a', 'sa', 'go', 'ha', 'n'],
     kanaSyllables: ['あ', 'さ', 'ご', 'は', 'ん'],
     isHiragana: true,
+    category: 'food_drinks',
   ),
   WordBuilderQuestion(
     kana: 'ひ る ご は ん',
@@ -315,6 +395,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['hi', 'ru', 'go', 'ha', 'n'],
     kanaSyllables: ['ひ', 'る', 'ご', 'は', 'ん'],
     isHiragana: true,
+    category: 'food_drinks',
   ),
   WordBuilderQuestion(
     kana: 'ば ん ご は ん',
@@ -323,6 +404,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ba', 'n', 'go', 'ha', 'n'],
     kanaSyllables: ['ば', 'ん', 'ご', 'は', 'ん'],
     isHiragana: true,
+    category: 'food_drinks',
   ),
   WordBuilderQuestion(
     kana: 'と も だ ち',
@@ -331,6 +413,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['to', 'mo', 'da', 'chi'],
     kanaSyllables: ['と', 'も', 'だ', 'ち'],
     isHiragana: true,
+    category: 'family',
   ),
   WordBuilderQuestion(
     kana: 'せ ん せ い',
@@ -339,6 +422,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['se', 'n', 'se', 'i'],
     kanaSyllables: ['せ', 'ん', 'せ', 'い'],
     isHiragana: true,
+    category: 'school',
   ),
   WordBuilderQuestion(
     kana: 'ひ こ う き',
@@ -347,6 +431,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['hi', 'ko', 'u', 'ki'],
     kanaSyllables: ['ひ', 'こ', 'う', 'き'],
     isHiragana: true,
+    category: 'others',
   ),
   WordBuilderQuestion(
     kana: 'ど う ぶ つ',
@@ -355,6 +440,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['do', 'u', 'bu', 'tsu'],
     kanaSyllables: ['ど', 'う', 'ぶ', 'つ'],
     isHiragana: true,
+    category: 'animals',
   ),
   WordBuilderQuestion(
     kana: 'じ て ん し ゃ',
@@ -363,6 +449,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ji', 'te', 'n', 'sha'],
     kanaSyllables: ['じ', 'て', 'ん', 'しゃ'],
     isHiragana: true,
+    category: 'others',
   ),
 
   // ===========================================================================
@@ -375,6 +462,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['a', 'ri', 'ga', 'to', 'u', 'go', 'za', 'i', 'ma', 'su'],
     kanaSyllables: ['あ', 'り', 'が', 'と', 'う', 'ご', 'ざ', 'い', 'ま', 'す'],
     isHiragana: true,
+    category: 'greetings',
   ),
   WordBuilderQuestion(
     kana: 'お は よ う ご ざ い ま す',
@@ -383,6 +471,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['o', 'ha', 'yo', 'u', 'go', 'za', 'i', 'ma', 'su'],
     kanaSyllables: ['お', 'は', 'よ', 'う', 'ご', 'ざ', 'い', 'ま', 'す'],
     isHiragana: true,
+    category: 'greetings',
   ),
   WordBuilderQuestion(
     kana: 'じ こ し ょ う か い',
@@ -391,6 +480,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ji', 'ko', 'sho', 'u', 'ka', 'i'],
     kanaSyllables: ['じ', 'こ', 'しょ', 'う', 'か', 'い'],
     isHiragana: true,
+    category: 'greetings',
   ),
   WordBuilderQuestion(
     kana: 'す い ぞ く か ん',
@@ -399,6 +489,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['su', 'i', 'zo', 'ku', 'ka', 'n'],
     kanaSyllables: ['す', 'い', 'ぞ', 'く', 'か', 'ん'],
     isHiragana: true,
+    category: 'places',
   ),
 
   // ===========================================================================
@@ -411,6 +502,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['pa', 'n'],
     kanaSyllables: ['パ', 'ン'],
     isHiragana: false,
+    category: 'food_drinks',
   ),
   WordBuilderQuestion(
     kana: 'バ ス',
@@ -419,6 +511,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ba', 'su'],
     kanaSyllables: ['バ', 'ス'],
     isHiragana: false,
+    category: 'others',
   ),
   WordBuilderQuestion(
     kana: 'ド ア',
@@ -427,6 +520,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['do', 'a'],
     kanaSyllables: ['ド', 'ア'],
     isHiragana: false,
+    category: 'objects',
   ),
   WordBuilderQuestion(
     kana: 'コ ー ヒ ー',
@@ -435,6 +529,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ko', 'ー', 'hi', 'ー'],
     kanaSyllables: ['コ', 'ー', 'ヒ', 'ー'],
     isHiragana: false,
+    category: 'food_drinks',
   ),
   WordBuilderQuestion(
     kana: 'カ メ ラ',
@@ -443,6 +538,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['ka', 'me', 'ra'],
     kanaSyllables: ['カ', 'メ', 'ラ'],
     isHiragana: false,
+    category: 'objects',
   ),
   WordBuilderQuestion(
     kana: 'テ レ ビ',
@@ -451,6 +547,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['te', 're', 'bi'],
     kanaSyllables: ['テ', 'レ', 'ビ'],
     isHiragana: false,
+    category: 'objects',
   ),
   WordBuilderQuestion(
     kana: 'レ ス ト ラ ン',
@@ -459,6 +556,7 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['re', 'su', 'to', 'ra', 'n'],
     kanaSyllables: ['レ', 'ス', 'ト', 'ラ', 'ン'],
     isHiragana: false,
+    category: 'places',
   ),
   WordBuilderQuestion(
     kana: 'ス ー パ ー マ ー ケ ッ ト',
@@ -467,5 +565,6 @@ const List<WordBuilderQuestion> allVocabulary = [
     syllables: ['su', 'ー', 'pa', 'ー', 'ma', 'ー', 'ke', 't', 'to'],
     kanaSyllables: ['ス', 'ー', 'パ', 'ー', 'マ', 'ー', 'ケ', 'ッ', 'ト'],
     isHiragana: false,
+    category: 'places',
   ),
 ];

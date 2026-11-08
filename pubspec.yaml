@@ -15,6 +15,12 @@ dependencies:
   # Dynamic Japanese pronunciation via on-device TTS engine
   flutter_tts: ^4.2.2
 
+  # Device-local daily reminders (compatible with Dart 3.11).
+  # Do NOT update flutter_local_notifications to 23 without upgrading Dart.
+  flutter_local_notifications: ^19.5.0
+  flutter_timezone: ^5.1.1
+  timezone: ^0.10.1
+
   # Local persistence for lesson progress, streaks, settings, and onboarding status
   shared_preferences: ^2.2.2
 
@@ -52,18 +58,19 @@ flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true # Opaque iOS launcher icons (source PNG is transparent)
-  # Fallback asset for legacy Android versions (API < 26) and iOS
-  image_path: "assets/image/cozy_kana_logo.png"
+  # Opaque icon with larger illustration for legacy Android and iOS
+  image_path: "assets/image/cozy_kana_launcher_legacy.png"
   min_sdk_android: 21
 
-  # Android 8.0+ / 12+ Adaptive Icon configuration
+  # Adaptive icon: artwork is inset so Android launcher masks do not crop it.
+  # Android 8.0+ Adaptive Icon configuration
   adaptive_icon_background: "#EADFD1" # Seamlessly blends with app canvas
-  adaptive_icon_foreground: "assets/image/cozy_kana_logo.png"
+  adaptive_icon_foreground: "assets/image/cozy_kana_launcher_foreground.png"
 
   # Web favicon and manifest generation
   web:
     generate: true
-    image_path: "assets/image/cozy_kana_logo.png"
+    image_path: "assets/image/cozy_kana_launcher_legacy.png"
 
 # --- NATIVE SPLASH SCREEN CONFIGURATION (flutter_native_splash) ---
 # Replaces the default black OS window while the Flutter engine initializes.
@@ -76,10 +83,11 @@ flutter_native_splash:
   web_image_mode: center
 
   # Android 12+ System Splash Screen API
+  # OS controls splash icon display size; the artwork is padded to fit safely.
   android_12:
     # Android 12+ shows an OS-controlled icon, not a full-screen picture.
     color: "#FDF8F3"
     color_dark: "#FDF8F3"
-    image: "assets/image/cozy_kana_logo.png"
+    image: "assets/image/cozy_kana_android12_splash.png"
     icon_background_color: "#FDF8F3"
     icon_background_color_dark: "#FDF8F3"

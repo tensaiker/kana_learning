@@ -15,7 +15,7 @@ class VocabularyService {
   bool get isLoaded => _isLoaded;
   List<WordBuilderQuestion> get allWords => List.unmodifiable(_words);
 
-  /// Loads assets/data/vocabulary.json once at app startup[cite: 13]
+  /// Loads assets/data/vocabulary.json once at app startup.
   Future<void> init() async {
     if (_isLoaded) return;
 
@@ -40,12 +40,14 @@ class VocabularyService {
           isHiragana: item['isHiragana'] ?? true,
           syllables: syllables,
           kanaSyllables: kanaSyllables,
+          // Old JSON entries without a category are safely grouped as Others.
+          category: VocabularyCategories.normalize(item['category'] as String?),
         );
       }).toList();
 
       _isLoaded = true;
     } catch (e) {
-      // Fallback: If JSON is missing or ill-formed during development, load code default[cite: 13]
+      // Fallback: Use the built-in words if the JSON asset cannot be loaded.
       _words = List.from(allVocabulary);
       _isLoaded = true;
     }
@@ -103,22 +105,30 @@ class VocabularyService {
   // FILTERING & SEARCH
   // ===========================================================================
 
-  /// Filters words by writing system, syllable count, and optional unlock enforcement.
+  /// Filters words by writing system, category, Kana length, and unlock mode.
+  /// The optional [category] parameter matches PracticeScreen call sites.
   ///
-  /// Optimization:
-  /// - Uses syllable length (`w.length`) rather than raw string length to match user-facing word lengths.
-  /// - Set [onlyUnlocked] to `true` (default) for gameplay so locked words containing
-  ///   unlearned characters never appear in Word Builder rounds.
+  /// The game can operate in either mode without changing lesson progression:
+  /// - onlyUnlocked: true  -> Learned Kana Only (default for beginners).
+  /// - onlyUnlocked: false -> All Vocabulary (exploration mode).
+  /// Word lengths use the existing `WordBuilderQuestion.length` kana-unit count,
+  /// matching the selectable answer slots rather than English word length.
   List<WordBuilderQuestion> getWordsForGame({
     required bool isHiragana,
     int minLength = 0,
     int maxLength = 99,
     bool onlyUnlocked = true,
+    String category = VocabularyCategories.all,
   }) {
+    // Keep the JSON and code fallback behavior identical in both modes.
     final pool = _words.isNotEmpty ? _words : allVocabulary;
 
     return pool.where((w) {
       if (w.isHiragana != isHiragana) return false;
+      // An "All Categories" choice deliberately skips category filtering.
+      if (category != VocabularyCategories.all && w.category != category) {
+        return false;
+      }
 
       final int len = w.length;
       if (len < minLength || len > maxLength) return false;
@@ -129,19 +139,24 @@ class VocabularyService {
     }).toList();
   }
 
-  /// Searches words by plain kana, romaji, or english definition.
+  /// Searches words by kana, romaji, or English and optionally by category.
+  /// The optional [category] parameter matches PracticeScreen call sites.
   ///
   /// Optimization:
   /// - Strips whitespace from query and searches against both spaced and unspaced kana.
   List<WordBuilderQuestion> searchWords({
     required bool isHiragana,
     String query = '',
+    String category = VocabularyCategories.all,
   }) {
     final pool = _words.isNotEmpty ? _words : allVocabulary;
     final cleanQuery = query.trim().toLowerCase();
 
     return pool.where((w) {
       if (w.isHiragana != isHiragana) return false;
+      if (category != VocabularyCategories.all && w.category != category) {
+        return false;
+      }
       if (cleanQuery.isEmpty) return true;
 
       return w.plainKana.contains(cleanQuery) ||
